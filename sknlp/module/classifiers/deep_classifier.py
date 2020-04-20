@@ -37,8 +37,10 @@ class DeepClassifier(SupervisedNLPModel):
             return [PrecisionWithLogits(logits2scores='softmax'),
                     RecallWithLogits(logits2scores='softmax')]
 
-    def dataset_transform(self, dataset, vocab, labels, max_length, segmenter,
-                          dataset_size=-1, batch_size=32, shuffle=True):
+    def dataset_transform(
+        self, dataset, vocab, labels, max_length, segmenter,
+        dataset_size=-1, batch_size=32, shuffle=True
+    ):
         if not hasattr(self, '_dataset_transformer'):
             self._dataset_transformer = ClassificationDataset(
                 vocab, labels, max_length=max_length, text_segmenter=segmenter
@@ -47,6 +49,12 @@ class DeepClassifier(SupervisedNLPModel):
             dataset, batch_size, shuffle=shuffle,
             shuffle_buffer_size=dataset_size
         )
+
+    def dataset_batchify(
+        self, dataset, vocab, labels, batch_size=32, shuffle=True
+    ):
+        d = ClassificationDataset(vocab, labels)
+        return d.batchify(dataset, batch_size, shuffle=shuffle)
 
     def get_config(self):
         return {

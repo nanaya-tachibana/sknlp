@@ -8,7 +8,7 @@ class TextRNNClassifier(DeepClassifier, TextRNN):
                  classes,
                  is_multilabel=True,
                  segmenter='jieba',
-                 max_length=80,
+                 max_length=100,
                  embed_size=100,
                  num_rnn_layers=1,
                  rnn_hidden_size=512,

@@ -96,6 +96,8 @@ class BaseNLPModel:
             vocab = Vocab.from_json(f.read())
         with open(os.path.join(filepath, "meta.json")) as f:
             meta = json.loads(f.read())
+        meta.pop("algorithm", None)
+        meta.pop("task", None)
         module = cls(vocab=vocab, **meta)
         module._model = tf.keras.models.load_model(
             os.path.join(filepath, "model"),
@@ -125,8 +127,15 @@ class SupervisedNLPModel(BaseNLPModel):
         self._class2idx = dict(zip(list(classes), range(len(classes))))
         self._num_classes = len(classes)
 
-    def dataset_transform(self, dataset, vocab, labels, max_length, segmenter,
-                          dataset_size=-1, batch_size=32, shuffle=True):
+    def dataset_transform(
+        self, dataset, vocab, labels, max_length, segmenter,
+        dataset_size=-1, batch_size=32, shuffle=True
+    ):
+        raise NotImplementedError()
+
+    def dataset_batchify(
+        self, dataset, vocab, labels, batch_size=32, shuffle=True
+    ):
         raise NotImplementedError()
 
     def _get_or_create_dataset(self, X, y, dataset, batch_size, shuffle=True):
@@ -136,7 +145,10 @@ class SupervisedNLPModel(BaseNLPModel):
             cut = get_segmenter(self._segmenter)
             self._vocab = self.build_vocab(X, cut)
         if dataset is not None:
-            return dataset
+            return self.dataset_batchify(
+                dataset, self._vocab, self._class2idx.keys(),
+                batch_size=batch_size, shuffle=shuffle
+            )
         if isinstance(y[0], (list, tuple)):
             y = ["|".join(map(str, y_i)) for y_i in y]
         df = pd.DataFrame(zip(X, y))
@@ -158,12 +170,12 @@ class SupervisedNLPModel(BaseNLPModel):
                     and X is None), \
             "When token2vec and vocab are both not given, X must be provided"
 
-        self.train_dataset = self._get_or_create_dataset(X, y, dataset,
-                                                         batch_size)
-        self.valid_dataset = self._get_or_create_dataset(valid_X, valid_y,
-                                                         valid_dataset,
-                                                         batch_size,
-                                                         shuffle=False)
+        self.train_dataset = self._get_or_create_dataset(
+            X, y, dataset, batch_size
+        )
+        self.valid_dataset = self._get_or_create_dataset(
+            valid_X, valid_y, valid_dataset, batch_size, shuffle=False
+        )
         if not self._built:
             self.build()
         optimizer = tf.keras.optimizers.Adam(learning_rate=lr, clipnorm=clip)
