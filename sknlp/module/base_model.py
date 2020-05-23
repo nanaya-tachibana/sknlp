@@ -11,7 +11,7 @@ import pandas as pd
 from sknlp.data import NLPDataset
 from sknlp.data.text_segmenter import get_segmenter
 from sknlp.vocab import Vocab
-from sknlp.metrics import logits2scores
+from sknlp.metrics import logits2scores, scores2classes
 from .embedding import Token2vec
 
 logger = logging.getLogger(__name__)
@@ -213,14 +213,17 @@ class SupervisedNLPModel(BaseNLPModel):
                                     self._is_multilabel)
         if return_scores:
             return predictions
-        return predictions > 0.5
+        return scores2classes(predictions, self._is_multilabel)
 
     def score(self, X=None, y=None, *, dataset=None, batch_size=128):
-        dataset = self._get_or_create_dataset(X, y, dataset, batch_size,
-                                              shuffle=False)
-        predictions = self.predict(dataset=dataset, batch_size=batch_size)
+        prediction_scores = self.predict(
+            X=X, dataset=dataset, batch_size=batch_size, return_scores=True
+        )
+        dataset = self._get_or_create_dataset(
+            X, y, dataset, batch_size, shuffle=False
+        )
         y = np.vstack([yi.numpy() for _, yi in dataset])
-        return self.score_func(y, predictions)
+        return self.score_func(y, prediction_scores)
 
     def get_config(self):
         return {**super().get_config(), "classes": list(self._class2idx.keys())}

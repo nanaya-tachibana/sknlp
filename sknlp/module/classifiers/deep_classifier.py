@@ -1,3 +1,4 @@
+import numpy as np
 import tensorflow as tf
 from sklearn.metrics import precision_recall_fscore_support
 from tabulate import tabulate
@@ -68,22 +69,26 @@ class DeepClassifier(SupervisedNLPModel):
                 'PrecisionWithLogits': PrecisionWithLogits,
                 'RecallWithLogits': RecallWithLogits}
 
-    def score_func(self, y, predictions):
+    def score_func(self, y, prediction_scores):
         precision, recall, f_score, num = [], [], [], []
         names = list(self._class2idx.keys())
-        if y.shape[1] > 2 or self._is_multilabel:
-            p, r, f, n = precision_recall_fscore_support(y, predictions)
-            precision.extend(p.tolist())
-            recall.extend(r.tolist())
-            f_score.extend(f.tolist())
-            num.extend(n.tolist())
-
-        if y.shape[1] == 2 and not self._is_multilabel:
-            p, r, f, n = precision_recall_fscore_support(y, predictions,
-                                                         average='binary')
+        if not self._is_multilabel:
+            predictions = np.argmax(prediction_scores, axis=1).tolist()
+            y = np.argmax(y, axis=1).tolist()
         else:
-            p, r, f, n = precision_recall_fscore_support(y, predictions,
-                                                         average='micro')
+            predictions = prediction_scores > 0.5
+
+        p, r, f, n = precision_recall_fscore_support(y, predictions)
+        precision.extend(p.tolist())
+        recall.extend(r.tolist())
+        f_score.extend(f.tolist())
+        num.extend(n.tolist())
+
+        # if y.ndim > 1 and y.shape[1] == 2 and not self._is_multilabel:
+        #     p, r, f, n = precision_recall_fscore_support(y, predictions,
+        #                                                  average='binary')
+        # else:
+        p, r, f, n = precision_recall_fscore_support(y, predictions, average='micro')
         precision.append(p)
         recall.append(r)
         f_score.append(f)
