@@ -11,15 +11,18 @@ from sknlp.module.base_model import SupervisedNLPModel
 
 class DeepClassifier(SupervisedNLPModel):
 
-    def __init__(self, classes, is_multilabel=True, segmenter='jieba',
-                 embed_size=100, max_length=None, vocab=None, token2vec=None,
-                 **kwargs):
+    def __init__(
+        self, classes, is_multilabel=True, segmenter='jieba', embed_size=100,
+        max_length=None, vocab=None, token2vec=None, task='classification', **kwargs
+    ):
         super().__init__(classes,
                          segmenter=segmenter,
                          embed_size=embed_size,
                          max_length=max_length,
                          vocab=vocab,
-                         token2vec=token2vec, **kwargs)
+                         token2vec=token2vec,
+                         task=task,
+                         **kwargs)
         self._is_multilabel = is_multilabel
 
     def get_loss(self):
@@ -58,11 +61,7 @@ class DeepClassifier(SupervisedNLPModel):
         return d.batchify(dataset, batch_size, shuffle=shuffle)
 
     def get_config(self):
-        return {
-            **super().get_config(),
-            'is_multilabel': self._is_multilabel,
-            'task': 'classification'
-        }
+        return {**super().get_config(), 'is_multilabel': self._is_multilabel}
 
     def get_custom_objects(self):
         return {**super().get_custom_objects(),

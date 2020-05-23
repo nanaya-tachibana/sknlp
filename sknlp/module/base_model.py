@@ -22,10 +22,14 @@ logger.addHandler(stream)
 
 class BaseNLPModel:
 
-    def __init__(self, segmenter="jieba", embed_size=100,
-                 max_length=None, vocab=None, token2vec=None):
+    def __init__(
+        self, segmenter="jieba", embed_size=100, max_length=None, vocab=None,
+        token2vec=None, task=None, algorithm=None
+    ):
         self._max_length = max_length
         self._token2vec = token2vec
+        self._task = task
+        self._algorithm = algorithm
         if token2vec is not None:
             self._segmenter = token2vec.segmenter
             self._vocab = token2vec.vocab
@@ -110,20 +114,29 @@ class BaseNLPModel:
         self._model.save(os.path.join(filepath, name, version), save_format="tf")
 
     def get_config(self):
-        return {"segmenter": self._segmenter,
-                "embed_size": self._embed_size,
-                "max_length": self._max_length}
+        return {
+            "segmenter": self._segmenter,
+            "embed_size": self._embed_size,
+            "max_length": self._max_length,
+            "task": self._task,
+            "algorithm": self._algorithm
+        }
 
 
 class SupervisedNLPModel(BaseNLPModel):
 
-    def __init__(self, classes, segmenter="jieba", embed_size=100,
-                 max_length=None, vocab=None, token2vec=None, **kwargs):
+    def __init__(
+        self, classes, segmenter="jieba", embed_size=100, max_length=None, vocab=None,
+        token2vec=None, task=None, algorithm=None, **kwargs
+    ):
         super().__init__(segmenter=segmenter,
                          embed_size=embed_size,
                          max_length=max_length,
                          vocab=vocab,
-                         token2vec=token2vec, **kwargs)
+                         token2vec=token2vec,
+                         task=task,
+                         algorithm=algorithm,
+                         **kwargs)
         self._class2idx = dict(zip(list(classes), range(len(classes))))
         self._num_classes = len(classes)
 
@@ -170,12 +183,15 @@ class SupervisedNLPModel(BaseNLPModel):
                     and X is None), \
             "When token2vec and vocab are both not given, X must be provided"
 
-        self.train_dataset = self._get_or_create_dataset(
-            X, y, dataset, batch_size
-        )
-        self.valid_dataset = self._get_or_create_dataset(
-            valid_X, valid_y, valid_dataset, batch_size, shuffle=False
-        )
+        self.train_dataset = self._get_or_create_dataset(X, y, dataset,
+                                                         batch_size)
+        if ((valid_X is None or valid_y is None) and valid_dataset is None):
+            self.valid_dataset = None
+        else:
+            self.valid_dataset = self._get_or_create_dataset(valid_X, valid_y,
+                                                             valid_dataset,
+                                                             batch_size,
+                                                             shuffle=False)
         if not self._built:
             self.build()
         optimizer = tf.keras.optimizers.Adam(learning_rate=lr, clipnorm=clip)

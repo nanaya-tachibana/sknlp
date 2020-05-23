@@ -36,12 +36,14 @@ class TextRCNNClassifier(DeepClassifier, TextRNN):
                  rnn_bias_constraint=None,
                  vocab=None,
                  token2vec=None,
+                 algorithm='text_rcnn',
                  **kwargs):
         super().__init__(classes,
                          is_multilabel=is_multilabel,
                          segmenter=segmenter,
                          max_length=max_length,
                          embed_size=embed_size,
+                         algorithm=algorithm,
                          num_rnn_layers=num_rnn_layers,
                          rnn_hidden_size=rnn_hidden_size,
                          rnn_projection_size=rnn_projection_size,
@@ -84,4 +86,4 @@ class TextRCNNClassifier(DeepClassifier, TextRNN):
     def get_config(self):
         base_config = super().get_config()
         del base_config['rnn_last_connection']
-        return {**base_config, 'algorithm': 'text_rcnn'}
+        return base_config
