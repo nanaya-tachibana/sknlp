@@ -12,7 +12,7 @@ tabulate = "^0.8.6"
 pandas = "^0.25.3"
 joblib = "^0.14.1"
 jieba_fast = "^0.53"
-tensorflow = "2.2.0rc2"
+tensorflow-cpu = "^2.2.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.3.2"
