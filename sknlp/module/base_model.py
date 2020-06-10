@@ -81,37 +81,40 @@ class BaseNLPModel:
     def get_custom_objects(self):
         return {}
 
-    def save_vocab(self, filepath, filename="vocab.json"):
-        with open(os.path.join(filepath, filename), "w") as f:
+    def save_vocab(self, directory, filename="vocab.json"):
+        with open(os.path.join(directory, filename), "w") as f:
             f.write(self._vocab.to_json())
 
-    def save_config(self, filepath, filename="meta.json"):
-        with open(os.path.join(filepath, filename), "w") as f:
+    def save_config(self, directory, filename="meta.json"):
+        with open(os.path.join(directory, filename), "w") as f:
             f.write(json.dumps(self.get_config()))
 
-    def save(self, filepath):
-        self._model.save(os.path.join(filepath, "model"), save_format="h5")
-        self.save_vocab(filepath)
-        self.save_config(filepath)
+    def save(self, directory):
+        self._model.save(os.path.join(directory, "model"), save_format="h5")
+        self.save_vocab(directory)
+        self.save_config(directory)
 
     @classmethod
-    def load(cls, filepath):
-        with open(os.path.join(filepath, "vocab.json")) as f:
+    def load(cls, directory):
+        with open(os.path.join(directory, "vocab.json")) as f:
             vocab = Vocab.from_json(f.read())
-        with open(os.path.join(filepath, "meta.json")) as f:
+        with open(os.path.join(directory, "meta.json")) as f:
             meta = json.loads(f.read())
         meta.pop("algorithm", None)
         meta.pop("task", None)
         module = cls(vocab=vocab, **meta)
         module._model = tf.keras.models.load_model(
-            os.path.join(filepath, "model"),
+            os.path.join(directory, "model"),
             custom_objects=module.get_custom_objects()
         )
         module._built = True
         return module
 
-    def export(self, filepath, name, version="0"):
-        self._model.save(os.path.join(filepath, name, version), save_format="tf")
+    def export(self, directory, name, version="0"):
+        d = os.path.join(directory, name, version)
+        self._model.save(d, save_format="tf")
+        self.save_vocab(d)
+        self.save_config(d)
 
     def get_config(self):
         return {
