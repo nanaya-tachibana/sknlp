@@ -1,11 +1,14 @@
-from tensorflow.python.keras import backend as K
-from tensorflow.python.keras import constraints
-from tensorflow.python.keras import initializers
-from tensorflow.python.keras import regularizers
-from tensorflow.python.keras.engine.input_spec import InputSpec
-from tensorflow.python.keras.utils import tf_utils
-from tensorflow.python.training.tracking import data_structures
+from typing import Optional
+
+from tensorflow.keras import backend as K
+from tensorflow.keras import constraints
+from tensorflow.keras import initializers
+from tensorflow.keras import regularizers
+from tensorflow.keras.layers import InputSpec
 from tensorflow.python.keras.layers.recurrent import LSTMCell, LSTM
+from tensorflow.python.training.tracking import data_structures
+
+from sknlp.typing import WeightRegularizer, WeightInitializer, WeightConstraint
 
 
 class LSTMPCell(LSTMCell):
@@ -69,31 +72,34 @@ class LSTMPCell(LSTMCell):
       training mode or in inference mode. Only relevant when `dropout`,
       `recurrent_dropout` or `projection_dropout`is used.
     """
-    def __init__(self,
-                 units,
-                 projection_size=100,
-                 activation='tanh',
-                 recurrent_activation='hard_sigmoid',
-                 use_bias=True,
-                 kernel_initializer='glorot_uniform',
-                 recurrent_initializer='orthogonal',
-                 projection_initializer='glorot_uniform',
-                 bias_initializer='zeros',
-                 unit_forget_bias=True,
-                 kernel_regularizer=None,
-                 recurrent_regularizer=None,
-                 projection_regularizer=None,
-                 bias_regularizer=None,
-                 kernel_constraint=None,
-                 recurrent_constraint=None,
-                 projection_constraint=None,
-                 bias_constraint=None,
-                 dropout=0.,
-                 recurrent_dropout=0.,
-                 recurrent_clip=None,
-                 projection_clip=None,
-                 implementation=2,
-                 **kwargs):
+
+    def __init__(
+        self,
+        units: int,
+        projection_size: int = 100,
+        activation: str = 'tanh',
+        recurrent_activation: str = 'hard_sigmoid',
+        use_bias: bool = True,
+        kernel_initializer: WeightInitializer = 'glorot_uniform',
+        recurrent_initializer: WeightInitializer = 'orthogonal',
+        projection_initializer: WeightInitializer = 'glorot_uniform',
+        bias_initializer: WeightInitializer = 'zeros',
+        unit_forget_bias: bool = True,
+        kernel_regularizer: Optional[WeightRegularizer] = None,
+        recurrent_regularizer: Optional[WeightRegularizer] = None,
+        projection_regularizer: Optional[WeightRegularizer] = None,
+        bias_regularizer: Optional[WeightRegularizer] = None,
+        kernel_constraint: Optional[WeightConstraint] = None,
+        recurrent_constraint: Optional[WeightConstraint] = None,
+        projection_constraint: Optional[WeightConstraint] = None,
+        bias_constraint: Optional[WeightConstraint] = None,
+        dropout: float = 0.,
+        recurrent_dropout: float = 0.,
+        recurrent_clip: Optional[float] = None,
+        projection_clip: Optional[float] = None,
+        implementation: int = 2,
+        **kwargs
+    ) -> None:
         super().__init__(units,
                          activation=activation,
                          recurrent_activation=recurrent_activation,
@@ -118,11 +124,11 @@ class LSTMPCell(LSTMCell):
         self.projection_initializer = initializers.get(projection_initializer)
         self.projection_regularizer = regularizers.get(projection_regularizer)
         self.projection_constraint = constraints.get(projection_constraint)
-        self.state_size = data_structures.NoDependency([self.projection_size,
-                                                        self.units])
+        self.state_size = data_structures.NoDependency([
+            self.projection_size, self.units
+        ])
         self.output_size = self.projection_size
 
-    @tf_utils.shape_type_conversion
     def build(self, input_shape):
         input_dim = input_shape[-1]
         self.kernel = self.add_weight(
@@ -278,37 +284,40 @@ class LSTMP(LSTM):
     initial_states: List of state tensors corresponding to the
       previous timestep.
     """
-    def __init__(self,
-                 units,
-                 projection_size=100,
-                 activation='tanh',
-                 recurrent_activation='hard_sigmoid',
-                 use_bias=True,
-                 kernel_initializer='glorot_uniform',
-                 recurrent_initializer='orthogonal',
-                 projection_initializer='glorot_uniform',
-                 bias_initializer='zeros',
-                 unit_forget_bias=True,
-                 kernel_regularizer=None,
-                 recurrent_regularizer=None,
-                 projection_regularizer=None,
-                 bias_regularizer=None,
-                 activity_regularizer=None,
-                 kernel_constraint=None,
-                 recurrent_constraint=None,
-                 projection_constraint=None,
-                 bias_constraint=None,
-                 dropout=0.,
-                 recurrent_dropout=0.,
-                 recurrent_clip=None,
-                 projection_clip=None,
-                 implementation=2,
-                 return_sequences=False,
-                 return_state=False,
-                 go_backwards=False,
-                 stateful=False,
-                 unroll=False,
-                 **kwargs):
+
+    def __init__(
+        self,
+        units,
+        projection_size: int = 100,
+        activation: str = 'tanh',
+        recurrent_activation: str = 'hard_sigmoid',
+        use_bias: bool = True,
+        kernel_initializer: WeightInitializer = 'glorot_uniform',
+        recurrent_initializer: WeightInitializer = 'orthogonal',
+        projection_initializer: WeightInitializer = 'glorot_uniform',
+        bias_initializer: WeightInitializer = 'zeros',
+        unit_forget_bias: bool = True,
+        kernel_regularizer: Optional[WeightRegularizer] = None,
+        recurrent_regularizer: Optional[WeightRegularizer] = None,
+        projection_regularizer: Optional[WeightRegularizer] = None,
+        bias_regularizer: Optional[WeightRegularizer] = None,
+        kernel_constraint: Optional[WeightConstraint] = None,
+        recurrent_constraint: Optional[WeightConstraint] = None,
+        projection_constraint: Optional[WeightConstraint] = None,
+        bias_constraint: Optional[WeightConstraint] = None,
+        dropout: float = 0.,
+        recurrent_dropout: float = 0.,
+        recurrent_clip: Optional[float] = None,
+        projection_clip: Optional[float] = None,
+        implementation: int = 2,
+        activity_regularizer: Optional[WeightRegularizer] = None,
+        return_sequences: bool = False,
+        return_state: bool = False,
+        go_backwards: bool = False,
+        stateful: bool = False,
+        unroll: bool = False,
+        **kwargs
+    ):
         cell = LSTMPCell(
             units,
             projection_size=projection_size,

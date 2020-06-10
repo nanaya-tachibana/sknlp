@@ -1,33 +1,39 @@
+from typing import Optional
+
 import tensorflow as tf
-from tensorflow.keras.layers import Bidirectional, Dropout
+from tensorflow.keras.layers import Layer, Bidirectional, Dropout
+
+from sknlp.typing import WeightRegularizer, WeightInitializer, WeightConstraint
 
 from .lstmp import LSTMP
 
 
-class MultiLSTMP(tf.keras.layers.Layer):
+class MultiLSTMP(Layer):
 
-    def __init__(self,
-                 num_layers,
-                 units,
-                 projection_size=100,
-                 kernel_initializer='glorot_uniform',
-                 recurrent_initializer='orthogonal',
-                 projection_initializer='glorot_uniform',
-                 bias_initializer='zeros',
-                 kernel_regularizer=None,
-                 recurrent_regularizer=None,
-                 projection_regularizer=None,
-                 bias_regularizer=None,
-                 kernel_constraint=None,
-                 recurrent_constraint=None,
-                 projection_constraint=None,
-                 bias_constraint=None,
-                 input_dropout=0.,
-                 recurrent_dropout=0.,
-                 output_dropout=0.,
-                 recurrent_clip=None,
-                 projection_clip=None,
-                 last_connection='last'):
+    def __init__(
+        self,
+        num_layers: int,
+        units: int,
+        projection_size: int = 100,
+        kernel_initializer: WeightInitializer = 'glorot_uniform',
+        recurrent_initializer: WeightInitializer = 'orthogonal',
+        projection_initializer: WeightInitializer = 'glorot_uniform',
+        bias_initializer: WeightInitializer = 'zeros',
+        kernel_regularizer: Optional[WeightRegularizer] = None,
+        recurrent_regularizer: Optional[WeightRegularizer] = None,
+        projection_regularizer: Optional[WeightRegularizer] = None,
+        bias_regularizer: Optional[WeightRegularizer] = None,
+        kernel_constraint: Optional[WeightConstraint] = None,
+        recurrent_constraint: Optional[WeightConstraint] = None,
+        projection_constraint: Optional[WeightConstraint] = None,
+        bias_constraint: Optional[WeightConstraint] = None,
+        input_dropout: float = 0.,
+        recurrent_dropout: float = 0.,
+        output_dropout: float = 0.,
+        recurrent_clip: Optional[float] = None,
+        projection_clip: Optional[float] = None,
+        last_connection: str = 'last'
+    ):
         self.num_layers = num_layers
         self.units = units
         self.projection_size = projection_size
@@ -80,14 +86,20 @@ class MultiLSTMP(tf.keras.layers.Layer):
         noise_shape = (None, 1, self.projection_size)
         if self.last_connection == 'last':
             noise_shape = None
-        self.dropout_layer = Dropout(self.output_dropout,
-                                     noise_shape=noise_shape)
+        self.dropout_layer = Dropout(self.output_dropout, noise_shape=noise_shape)
 
-    def call(self, inputs, mask=None, training=None, initial_state=None):
+    def call(
+        self,
+        inputs: int,
+        mask: Optional[tf.Tensor] = None,
+        training: Optional[bool] = None,
+        initial_state: Optional[tf.Tensor] = None
+    ):
         for layer in self.layers:
-            inputs = layer(inputs, mask=mask, training=training,
-                           initial_state=initial_state)
+            inputs = layer(
+                inputs, mask=mask, training=training, initial_state=initial_state
+            )
         return self.dropout_layer(inputs)
 
-    def compute_mask(self, inputs, mask=None):
+    def compute_mask(self, inputs: tf.Tensor, mask: Optional[tf.Tensor] = None):
         return self.layers[0].compute_mask(inputs, mask)

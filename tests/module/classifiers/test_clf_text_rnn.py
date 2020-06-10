@@ -17,11 +17,13 @@ class TestTextRNNClassifier(TestDeepClassifier):
 
     def test_save_load(self, tmp_path):
         self.model.build()
-        self.model.fit(X=["111", "222", "aaa", "bbb", "a4b"],
-                       y=["1", "1", "2", "2", "3"],
-                       valid_X=["111", "222", "aaa", "bbb", "a4b"],
-                       valid_y=["1", "1", "2", "2", "3"],
-                       n_epochs=1, batch_size=2)
+        self.model.fit(
+            X=["111", "222", "aaa", "bbb", "a4b"],
+            y=["1", "1", "2", "2", "3"],
+            valid_X=["111", "222", "aaa", "bbb", "a4b"],
+            valid_y=["1", "1", "2", "2", "3"],
+            n_epochs=1, batch_size=2
+        )
         self.model.save(str(tmp_path))
         new_model = TextRNNClassifier.load(str(tmp_path))
         np.testing.assert_array_almost_equal(

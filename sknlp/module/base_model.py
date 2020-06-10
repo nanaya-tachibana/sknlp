@@ -1,3 +1,5 @@
+from typing import Sequence, Union, Optional, Dict, Any
+
 import json
 import os
 import itertools
@@ -5,13 +7,11 @@ from collections import Counter
 import logging
 
 import tensorflow as tf
-import numpy as np
 import pandas as pd
 
 from sknlp.data import NLPDataset
 from sknlp.data.text_segmenter import get_segmenter
 from sknlp.vocab import Vocab
-from sknlp.metrics import logits2scores, scores2classes
 from .embedding import Token2vec
 
 logger = logging.getLogger(__name__)
@@ -23,13 +23,15 @@ logger.addHandler(stream)
 class BaseNLPModel:
 
     def __init__(
-        self, segmenter="jieba", embed_size=100, max_length=None, vocab=None,
-        token2vec=None, task=None, algorithm=None
+        self,
+        segmenter="jieba",
+        embed_size=100,
+        max_length=None,
+        vocab=None,
+        token2vec=None
     ):
         self._max_length = max_length
         self._token2vec = token2vec
-        self._task = task
-        self._algorithm = algorithm
         if token2vec is not None:
             self._segmenter = token2vec.segmenter
             self._vocab = token2vec.vocab
@@ -49,9 +51,7 @@ class BaseNLPModel:
 
     def build_token2vec(self, vocab):
         self._vocab = vocab
-        self._token2vec = Token2vec(vocab,
-                                    self._embed_size,
-                                    self._segmenter)
+        self._token2vec = Token2vec(vocab, self._embed_size, self._segmenter)
 
     def build_encode_layer(self, inputs):
         raise NotImplementedError()
@@ -117,81 +117,101 @@ class BaseNLPModel:
         return {
             "segmenter": self._segmenter,
             "embed_size": self._embed_size,
-            "max_length": self._max_length,
-            "task": self._task,
-            "algorithm": self._algorithm
+            "max_length": self._max_length
         }
 
 
 class SupervisedNLPModel(BaseNLPModel):
 
     def __init__(
-        self, classes, segmenter="jieba", embed_size=100, max_length=None, vocab=None,
-        token2vec=None, task=None, algorithm=None, **kwargs
+        self,
+        classes: Sequence[str],
+        segmenter: str = "jieba",
+        embed_size: int = 100,
+        max_length: Optional[int] = 100,
+        vocab: Optional[Vocab] = None,
+        token2vec: Optional[Token2vec] = None,
+        task: Optional[str] = None,
+        algorithm: Optional[str] = None,
+        **kwargs
     ):
         super().__init__(segmenter=segmenter,
                          embed_size=embed_size,
                          max_length=max_length,
                          vocab=vocab,
                          token2vec=token2vec,
-                         task=task,
-                         algorithm=algorithm,
                          **kwargs)
+        self._task = task
+        self._algorithm = algorithm
         self._class2idx = dict(zip(list(classes), range(len(classes))))
+        self._idx2class = dict(zip(range(len(classes)), list(classes)))
         self._num_classes = len(classes)
 
-    def dataset_transform(
-        self, dataset, vocab, labels, max_length, segmenter,
-        dataset_size=-1, batch_size=32, shuffle=True
-    ):
+    @classmethod
+    def create_dataset_from_df(
+        self,
+        df: pd.DataFrame,
+        vocab: Vocab,
+        labels: Sequence[str]
+    ) -> NLPDataset:
         raise NotImplementedError()
 
-    def dataset_batchify(
-        self, dataset, vocab, labels, batch_size=32, shuffle=True
-    ):
-        raise NotImplementedError()
-
-    def _get_or_create_dataset(self, X, y, dataset, batch_size, shuffle=True):
+    def prepare_tf_dataset(
+        self,
+        X: Sequence[str],
+        y: Sequence[str],
+        dataset: NLPDataset,
+        batch_size: int,
+        shuffle: bool = True
+    ) -> tf.data.Dataset:
         assert not ((X is None or y is None) and dataset is None)
 
         if self._vocab is None:
             cut = get_segmenter(self._segmenter)
             self._vocab = self.build_vocab(X, cut)
         if dataset is not None:
-            return self.dataset_batchify(
-                dataset, self._vocab, self._class2idx.keys(),
-                batch_size=batch_size, shuffle=shuffle
-            )
+            return dataset.batchify(batch_size, shuffle=shuffle)
         if isinstance(y[0], (list, tuple)):
             y = ["|".join(map(str, y_i)) for y_i in y]
-        df = pd.DataFrame(zip(X, y))
-        return self.dataset_transform(NLPDataset.dataframe_to_dataset(df),
-                                      self._vocab, self._class2idx.keys(),
-                                      self._max_length, self._segmenter,
-                                      dataset_size=df.shape[0],
-                                      batch_size=batch_size,
-                                      shuffle=shuffle)
+        df = pd.DataFrame(zip(X, y), columns=["text", "label"])
+        dataset = self.create_dataset_from_df(df, self._vocab, self._class2idx.keys())
+        return dataset.batchify(
+            batch_size, shuffle=shuffle, shuffle_buffer_size=df.shape[0]
+        )
 
-    def fit(self, X=None, y=None, *, dataset=None,
-            valid_X=None, valid_y=None, valid_dataset=None,
-            batch_size=128,  n_epochs=30, optimizer="adam",
-            lr=1e-3, lr_update_factor=0.5, lr_update_epochs=10,
-            clip=5.0, checkpoint=None, save_frequency=1, log_file="train.log",
-            verbose=2):
+    def fit(
+        self,
+        X: Sequence[str] = None,
+        y: Union[Sequence[Sequence[str]], Sequence[str]] = None,
+        *,
+        dataset: NLPDataset = None,
+        valid_X: Sequence[str] = None,
+        valid_y: Union[Sequence[Sequence[str]], Sequence[str]] = None,
+        valid_dataset: NLPDataset = None,
+        batch_size: int = 128,
+        n_epochs: int = 30,
+        optimizer: str = "adam",
+        lr: float = 1e-3,
+        lr_update_factor: float = 0.5,
+        lr_update_epochs: int = 10,
+        clip: float = 5.0,
+        checkpoint: Optional[str] = None,
+        save_frequency: int = 1,
+        log_file: Optional[str] = None,
+        verbose: int = 2
+    ) -> None:
         assert not (self._token2vec is None
                     and self._vocab is None
                     and X is None), \
             "When token2vec and vocab are both not given, X must be provided"
 
-        self.train_dataset = self._get_or_create_dataset(X, y, dataset,
-                                                         batch_size)
+        self.train_dataset = self.prepare_tf_dataset(X, y, dataset, batch_size)
         if ((valid_X is None or valid_y is None) and valid_dataset is None):
             self.valid_dataset = None
         else:
-            self.valid_dataset = self._get_or_create_dataset(valid_X, valid_y,
-                                                             valid_dataset,
-                                                             batch_size,
-                                                             shuffle=False)
+            self.valid_dataset = self.prepare_tf_dataset(
+                valid_X, valid_y, valid_dataset, batch_size, shuffle=False
+            )
         if not self._built:
             self.build()
         optimizer = tf.keras.optimizers.Adam(learning_rate=lr, clipnorm=clip)
@@ -209,37 +229,48 @@ class SupervisedNLPModel(BaseNLPModel):
             return new_lr
 
         lr_decay = tf.keras.callbacks.LearningRateScheduler(scheduler)
-        self._model.fit(self.train_dataset, epochs=n_epochs,
-                        validation_data=self.valid_dataset,
-                        callbacks=[*callbacks, lr_decay,
-                                   tf.keras.callbacks.CSVLogger(log_file)],
-                        verbose=verbose)
+        callbacks = [*callbacks, lr_decay]
+        if log_file is not None:
+            callbacks.append(tf.keras.callbacks.CSVLogger(log_file))
+        self._model.fit(
+            self.train_dataset,
+            epochs=n_epochs,
+            validation_data=self.valid_dataset,
+            callbacks=callbacks,
+            verbose=verbose
+        )
 
-    def predict(self, X=None, *, dataset=None, threshold=None, batch_size=128,
-                return_scores=False):
+    def predict(
+        self,
+        X: Sequence[str] = None,
+        *,
+        dataset: NLPDataset = None,
+        batch_size: int = 128
+    ) -> tf.Tensor:
         assert self._built
         y = None if X is None else ["O" for _ in range(len(X))]
-        dataset = self._get_or_create_dataset(X, y, dataset, batch_size,
-                                              shuffle=False)
+        dataset = self.prepare_tf_dataset(X, y, dataset, batch_size, shuffle=False)
 
         def _f(x, y):
             return x
 
-        predictions = logits2scores(self._model.predict(dataset.map(_f)),
-                                    self._is_multilabel)
-        if return_scores:
-            return predictions
-        return scores2classes(predictions, self._is_multilabel)
+        return self._model.predict(dataset.map(_f))
 
-    def score(self, X=None, y=None, *, dataset=None, batch_size=128):
-        prediction_scores = self.predict(
-            X=X, dataset=dataset, batch_size=batch_size, return_scores=True
-        )
-        dataset = self._get_or_create_dataset(
-            X, y, dataset, batch_size, shuffle=False
-        )
-        y = np.vstack([yi.numpy() for _, yi in dataset])
-        return self.score_func(y, prediction_scores)
+    def score(
+        self,
+        X: Sequence[str] = None,
+        y: Union[Sequence[Sequence[str]], Sequence[str]] = None,
+        *,
+        dataset: NLPDataset = None,
+        thresholds: Union[float, Dict[str, float]] = 0.5,
+        batch_size: int = 128
+    ) -> pd.DataFrame:
+        raise NotImplementedError()
 
-    def get_config(self):
-        return {**super().get_config(), "classes": list(self._class2idx.keys())}
+    def get_config(self) -> Dict[str, Any]:
+        return {
+            **super().get_config(),
+            "classes": list(self._class2idx.keys()),
+            "task": self._task,
+            "algorithm": self._algorithm
+        }

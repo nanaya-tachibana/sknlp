@@ -20,9 +20,12 @@ class FScore(tf.keras.callbacks.Callback):
 
     def on_epoch_end(self, epoch, logs=None):
         p, r = logs['precision'], logs['recall']
-        val_p, val_r = logs['val_precision'], logs['val_recall']
+        if 'val_precision' in logs and 'val_recall' in logs:
+            val_p, val_r = logs['val_precision'], logs['val_recall']
+            logs['val_f-score'] = f_score(val_p, val_r, self.beta)
+        else:
+            logs['val_f-score'] = 0
         logs['f-score'] = f_score(p, r, self.beta)
-        logs['val_f-score'] = f_score(val_p, val_r, self.beta)
         logger.info('f-score: %.2f, val_f-score: %.2f' % (
             logs['f-score'] * 100, logs['val_f-score'] * 100
         ))

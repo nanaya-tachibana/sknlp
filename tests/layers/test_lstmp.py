@@ -12,13 +12,15 @@ sequence_length = 5
 
 
 def test_ltmpcell():
-    cellv1 = LSTMPCell(units, projection_size,
+    cellv1 = LSTMPCell(units,
+                       projection_size=projection_size,
                        dropout=dropout,
                        recurrent_dropout=recurrent_dropout,
                        recurrent_clip=recurrent_clip,
                        projection_clip=projection_clip,
                        implementation=1)
-    cellv2 = LSTMPCell(units, projection_size,
+    cellv2 = LSTMPCell(units,
+                       projection_size=projection_size,
                        dropout=dropout,
                        recurrent_dropout=recurrent_dropout,
                        recurrent_clip=recurrent_clip,
@@ -26,8 +28,7 @@ def test_ltmpcell():
                        implementation=2)
 
     random_data = tf.random.normal((batch_size, 50))
-    initial_states = cellv1.get_initial_state(batch_size=batch_size,
-                                              dtype=tf.float32)
+    initial_states = cellv1.get_initial_state(batch_size=batch_size, dtype=tf.float32)
     h, (_, c) = cellv1(random_data, initial_states)
     assert h.shape.as_list() == [batch_size, projection_size]
     assert c.shape.as_list() == [batch_size, units]

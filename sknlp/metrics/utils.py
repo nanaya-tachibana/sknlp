@@ -56,14 +56,11 @@ def scores2classes(
     表示这个sample对应的类别.
     """
     assert scores.ndim == 2
-    num_classes = scores.shape[1]
     if is_multilabel:
         return [
             np.where(scores[i, :] > threshold)[0].tolist()
             for i in range(scores.shape[0])
         ]
-    elif num_classes == 2:
-        return np.where(scores[:, 1] > threshold, 1, 0).tolist()
     else:
         return np.argmax(scores, axis=1).tolist()
 

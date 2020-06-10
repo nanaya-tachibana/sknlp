@@ -127,7 +127,7 @@ description = "Google Authentication Library"
 name = "google-auth"
 optional = false
 python-versions = ">=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*"
-version = "1.15.0"
+version = "1.16.0"
 
 [package.dependencies]
 cachetools = ">=2.0.0,<5.0"
@@ -424,7 +424,7 @@ description = "Protocol Buffers"
 name = "protobuf"
 optional = false
 python-versions = "*"
-version = "3.12.1"
+version = "3.12.2"
 
 [package.dependencies]
 setuptools = "*"
@@ -670,7 +670,7 @@ description = "TensorBoard lets you watch Tensors Flow"
 name = "tensorboard"
 optional = false
 python-versions = ">= 2.7, != 3.0.*, != 3.1.*"
-version = "2.2.1"
+version = "2.2.2"
 
 [package.dependencies]
 absl-py = ">=0.4"
@@ -709,7 +709,7 @@ url = "https://mirrors.aliyun.com/pypi/simple"
 [[package]]
 category = "main"
 description = "TensorFlow is an open source machine learning framework for everyone."
-name = "tensorflow-cpu"
+name = "tensorflow"
 optional = false
 python-versions = "*"
 version = "2.2.0"
@@ -750,6 +750,25 @@ name = "tensorflow-estimator"
 optional = false
 python-versions = "*"
 version = "2.2.0"
+
+[package.source]
+reference = "aliyun"
+url = "https://mirrors.aliyun.com/pypi/simple"
+
+[[package]]
+category = "main"
+description = "TF.Text is a TensorFlow library of text related ops, modules, and subgraphs."
+name = "tensorflow-text"
+optional = false
+python-versions = "*"
+version = "2.2.0"
+
+[package.dependencies]
+tensorflow = ">=2.2.0,<2.3"
+
+[package.extras]
+tensorflow_gpu = ["tensorflow-gpu (>=2.2.0,<2.3)"]
+tests = ["absl-py", "pytest"]
 
 [package.source]
 reference = "aliyun"
@@ -860,7 +879,7 @@ reference = "aliyun"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [metadata]
-content-hash = "f566c1cfcdf6c34a84d939d1938ad83c733dedf29247791e71064601d89ce9c5"
+content-hash = "19bde0fff0202e2732a383a97022a5d78834d7534868198af6cc8d26c91f3a0f"
 python-versions = "^3.7"
 
 [metadata.files]
@@ -900,8 +919,8 @@ gast = [
     {file = "gast-0.3.3.tar.gz", hash = "sha256:b881ef288a49aa81440d2c5eb8aeefd4c2bb8993d5f50edae7413a85bfdb3b57"},
 ]
 google-auth = [
-    {file = "google-auth-1.15.0.tar.gz", hash = "sha256:fbf25fee328c0828ef293459d9c649ef84ee44c0b932bb999d19df0ead1b40cf"},
-    {file = "google_auth-1.15.0-py2.py3-none-any.whl", hash = "sha256:73b141d122942afe12e8bfdcb6900d5df35c27d39700f078363ba0b1298ad33b"},
+    {file = "google-auth-1.16.0.tar.gz", hash = "sha256:1b3732b121917124adfe602de148ef5cba351792cf9527f99e6b61b84f74a7f5"},
+    {file = "google_auth-1.16.0-py2.py3-none-any.whl", hash = "sha256:7a9119c4ed518e4ea596cc896e6c567b923b57db40be70e5aec990055aea85d3"},
 ]
 google-auth-oauthlib = [
     {file = "google-auth-oauthlib-0.4.1.tar.gz", hash = "sha256:88d2cd115e3391eb85e1243ac6902e76e77c5fe438b7276b297fbe68015458dd"},
@@ -1064,22 +1083,24 @@ pluggy = [
     {file = "pluggy-0.13.1.tar.gz", hash = "sha256:15b2acde666561e1298d71b523007ed7364de07029219b604cf808bfa1c765b0"},
 ]
 protobuf = [
-    {file = "protobuf-3.12.1-cp27-cp27m-macosx_10_9_x86_64.whl", hash = "sha256:fdb1742f883ee4662e39fcc5916f2725fec36a5191a52123fec60f8c53b70495"},
-    {file = "protobuf-3.12.1-cp27-cp27mu-manylinux1_x86_64.whl", hash = "sha256:49fb6fab19cd3f30fa0e976eeedcbf2558e9061e5fa65b4fe51ded1f4002e04d"},
-    {file = "protobuf-3.12.1-cp35-cp35m-macosx_10_9_intel.whl", hash = "sha256:4c7cae1f56056a4a2a2e3b00b26ab8550eae738bd9548f4ea0c2fcb88ed76ae5"},
-    {file = "protobuf-3.12.1-cp35-cp35m-manylinux1_x86_64.whl", hash = "sha256:519abfacbb421c3591d26e8daf7a4957763428db7267f7207e3693e29f6978db"},
-    {file = "protobuf-3.12.1-cp35-cp35m-win32.whl", hash = "sha256:c45f5980ce32879391144b5766120fd7b8803129f127ce36bd060dd38824801f"},
-    {file = "protobuf-3.12.1-cp35-cp35m-win_amd64.whl", hash = "sha256:60f32af25620abc4d7928d8197f9f25d49d558c5959aa1e08c686f974ac0b71a"},
-    {file = "protobuf-3.12.1-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:04d0b2bd99050d09393875a5a25fd12337b17f3ac2e29c0c1b8e65b277cbfe72"},
-    {file = "protobuf-3.12.1-cp36-cp36m-manylinux1_x86_64.whl", hash = "sha256:175d85370947f89e33b3da93f4ccdda3f326bebe3e599df5915ceb7f804cd9df"},
-    {file = "protobuf-3.12.1-cp36-cp36m-win32.whl", hash = "sha256:9b1462c033a2cee7f4e8eb396905c69de2c532c3b835ff8f71f8e5fb77c38023"},
-    {file = "protobuf-3.12.1-cp36-cp36m-win_amd64.whl", hash = "sha256:613ac49f6db266fba243daf60fb32af107cfe3678e5c003bb40a381b6786389d"},
-    {file = "protobuf-3.12.1-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:440a8c77531b3652f24999b249256ed01fd44c498ab0973843066681bd276685"},
-    {file = "protobuf-3.12.1-cp37-cp37m-manylinux1_x86_64.whl", hash = "sha256:954bb14816edd24e746ba1a6b2d48c43576393bbde2fb8e1e3bd6d4504c7feac"},
-    {file = "protobuf-3.12.1-cp37-cp37m-win32.whl", hash = "sha256:c0767f4d93ce4288475afe0571663c78870924f1f8881efd5406c10f070c75e4"},
-    {file = "protobuf-3.12.1-cp37-cp37m-win_amd64.whl", hash = "sha256:eeb7502f59e889a88bcb59f299493e215d1864f3d75335ea04a413004eb4fe24"},
-    {file = "protobuf-3.12.1-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:05288e44638e91498f13127a3699a6528dec6f9d3084d60959d721bfb9ea5b98"},
-    {file = "protobuf-3.12.1-cp38-cp38-manylinux1_x86_64.whl", hash = "sha256:fe554066c4962c2db0a1d4752655223eb948d2bfa0fb1c4a7f2c00ec07324f1c"},
+    {file = "protobuf-3.12.2-cp27-cp27m-macosx_10_9_x86_64.whl", hash = "sha256:e1464a4a2cf12f58f662c8e6421772c07947266293fb701cb39cd9c1e183f63c"},
+    {file = "protobuf-3.12.2-cp27-cp27mu-manylinux1_x86_64.whl", hash = "sha256:6f349adabf1c004aba53f7b4633459f8ca8a09654bf7e69b509c95a454755776"},
+    {file = "protobuf-3.12.2-cp35-cp35m-macosx_10_9_intel.whl", hash = "sha256:be04fe14ceed7f8641e30f36077c1a654ff6f17d0c7a5283b699d057d150d82a"},
+    {file = "protobuf-3.12.2-cp35-cp35m-manylinux1_x86_64.whl", hash = "sha256:f4b73736108a416c76c17a8a09bc73af3d91edaa26c682aaa460ef91a47168d3"},
+    {file = "protobuf-3.12.2-cp35-cp35m-win32.whl", hash = "sha256:5524c7020eb1fb7319472cb75c4c3206ef18b34d6034d2ee420a60f99cddeb07"},
+    {file = "protobuf-3.12.2-cp35-cp35m-win_amd64.whl", hash = "sha256:bff02030bab8b969f4de597543e55bd05e968567acb25c0a87495a31eb09e925"},
+    {file = "protobuf-3.12.2-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:c9ca9f76805e5a637605f171f6c4772fc4a81eced4e2f708f79c75166a2c99ea"},
+    {file = "protobuf-3.12.2-cp36-cp36m-manylinux1_x86_64.whl", hash = "sha256:304e08440c4a41a0f3592d2a38934aad6919d692bb0edfb355548786728f9a5e"},
+    {file = "protobuf-3.12.2-cp36-cp36m-win32.whl", hash = "sha256:b5a114ea9b7fc90c2cc4867a866512672a47f66b154c6d7ee7e48ddb68b68122"},
+    {file = "protobuf-3.12.2-cp36-cp36m-win_amd64.whl", hash = "sha256:85b94d2653b0fdf6d879e39d51018bf5ccd86c81c04e18a98e9888694b98226f"},
+    {file = "protobuf-3.12.2-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:a7ab28a8f1f043c58d157bceb64f80e4d2f7f1b934bc7ff5e7f7a55a337ea8b0"},
+    {file = "protobuf-3.12.2-cp37-cp37m-manylinux1_x86_64.whl", hash = "sha256:eafe9fa19fcefef424ee089fb01ac7177ff3691af7cc2ae8791ae523eb6ca907"},
+    {file = "protobuf-3.12.2-cp37-cp37m-win32.whl", hash = "sha256:612bc97e42b22af10ba25e4140963fbaa4c5181487d163f4eb55b0b15b3dfcd2"},
+    {file = "protobuf-3.12.2-cp37-cp37m-win_amd64.whl", hash = "sha256:e72736dd822748b0721f41f9aaaf6a5b6d5cfc78f6c8690263aef8bba4457f0e"},
+    {file = "protobuf-3.12.2-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:87535dc2d2ef007b9d44e309d2b8ea27a03d2fa09556a72364d706fcb7090828"},
+    {file = "protobuf-3.12.2-cp38-cp38-manylinux1_x86_64.whl", hash = "sha256:50b5fee674878b14baea73b4568dc478c46a31dd50157a5b5d2f71138243b1a9"},
+    {file = "protobuf-3.12.2-py2.py3-none-any.whl", hash = "sha256:a96f8fc625e9ff568838e556f6f6ae8eca8b4837cdfb3f90efcb7c00e342a2eb"},
+    {file = "protobuf-3.12.2.tar.gz", hash = "sha256:49ef8ab4c27812a89a76fa894fe7a08f42f2147078392c0dee51d4a444ef6df5"},
 ]
 py = [
     {file = "py-1.8.1-py2.py3-none-any.whl", hash = "sha256:c20fdd83a5dbc0af9efd622bee9a5564e278f6380fffcacc43ba6f43db2813b0"},
@@ -1178,28 +1199,36 @@ tabulate = [
     {file = "tabulate-0.8.6.tar.gz", hash = "sha256:5470cc6687a091c7042cee89b2946d9235fe9f6d49c193a4ae2ac7bf386737c8"},
 ]
 tensorboard = [
-    {file = "tensorboard-2.2.1-py3-none-any.whl", hash = "sha256:9a2a2dc9856187679e93f3c95e5dc771dd47e3257db09767b4be118d734b4dc2"},
+    {file = "tensorboard-2.2.2-py3-none-any.whl", hash = "sha256:a3feb73e1221c0a512398ad2cd08570fb082d8a2ba364aa0562543ecbd3659ef"},
 ]
 tensorboard-plugin-wit = [
     {file = "tensorboard_plugin_wit-1.6.0.post3-py2-none-any.whl", hash = "sha256:243f117d117f9e81a21dc64b602b2bcb256ca5ba038867b96022d02271b17106"},
     {file = "tensorboard_plugin_wit-1.6.0.post3-py3-none-any.whl", hash = "sha256:1fdf4ac343f1665453205aef8bb227b0204893bb5ffb792d2ed4509b1daf3d4f"},
 ]
-tensorflow-cpu = [
-    {file = "tensorflow_cpu-2.2.0-cp35-cp35m-macosx_10_11_x86_64.whl", hash = "sha256:2a28cd626192826710681c0daa9169878086dc7631f22227c083a4363274577c"},
-    {file = "tensorflow_cpu-2.2.0-cp35-cp35m-manylinux2010_x86_64.whl", hash = "sha256:3f170ba919e5aac14c52c10802a89b5b5020ec69ede7d085462f8f6eb5df2386"},
-    {file = "tensorflow_cpu-2.2.0-cp35-cp35m-win_amd64.whl", hash = "sha256:a094939e491c61b775de6e813dbbf801e150565c031de8067a14e43326b88aae"},
-    {file = "tensorflow_cpu-2.2.0-cp36-cp36m-macosx_10_11_x86_64.whl", hash = "sha256:692bbdefb6af6eeb978874bc84a13dfc70b9c5147f46f1c8619ac86cfff90821"},
-    {file = "tensorflow_cpu-2.2.0-cp36-cp36m-manylinux2010_x86_64.whl", hash = "sha256:28ac653b094cc23b09787448d5aadd555a456c38bd06fe8e83eda6c90f038cb5"},
-    {file = "tensorflow_cpu-2.2.0-cp36-cp36m-win_amd64.whl", hash = "sha256:76cd7ea30779e26afb56c77c61d898750a7a24aa856ec34c37c3f3f4e08a1377"},
-    {file = "tensorflow_cpu-2.2.0-cp37-cp37m-macosx_10_11_x86_64.whl", hash = "sha256:e9f419af2ae0e68263fb67cdabe55088ada686762aec8760116864d36b228327"},
-    {file = "tensorflow_cpu-2.2.0-cp37-cp37m-manylinux2010_x86_64.whl", hash = "sha256:1f22ead71bad624e0fe7f6fd657c3394cf2e1dfe6630da4e04b284c8ce6d8645"},
-    {file = "tensorflow_cpu-2.2.0-cp37-cp37m-win_amd64.whl", hash = "sha256:240daf33d9810f39ee69ede03c8b9ca97d47f74b025191f1301bd8c3ec854d23"},
-    {file = "tensorflow_cpu-2.2.0-cp38-cp38-macosx_10_11_x86_64.whl", hash = "sha256:85dd69c49a1136f826298b1329cb987881679f21bd72f6f0c967ea49d8f8f549"},
-    {file = "tensorflow_cpu-2.2.0-cp38-cp38-manylinux2010_x86_64.whl", hash = "sha256:8d1b7c1d45e7f582d8703c0d0a034a60d4bac942b11205bed91fa55981124d60"},
-    {file = "tensorflow_cpu-2.2.0-cp38-cp38-win_amd64.whl", hash = "sha256:6ab6857a6d15704b04ece8ccb6be0429e7ff9aa6136331731dcef9f294decaaf"},
+tensorflow = [
+    {file = "tensorflow-2.2.0-cp35-cp35m-macosx_10_11_x86_64.whl", hash = "sha256:7ed67b47cdf6598a79583de5b57c595493eac2b8b6b3a828f912354716cb8149"},
+    {file = "tensorflow-2.2.0-cp35-cp35m-manylinux2010_x86_64.whl", hash = "sha256:267017724a49c367ca5df536e5f6d3d59643eaed946c82233d6b371e62b5ddc8"},
+    {file = "tensorflow-2.2.0-cp35-cp35m-win_amd64.whl", hash = "sha256:572f69d2d0a3d3d83ebfb2c24e6d73d88b85a09f5da796974ef4a0ad83ff7cde"},
+    {file = "tensorflow-2.2.0-cp36-cp36m-macosx_10_11_x86_64.whl", hash = "sha256:6735486ee9c3cb0807476e2b36ef7a4cd6c597cb24abf496e66b703360e1e54e"},
+    {file = "tensorflow-2.2.0-cp36-cp36m-manylinux2010_x86_64.whl", hash = "sha256:dc5548562308acde7931f040e73d46ae31b398924cf675c3486fd3504e00a4af"},
+    {file = "tensorflow-2.2.0-cp36-cp36m-win_amd64.whl", hash = "sha256:3ee8819732d8594913b7d22ded7b22e48a49aa015050d8dd8464eaa010ba2e41"},
+    {file = "tensorflow-2.2.0-cp37-cp37m-macosx_10_11_x86_64.whl", hash = "sha256:c332c7fc5cfd54cb86d5da99787c9693e3a924848097c54df1b71ee595a39c93"},
+    {file = "tensorflow-2.2.0-cp37-cp37m-manylinux2010_x86_64.whl", hash = "sha256:f5f27528570fc0d7b90668be10c5dfd90d6ceb8fd2ed62d7d679554acb616bfe"},
+    {file = "tensorflow-2.2.0-cp37-cp37m-win_amd64.whl", hash = "sha256:68ea22aee9c269a6a0c1061c141f1ec1cd1b1be7569390519c1bf4773f434a40"},
+    {file = "tensorflow-2.2.0-cp38-cp38-macosx_10_11_x86_64.whl", hash = "sha256:bbcfb04738099bd46822db91584db74703fdddacf4cd0a76acfc5e086956b5ba"},
+    {file = "tensorflow-2.2.0-cp38-cp38-manylinux2010_x86_64.whl", hash = "sha256:8f364528f70d895b96a0de36c7c6002644bf4c5df1ee3fbfa775f5cee6571ad7"},
+    {file = "tensorflow-2.2.0-cp38-cp38-win_amd64.whl", hash = "sha256:784ab8217e4b0eb4d121c28430c6cdc2ce56c02634a9720d84fb30598b338b8c"},
 ]
 tensorflow-estimator = [
     {file = "tensorflow_estimator-2.2.0-py2.py3-none-any.whl", hash = "sha256:d09dacdd127f2579cea8d5af21f4a918036b8ae246adc82f26b61f91cc247dc2"},
+]
+tensorflow-text = [
+    {file = "tensorflow_text-2.2.0-cp35-cp35m-macosx_10_9_x86_64.whl", hash = "sha256:11a9042afe677bc826aa644fdbfbcea6ee79fd458158fafbac60ea586538b1e6"},
+    {file = "tensorflow_text-2.2.0-cp35-cp35m-manylinux1_x86_64.whl", hash = "sha256:e7f4952ebb958d56e4c2595ee4d9afa460447bb230cc04f694fd4ae7276fd028"},
+    {file = "tensorflow_text-2.2.0-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:07d3a238cc94f9c070fa27a76f559d2ee433bb04832bf5498adba62a89289aec"},
+    {file = "tensorflow_text-2.2.0-cp36-cp36m-manylinux1_x86_64.whl", hash = "sha256:53217438cbd69126a0c13a4e4ef6d0adb714dbe6ba5cfecff50949e3ccaa6759"},
+    {file = "tensorflow_text-2.2.0-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:e64b081a265b4bc53cecb12c78c86ac9f971f1bc9513ceee38bf92f907d12a06"},
+    {file = "tensorflow_text-2.2.0-cp37-cp37m-manylinux1_x86_64.whl", hash = "sha256:b18af6649a32edb6a1b3a4a7a1d75f997cea13d582ac8e260801b56a904280a9"},
 ]
 termcolor = [
     {file = "termcolor-1.1.0.tar.gz", hash = "md5:043e89644f8909d462fbbfa511c768df"},
