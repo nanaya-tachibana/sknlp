@@ -1,4 +1,5 @@
-# -*- coding: utf-8 -*-
+from typing import Optional, List
+
 import pandas as pd
 import tensorflow as tf
 from .text_segmenter import get_segmenter
@@ -6,14 +7,25 @@ from .text_segmenter import get_segmenter
 
 class NLPDataset:
 
-    def __init__(self,
-                 text_segmenter='list',
-                 text_dtype=tf.string,
-                 label_dtype=tf.string,
-                 text_padding_shape=(None,),
-                 label_padding_shape=(),
-                 text_padding_value='<pad>',
-                 label_padding_value=''):
+    def __init__(
+        self,
+        df: Optional[pd.DataFrame] = None,
+        csv_file: Optional[str] = None,
+        in_memory: bool = True,
+        text_segmenter: str = 'char',
+        text_dtype: tf.DType = tf.string,
+        label_dtype: tf.DType = tf.string,
+        text_padding_shape: tuple = (None,),
+        label_padding_shape: tuple = (),
+        text_padding_value: str = '<pad>',
+        label_padding_value: str = ''
+    ):
+        assert df is not None or csv_file is not None, \
+            "either df or csv_file may not be None"
+        if df is not None:
+            self._dataset = self.dataframe_to_dataset(df)
+        elif csv_file is not None:
+            self._dataset, self.size = self.load_csv(csv_file, "\t", in_memory)
         self.text_cutter = get_segmenter(text_segmenter)
         self.text_dtype = text_dtype
         self.label_dtype = label_dtype
@@ -22,16 +34,18 @@ class NLPDataset:
         self.text_padding_value = text_padding_value
         self.label_padding_value = label_padding_value
 
-    def text_transform(self, text):
+        self._dataset = self._transform(self._dataset)
+
+    def _text_transform(self, text: tf.Tensor) -> List[str]:
         return self.text_cutter(text.numpy().decode('utf-8'))
 
-    def label_transform(self, label):
+    def _label_transform(self, label: tf.Tensor) -> List[str]:
         return label.numpy().decode('utf-8')
 
-    def transform(self, dataset):
+    def _transform(self, dataset: tf.data.Dataset) -> tf.data.Dataset:
 
         def func(text, label):
-            return self.text_transform(text), self.label_transform(label)
+            return self._text_transform(text), self._label_transform(label)
 
         return dataset.map(
             lambda t, l: tf.py_function(
@@ -40,8 +54,13 @@ class NLPDataset:
             num_parallel_calls=tf.data.experimental.AUTOTUNE
         )
 
-    def batchify(self, dataset, batch_size,
-                 shuffle=True, shuffle_buffer_size=100000):
+    def batchify(
+        self,
+        batch_size: int,
+        shuffle: bool = True,
+        shuffle_buffer_size: int = 100000
+    ) -> tf.data.Dataset:
+        dataset = self._dataset
         if shuffle:
             if shuffle_buffer_size <= 0:
                 shuffle_buffer_size = 100000
@@ -58,21 +77,13 @@ class NLPDataset:
             .prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
         )
 
-    def transform_and_batchify(self, dataset, batch_size,
-                               shuffle=True, shuffle_buffer_size=100000):
-        return self.batchify(self.transform(dataset),
-                             batch_size,
-                             shuffle=shuffle,
-                             shuffle_buffer_size=shuffle_buffer_size)
-
     @classmethod
-    def dataframe_to_dataset(cls, df):
-        df.columns = ['text', 'label']
+    def dataframe_to_dataset(cls, df: pd.DataFrame):
         df.fillna('', inplace=True)
         return tf.data.Dataset.from_tensor_slices((df.text, df.label))
 
     @classmethod
-    def load_csv(cls, filename, sep, in_memory):
+    def load_csv(cls, filename: str, sep: str, in_memory: bool):
         if in_memory:
             df = pd.read_csv(filename, sep=sep, dtype=str)
             return cls.dataframe_to_dataset(df), df.shape[0]
@@ -84,73 +95,3 @@ class NLPDataset:
                                             na_value=''),
             -1
         )
-
-
-# def _supervised_dataset_transform(dataset,
-#                                   text_transform_func,
-#                                   label_transform_func,
-#                                   text_dtype=tf.string,
-#                                   label_dtype=tf.string,
-#                                   dataset_size=-1,
-#                                   batch_size=32,
-#                                   text_padding_shape=(None,),
-#                                   label_padding_shape=(),
-#                                   text_padding_value='<pad>',
-#                                   label_padding_value='',
-#                                   shuffle=True,
-#                                   shuffle_buffer_size=100000):
-#     def _func(text, label):
-#         return (
-
-#         )
-
-#     if shuffle:
-#         if dataset_size != -1:
-#             shuffle_buffer_size = dataset_size
-#         dataset = dataset.shuffle(shuffle_buffer_size)
-
-#     dataset = dataset.map(
-#         lambda t, l: tf.py_function(
-#             _func, inp=[t, l], Tout=(text_dtype, label_dtype)
-#         ),
-#         num_parallel_calls=tf.data.experimental.AUTOTUNE
-#     )
-#     if batch_size is not None:
-#         return (
-#             dataset
-#             .padded_batch(
-#                 batch_size, (text_padding_shape, label_padding_shape),
-#                 padding_values=(text_padding_value, label_padding_value)
-#             ).prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
-#         )
-#     return dataset
-
-
-
-
-
-# def _make_dataset_from_csv(filename,
-#                            text_transform_func,
-#                            label_transform_func,
-#                            text_dtype=tf.string,
-#                            label_dtype=tf.string,
-#                            sep='\t',
-#                            in_memory=True,
-#                            batch_size=32,
-#                            text_padding_shape=(None,),
-#                            label_padding_shape=(),
-#                            text_padding_value='<pad>',
-#                            label_padding_value='',
-#                            shuffle=True,
-#                            shuffle_buffer_size=100000):
-#     dataset, size = _get_csv_dataset(filename, sep, in_memory)
-#     return _supervised_dataset_transform(
-#         dataset, text_transform_func, label_transform_func,
-#         text_dtype=text_dtype, label_dtype=label_dtype,
-#         dataset_size=size, batch_size=batch_size,
-#         text_padding_shape=text_padding_shape,
-#         label_padding_shape=label_padding_shape,
-#         text_padding_value=text_padding_value,
-#         label_padding_value=label_padding_value,
-#         shuffle=shuffle, shuffle_buffer_size=shuffle_buffer_size
-#     )
