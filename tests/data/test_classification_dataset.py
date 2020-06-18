@@ -19,7 +19,8 @@ def test_transform_func(text_with_empty):
     vocab = Vocab(counter=Counter({'x': 10, 'y': 2}))
     d = ClassificationDataset(vocab, ['1', '2'], csv_file=text_with_empty, max_length=2)
     np.testing.assert_array_equal(
-        d._text_transform(tf.constant('xz')), [4, vocab[vocab.unk]]
+        d._text_transform(tf.constant('xz')),
+        [vocab['x'], vocab[vocab.unk]]
     )
     np.testing.assert_array_equal(d._label_transform(tf.constant('1|2')), [1, 1])
 
@@ -35,7 +36,7 @@ def test_create_from_csv(text_without_empty):
         for text, label in dataset:
             text = text.numpy()
             assert text[1][-1] == vocab[vocab.pad]
-            assert text[1][0] == 4
+            assert text[1][0] == vocab['我']
             label = label.numpy()
             np.testing.assert_array_equal(label, [[1, 0], [1, 1]])
 
@@ -50,6 +51,6 @@ def test_classification_dataset_transform():
     for text, label in dataset:
         text = text.numpy()
         assert text[0][-1] == vocab[vocab.pad]
-        assert text[1][0] == 5
+        assert text[1][0] == vocab['y']
         label = label.numpy()
         np.testing.assert_array_equal(label, [[1, 1], [1, 0]])

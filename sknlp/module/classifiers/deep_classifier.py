@@ -9,8 +9,9 @@ from sknlp.vocab import Vocab
 from sknlp.data import ClassificationDataset
 from sknlp.metrics import PrecisionWithLogits, RecallWithLogits
 from sknlp.callbacks import FScore
-from sknlp.module.base_model import SupervisedNLPModel
-from sknlp.module.embedding import Token2vec
+
+from ..supervised_model import SupervisedNLPModel
+from ..text2vec import Text2vec
 
 from .utils import (
     logits2probabilities,
@@ -26,18 +27,16 @@ class DeepClassifier(SupervisedNLPModel):
         classes: Sequence[str],
         is_multilabel: bool = True,
         segmenter: str = "jieba",
-        embed_size: int = 100,
+        embedding_size: int = 100,
         max_length: int = 100,
-        vocab: Optional[Vocab] = None,
-        token2vec: Optional[Token2vec] = None,
+        text2vec: Optional[Text2vec] = None,
         **kwargs
     ):
         super().__init__(classes,
                          segmenter=segmenter,
-                         embed_size=embed_size,
+                         embedding_size=embedding_size,
                          max_length=max_length,
-                         vocab=vocab,
-                         token2vec=token2vec,
+                         text2vec=text2vec,
                          task="classification",
                          **kwargs)
         self._is_multilabel = is_multilabel
@@ -62,9 +61,17 @@ class DeepClassifier(SupervisedNLPModel):
         self,
         df: pd.DataFrame,
         vocab: Vocab,
+        segmenter: str,
         labels: Sequence[str]
     ) -> ClassificationDataset:
-        return ClassificationDataset(vocab, list(labels), df=df)
+        return ClassificationDataset(
+            vocab,
+            list(labels),
+            df=df,
+            is_multilabel=self._is_multilabel,
+            max_length=self._max_length,
+            text_segmenter=segmenter
+        )
 
     def predict_proba(
         self,
@@ -116,6 +123,13 @@ class DeepClassifier(SupervisedNLPModel):
 
     def get_config(self) -> Dict[str, Any]:
         return {**super().get_config(), "is_multilabel": self._is_multilabel}
+
+    @classmethod
+    def _filter_config(cls, config):
+        config = super()._filter_config(config)
+        config.pop("algorithm", None)
+        config.pop("task", None)
+        return config
 
     def get_custom_objects(self) -> Dict[str, Any]:
         return {

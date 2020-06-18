@@ -1,6 +1,7 @@
 from tensorflow.keras.layers import Dense, Dropout
 import tensorflow.keras.backend as K
-from sknlp.module.text_rnn import TextRNN
+
+from ..text_rnn import TextRNN
 from .deep_classifier import DeepClassifier
 
 
@@ -34,16 +35,14 @@ class TextRCNNClassifier(DeepClassifier, TextRNN):
                  rnn_recurrent_constraint=None,
                  rnn_projection_constraint=None,
                  rnn_bias_constraint=None,
-                 vocab=None,
-                 token2vec=None,
-                 algorithm='text_rcnn',
+                 text2vec=None,
                  **kwargs):
         super().__init__(classes,
                          is_multilabel=is_multilabel,
                          segmenter=segmenter,
                          max_length=max_length,
                          embed_size=embed_size,
-                         algorithm=algorithm,
+                         algorithm='text_rcnn',
                          num_rnn_layers=num_rnn_layers,
                          rnn_hidden_size=rnn_hidden_size,
                          rnn_projection_size=rnn_projection_size,
@@ -67,8 +66,7 @@ class TextRCNNClassifier(DeepClassifier, TextRNN):
                          rnn_recurrent_constraint=rnn_recurrent_constraint,
                          rnn_projection_constraint=rnn_projection_constraint,
                          rnn_bias_constraint=rnn_bias_constraint,
-                         vocab=vocab,
-                         token2vec=token2vec,
+                         text2vec=text2vec,
                          **kwargs)
 
     def build_encode_layer(self, inputs):

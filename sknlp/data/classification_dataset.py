@@ -19,13 +19,13 @@ class ClassificationDataset(NLPDataset):
         csv_file: Optional[str] = None,
         in_memory: bool = True,
         is_multilabel: bool = True,
-        max_length: int = 80,
+        max_length: Optional[int] = 80,
         text_segmenter: str = 'char'
     ):
         self.vocab = vocab
         self.labels = labels
         self.is_multilabel = is_multilabel
-        self.max_length = max_length
+        self.max_length = max_length or 99999
         self.label2idx = dict(zip(labels, range(len(labels))))
         super().__init__(df=df,
                          csv_file=csv_file,

@@ -1,11 +1,23 @@
 from sknlp.module.text_rnn import TextRNN
-from tests.module.test_base_model import TestSupervisedNLPModel
+from .test_supervised_model import TestSupervisedNLPModel
 
 
 class TestTextRNN(TestSupervisedNLPModel):
 
-    model = TextRNN(['1', '2', '3'], rnn_recurrent_dropout=0.2)
+    classes = ['1', '2', '3']
+    name = "rr"
+    word2vec = None
+    segmenter = "jieba"
+    max_length = 100
+    model = TextRNN(
+        classes,
+        max_length=max_length,
+        segmenter=segmenter,
+        text2vec=word2vec,
+        rnn_recurrent_dropout=0.2,
+        name=name
+    )
 
-    def test_config(self):
-        super().test_config()
+    def test_get_config(self):
+        super().test_get_config()
         assert self.model.get_config()['rnn_recurrent_dropout'] == 0.2

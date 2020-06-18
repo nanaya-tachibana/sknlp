@@ -1,4 +1,4 @@
-from sknlp.module.text_rnn import TextRNN
+from ..text_rnn import TextRNN
 from .deep_classifier import DeepClassifier
 
 
@@ -9,7 +9,7 @@ class TextRNNClassifier(DeepClassifier, TextRNN):
                  is_multilabel=True,
                  segmenter='jieba',
                  max_length=100,
-                 embed_size=100,
+                 embedding_size=100,
                  num_rnn_layers=1,
                  rnn_hidden_size=512,
                  rnn_projection_size=128,
@@ -32,14 +32,13 @@ class TextRNNClassifier(DeepClassifier, TextRNN):
                  rnn_recurrent_constraint=None,
                  rnn_projection_constraint=None,
                  rnn_bias_constraint=None,
-                 vocab=None,
-                 token2vec=None,
+                 text2vec=None,
                  **kwargs):
         super().__init__(classes,
                          is_multilabel=is_multilabel,
                          segmenter=segmenter,
                          max_length=max_length,
-                         embed_size=embed_size,
+                         embedding_size=embedding_size,
                          algorithm='text_rnn',
                          num_rnn_layers=num_rnn_layers,
                          rnn_hidden_size=rnn_hidden_size,
@@ -64,8 +63,7 @@ class TextRNNClassifier(DeepClassifier, TextRNN):
                          rnn_recurrent_constraint=rnn_recurrent_constraint,
                          rnn_projection_constraint=rnn_projection_constraint,
                          rnn_bias_constraint=rnn_bias_constraint,
-                         vocab=vocab,
-                         token2vec=token2vec,
+                         text2vec=text2vec,
                          **kwargs)
 
     def get_config(self):

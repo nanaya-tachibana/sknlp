@@ -1,8 +1,10 @@
+from typing import List
+
 from tensorflow.keras.layers import Bidirectional, Dropout
 
 from sknlp.layers import MLPLayer, LSTMP
 
-from .base_model import SupervisedNLPModel
+from .supervised_model import SupervisedNLPModel
 
 
 class TextRNN(SupervisedNLPModel):
@@ -11,7 +13,7 @@ class TextRNN(SupervisedNLPModel):
                  classes,
                  segmenter='jieba',
                  max_length=80,
-                 embed_size=100,
+                 embedding_size=100,
                  num_rnn_layers=1,
                  rnn_hidden_size=256,
                  rnn_projection_size=128,
@@ -35,15 +37,13 @@ class TextRNN(SupervisedNLPModel):
                  rnn_recurrent_constraint=None,
                  rnn_projection_constraint=None,
                  rnn_bias_constraint=None,
-                 vocab=None,
-                 token2vec=None,
+                 text2vec=None,
                  **kwargs):
         super().__init__(classes,
                          segmenter=segmenter,
-                         embed_size=embed_size,
+                         embedding_size=embedding_size,
                          max_length=max_length,
-                         vocab=vocab,
-                         token2vec=token2vec,
+                         text2vec=text2vec,
                          **kwargs)
         self._num_rnn_layers = num_rnn_layers
         self._rnn_hidden_size = rnn_hidden_size
@@ -112,6 +112,18 @@ class TextRNN(SupervisedNLPModel):
                        hidden_size=self._fc_hidden_size,
                        output_size=self._num_classes)
         return mlp(inputs)
+
+    @property
+    def output_names(self) -> List[str]:
+        return ["mlp"]
+
+    @property
+    def output_types(self) -> List[str]:
+        return ["float"]
+
+    @property
+    def output_shapes(self) -> List[List[int]]:
+        return [[-1, len(self._class2idx)]]
 
     def get_config(self):
         return {
