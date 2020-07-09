@@ -19,7 +19,8 @@ class Text2vec(BaseNLPModel):
         self,
         vocab: Vocab,
         segmenter: Optional[str] = "char",
-        max_length: int = 100,
+        max_sequence_length: Optional[int] = None,
+        sequence_length: Optional[int] = None,
         name: str = "text2vec"
     ) -> None:
         """
@@ -50,7 +51,11 @@ class Text2vec(BaseNLPModel):
         """
         self._vocab = vocab
         self._segmenter = segmenter
-        super().__init__(max_length=max_length, name=name)
+        super().__init__(
+            max_sequence_length=max_sequence_length,
+            sequence_length=sequence_length,
+            name=name
+        )
 
     def save_vocab(self, directory: str, filename: str = "vocab.json") -> None:
         with open(os.path.join(directory, filename), "w") as f:

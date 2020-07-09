@@ -12,7 +12,7 @@ class TextRNN(SupervisedNLPModel):
     def __init__(self,
                  classes,
                  segmenter='jieba',
-                 max_length=80,
+                 max_sequence_length=80,
                  embedding_size=100,
                  num_rnn_layers=1,
                  rnn_hidden_size=256,
@@ -42,7 +42,7 @@ class TextRNN(SupervisedNLPModel):
         super().__init__(classes,
                          segmenter=segmenter,
                          embedding_size=embedding_size,
-                         max_length=max_length,
+                         max_sequence_length=max_sequence_length,
                          text2vec=text2vec,
                          **kwargs)
         self._num_rnn_layers = num_rnn_layers
@@ -123,7 +123,7 @@ class TextRNN(SupervisedNLPModel):
 
     @property
     def output_shapes(self) -> List[List[int]]:
-        return [[-1, len(self._class2idx)]]
+        return [[-1, self._num_classes]]
 
     def get_config(self):
         return {

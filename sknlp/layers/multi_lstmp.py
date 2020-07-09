@@ -32,7 +32,8 @@ class MultiLSTMP(Layer):
         output_dropout: float = 0.,
         recurrent_clip: Optional[float] = None,
         projection_clip: Optional[float] = None,
-        last_connection: str = 'last'
+        last_connection: str = 'last',
+        **kwargs
     ):
         self.num_layers = num_layers
         self.units = units
@@ -83,23 +84,49 @@ class MultiLSTMP(Layer):
                 projection_clip=self.projection_clip,
                 return_sequences=return_sequences
             )))
-        noise_shape = (None, 1, self.projection_size)
+        noise_shape = (None, 1, self.projection_size * 2)
         if self.last_connection == 'last':
             noise_shape = None
         self.dropout_layer = Dropout(self.output_dropout, noise_shape=noise_shape)
+        super().__init__(**kwargs)
 
-    def call(
-        self,
-        inputs: int,
-        mask: Optional[tf.Tensor] = None,
-        training: Optional[bool] = None,
-        initial_state: Optional[tf.Tensor] = None
-    ):
+    def call(self, inputs: int, initial_state: Optional[tf.Tensor] = None) -> tf.Tensor:
         for layer in self.layers:
-            inputs = layer(
-                inputs, mask=mask, training=training, initial_state=initial_state
-            )
-        return self.dropout_layer(inputs)
+            inputs = layer(inputs, initial_state=initial_state)
+        if self.output_dropout:
+            return self.dropout_layer(inputs)
+        else:
+            return inputs
 
-    def compute_mask(self, inputs: tf.Tensor, mask: Optional[tf.Tensor] = None):
+    def compute_mask(
+        self,
+        inputs: tf.Tensor,
+        mask: Optional[tf.Tensor] = None
+    ) -> tf.Tensor:
         return self.layers[0].compute_mask(inputs, mask)
+
+    def get_config(self):
+        return {
+            **super().get_config(),
+            'num_layers': self.num_layers,
+            'units': self.units,
+            'projection_size': self.projection_size,
+            'recurrent_clip': self.recurrent_clip,
+            'projection_clip': self.projection_clip,
+            'input_dropout': self.input_dropout,
+            'recurrent_dropout': self.recurrent_dropout,
+            'output_dropout': self.output_dropout,
+            'last_connection': self.last_connection,
+            'kernel_initializer': self.kernel_initializer,
+            'recurrent_initializer': self.recurrent_initializer,
+            'projection_initializer': self.projection_initializer,
+            'bias_initializer': self.bias_initializer,
+            'kernel_regularizer': self.kernel_regularizer,
+            'recurrent_regularizer': self.recurrent_regularizer,
+            'projection_regularizer': self.projection_regularizer,
+            'bias_regularizer': self.bias_regularizer,
+            'kernel_constraint': self.kernel_constraint,
+            'recurrent_constraint': self.recurrent_constraint,
+            'projection_constraint': self.projection_constraint,
+            'bias_constraint': self.bias_constraint
+        }

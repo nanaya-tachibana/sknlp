@@ -12,10 +12,10 @@ class TestSupervisedNLPModel(TestBaseNLPModel):
     classes = ["a", "b", "c"]
     name = "yy"
     segmenter = "jieba"
-    max_length = 100
+    max_sequence_length = 100
     model = SupervisedNLPModel(
         classes,
-        max_length=max_length,
+        max_sequence_length=max_sequence_length,
         segmenter=segmenter,
         text2vec=word2vec,
         name=name
@@ -24,7 +24,7 @@ class TestSupervisedNLPModel(TestBaseNLPModel):
     def test_init(self):
         if self.word2vec is not None:
             assert self.model._segmenter == self.word2vec.segmenter
-            assert self.model._embedding_size == None
+            assert self.model._embedding_size == self.word2vec._embedding_size
         else:
             assert self.model._segmenter == self.segmenter
 

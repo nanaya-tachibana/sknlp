@@ -11,10 +11,10 @@ def test_build_vocab():
 class TestBaseNLPModel:
 
     name = "xx"
-    max_length = 100
-    model = BaseNLPModel(max_length=max_length, name=name)
+    max_sequence_length = 100
+    model = BaseNLPModel(max_sequence_length=max_sequence_length, name=name)
 
     def test_get_config(self):
         config = self.model.get_config()
-        assert config["max_length"] == self.max_length
+        assert config["max_sequence_length"] == self.max_sequence_length
         assert config["name"] == self.name

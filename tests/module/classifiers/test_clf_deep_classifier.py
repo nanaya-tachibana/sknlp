@@ -9,10 +9,10 @@ class TestDeepClassifier(TestSupervisedNLPModel):
     classes = ['1', '2', '3']
     word2vec = None
     segmenter = "jieba"
-    max_length = 100
+    max_sequence_length = 100
     model = DeepClassifier(
         classes,
-        max_length=max_length,
+        max_sequence_length=max_sequence_length,
         segmenter=segmenter,
         text2vec=word2vec,
         is_multilabel=False,

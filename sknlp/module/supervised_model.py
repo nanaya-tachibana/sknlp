@@ -24,7 +24,8 @@ class SupervisedNLPModel(BaseNLPModel):
     def __init__(
         self,
         classes: Sequence[str],
-        max_length: int = 100,
+        max_sequence_length: int = 100,
+        sequence_length: Optional[int] = None,
         segmenter: str = "jieba",
         embedding_size: int = 100,
         text2vec: Optional[Text2vec] = None,
@@ -32,20 +33,30 @@ class SupervisedNLPModel(BaseNLPModel):
         algorithm: Optional[str] = None,
         **kwargs
     ):
-        super().__init__(max_length=max_length, **kwargs)
+        super().__init__(
+            max_sequence_length=max_sequence_length,
+            sequence_length=sequence_length,
+            **kwargs
+        )
         self._text2vec = text2vec
         if text2vec is not None:
             self._segmenter = text2vec.segmenter
-            self._embedding_size = None
+            self._embedding_size = text2vec.embedding_size
+            self._max_sequence_length = (
+                text2vec._max_sequence_length or max_sequence_length
+            )
+            self._sequence_length = text2vec._sequence_length
         else:
             self._segmenter = segmenter
             self._embedding_size = embedding_size
+            self._max_sequence_length = max_sequence_length
+            self._sequence_length = sequence_length
 
         self._task = task
         self._algorithm = algorithm
         self._class2idx = dict(zip(list(classes), range(len(classes))))
         self._idx2class = dict(zip(range(len(classes)), list(classes)))
-        self._num_classes = len(classes)
+        self._num_classes = len(self._class2idx)
 
     def get_inputs(self) -> tf.Tensor:
         return self._text2vec.get_inputs()
@@ -191,9 +202,7 @@ class SupervisedNLPModel(BaseNLPModel):
         raise NotImplementedError()
 
     def get_config(self) -> Dict[str, Any]:
-        text2vec_config = self._text2vec.get_config() if self._text2vec else {}
         return {
-            **text2vec_config,
             **super().get_config(),
             "classes": list(self._class2idx.keys()),
             "task": self._task,

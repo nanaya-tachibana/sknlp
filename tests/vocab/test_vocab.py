@@ -29,6 +29,10 @@ class TestVocab:
         assert vocab['a'] == n_reversed + 0
         assert vocab[['a', 'd']] == [n_reversed + 0, n_reversed + 2]
 
+    def test_sorted_tokens(self):
+        vocab = Vocab(self.counter, min_frequency=5)
+        assert vocab.sorted_tokens == ["<pad>", "<unk>", "a", "b", "d"]
+
     def test_idx2token(self):
         vocab = Vocab(self.counter, min_frequency=5)
         n_reversed = len(vocab._reversed_tokens)

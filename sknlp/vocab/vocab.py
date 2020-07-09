@@ -129,3 +129,8 @@ class Vocab:
     @property
     def unk(self) -> str:
         return self._unk_token
+
+    @property
+    def sorted_tokens(self) -> List[str]:
+        items = sorted(self._token2idx.items(), key=lambda x: x[1])
+        return [k for k, v in items]

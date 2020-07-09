@@ -14,10 +14,12 @@ class BaseNLPModel:
 
     def __init__(
         self,
-        max_length: Optional[int] = None,
+        max_sequence_length: Optional[int] = None,
+        sequence_length: Optional[int] = None,
         name: Optional[str] = None
     ) -> None:
-        self._max_length = max_length
+        self._max_sequence_length = max_sequence_length
+        self._sequence_length = sequence_length
         self._name = name
         self._built = False
 
@@ -95,7 +97,7 @@ class BaseNLPModel:
             f.write(json.dumps(self.get_config()))
 
     def save(self, directory: str) -> None:
-        self._model.save(os.path.join(directory, "model"), save_format="h5")
+        self._model.save(os.path.join(directory, "model"), save_format="tf")
         self.save_config(directory)
 
     @classmethod
@@ -123,7 +125,8 @@ class BaseNLPModel:
             "outputs": self.output_names,
             "output_types": self.output_types,
             "output_shapes": self.output_shapes,
-            "max_length": self._max_length,
+            "max_sequence_length": self._max_sequence_length,
+            "sequence_length": self._sequence_length,
             "name": self._name
         }
 

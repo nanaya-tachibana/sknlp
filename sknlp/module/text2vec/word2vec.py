@@ -49,7 +49,7 @@ class Word2vec(Text2vec):
         3D tensor with shape: `(batch_size, input_length, embed_size)`.
         """
         super().__init__(
-            vocab, segmenter=segmenter, max_length=None, name=name, **kwargs
+            vocab, segmenter=segmenter, name=name, **kwargs
         )
         self._embedding_size = embedding_size
         embedding = Embedding(
@@ -103,5 +103,5 @@ class Word2vec(Text2vec):
     @classmethod
     def _filter_config(cls, config):
         config = super()._filter_config(config)
-        config.pop("max_length", None)
+        config.pop("max_sequence_length", None)
         return config

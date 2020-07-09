@@ -21,7 +21,10 @@ class BertTokenizationLayer(tf.keras.layers.Layer):
     For classification tasks, the first vector (corresponding to [CLS]) is
     used as the "sentence vector". Note that this only makes sense because
     the entire model is fine-tuned.
-    See more details in https://github.com/tensorflow/blob/master/official/nlp/data/classifier_data_lib.py.
+
+    The mask has 1 for real tokens and 0 for padding tokens. Only real
+    tokens are attended to.
+    See more details in https://github.com/tensorflow/models/blob/ad423d065701785587d13d0fe7b566191e7378c6/official/nlp/data/classifier_data_lib.py#L668
     """
     def __init__(self, sep="@!@", name="bert_tokenization", **kwargs):
         self.sep = sep

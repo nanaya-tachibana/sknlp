@@ -10,10 +10,10 @@ class TestTextRNNClassifier(TestDeepClassifier):
     classes = ["1", "2", "3"]
     word2vec = None
     segmenter = "char"
-    max_length = 90
+    max_sequence_length = 90
     model = TextRNNClassifier(
         classes,
-        max_length=max_length,
+        max_sequence_length=max_sequence_length,
         segmenter=segmenter,
         text2vec=word2vec,
         is_multilabel=False,

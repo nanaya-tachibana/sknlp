@@ -28,14 +28,14 @@ class DeepClassifier(SupervisedNLPModel):
         is_multilabel: bool = True,
         segmenter: str = "jieba",
         embedding_size: int = 100,
-        max_length: int = 100,
+        max_sequence_length: int = 100,
         text2vec: Optional[Text2vec] = None,
         **kwargs
     ):
         super().__init__(classes,
                          segmenter=segmenter,
                          embedding_size=embedding_size,
-                         max_length=max_length,
+                         max_sequence_length=max_sequence_length,
                          text2vec=text2vec,
                          task="classification",
                          **kwargs)
@@ -69,7 +69,7 @@ class DeepClassifier(SupervisedNLPModel):
             list(labels),
             df=df,
             is_multilabel=self._is_multilabel,
-            max_length=self._max_length,
+            max_length=self._max_sequence_length,
             text_segmenter=segmenter
         )
 
