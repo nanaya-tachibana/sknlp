@@ -8,7 +8,8 @@ from .test_base_model import TestBaseNLPModel
 class TestSupervisedNLPModel(TestBaseNLPModel):
 
     vocab = Vocab()
-    word2vec = Word2vec(vocab, segmenter="char")
+    embedding_size = 100
+    word2vec = Word2vec(vocab, embedding_size, segmenter="char")
     classes = ["a", "b", "c"]
     name = "yy"
     segmenter = "jieba"
@@ -24,7 +25,7 @@ class TestSupervisedNLPModel(TestBaseNLPModel):
     def test_init(self):
         if self.word2vec is not None:
             assert self.model._segmenter == self.word2vec.segmenter
-            assert self.model._embedding_size == self.word2vec._embedding_size
+            assert self.model._embedding_size == self.word2vec.embedding_size
         else:
             assert self.model._segmenter == self.segmenter
 

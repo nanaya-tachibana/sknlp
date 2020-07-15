@@ -85,7 +85,10 @@ class BaseNLPModel:
     def get_callbacks(self):
         raise NotImplementedError()
 
-    def get_custom_objects(self):
+    def get_monitor(self):
+        raise NotImplementedError()
+
+    def get_custom_objects(self) -> Dict[str, Any]:
         return {}
 
     def freeze(self) -> None:
@@ -94,7 +97,7 @@ class BaseNLPModel:
 
     def save_config(self, directory: str, filename: str = "meta.json") -> None:
         with open(os.path.join(directory, filename), "w") as f:
-            f.write(json.dumps(self.get_config()))
+            f.write(json.dumps(self.get_config(), ensure_ascii=False))
 
     def save(self, directory: str) -> None:
         self._model.save(os.path.join(directory, "model"), save_format="tf")
@@ -114,7 +117,7 @@ class BaseNLPModel:
 
     def export(self, directory: str, name: str, version: str = "0") -> None:
         d = os.path.join(directory, name, version)
-        self._model.save(d, save_format="tf")
+        self._model.save(d, include_optimizer=False, save_format="tf")
         self.save_config(d)
 
     def get_config(self) -> Dict[str, Any]:
@@ -130,8 +133,16 @@ class BaseNLPModel:
             "name": self._name
         }
 
+    @property
+    def sequence_length(self) -> int:
+        return self._sequence_length
+
+    @property
+    def max_sequence_length(self) -> int:
+        return self._max_sequence_length
+
     @classmethod
-    def _filter_config(cls, config):
+    def _filter_config(cls, config) -> Dict[str, Any]:
         config.pop("inputs", None)
         config.pop("input_types", None)
         config.pop("input_shapes", None)

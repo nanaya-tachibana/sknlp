@@ -14,12 +14,12 @@ class Word2vec(Text2vec):
     def __init__(
         self,
         vocab: Vocab,
-        embedding_size: int = 100,
-        segmenter: str = 'jieba',
-        embeddings_initializer: WeightInitializer = 'uniform',
+        embedding_size,
+        segmenter: str = "jieba",
+        embeddings_initializer: WeightInitializer = "uniform",
         embeddings_regularizer: Optional[WeightRegularizer] = None,
         embeddings_constraint: Optional[WeightConstraint] = None,
-        name: str = 'word2vec',
+        name: str = "word2vec",
         **kwargs
     ) -> None:
         """
@@ -48,9 +48,7 @@ class Word2vec(Text2vec):
         ----------
         3D tensor with shape: `(batch_size, input_length, embed_size)`.
         """
-        super().__init__(
-            vocab, segmenter=segmenter, name=name, **kwargs
-        )
+        super().__init__(vocab, segmenter=segmenter, name=name, **kwargs)
         self._embedding_size = embedding_size
         embedding = Embedding(
             len(vocab),
@@ -59,12 +57,16 @@ class Word2vec(Text2vec):
             embeddings_regularizer=embeddings_regularizer,
             embeddings_constraint=embeddings_constraint,
             mask_zero=True,
-            name='embeddings'
+            name="embeddings"
         )
         self._model = tf.keras.Sequential(embedding, name=name)
 
     def __call__(self, inputs: tf.Tensor) -> tf.Tensor:
         return self._model(inputs)
+
+    @property
+    def embedding_size(self) -> int:
+        return self._embedding_size
 
     @property
     def input_names(self) -> List[str]:
@@ -90,18 +92,8 @@ class Word2vec(Text2vec):
     def output_shapes(self) -> List[List[int]]:
         return [[-1, self.embedding_size]]
 
-    @property
-    def embedding_size(self):
-        return self._embedding_size
-
     def get_config(self) -> Dict[str, Any]:
         return {
             **super().get_config(),
-            "embedding_size": self._embedding_size
+            "embedding_size": self.embedding_size
         }
-
-    @classmethod
-    def _filter_config(cls, config):
-        config = super()._filter_config(config)
-        config.pop("max_sequence_length", None)
-        return config

@@ -1,29 +1,32 @@
-from ..text_rnn import TextRNN
+from typing import List, Optional, Dict, Any
+
+from sknlp.layers import MultiLSTMP, MLPLayer, LSTMP
 from .deep_classifier import DeepClassifier
 
 
-class TextRNNClassifier(DeepClassifier, TextRNN):
+class TextRNNClassifier(DeepClassifier):
 
     def __init__(self,
-                 classes,
-                 is_multilabel=True,
-                 segmenter='jieba',
-                 max_sequence_length=100,
-                 embedding_size=100,
-                 num_rnn_layers=1,
-                 rnn_hidden_size=512,
-                 rnn_projection_size=128,
-                 rnn_recurrent_clip=3,
-                 rnn_projection_clip=3,
-                 rnn_input_dropout=0.5,
-                 rnn_recurrent_dropout=0.5,
-                 rnn_output_dropout=0.5,
-                 num_fc_layers=2,
-                 fc_hidden_size=128,
-                 rnn_kernel_initializer='glorot_uniform',
-                 rnn_recurrent_initializer='orthogonal',
-                 rnn_projection_initializer='glorot_uniform',
-                 rnn_bias_initializer='zeros',
+                 classes: List[str],
+                 is_multilabel: bool = True,
+                 max_sequence_length: int = 100,
+                 sequence_length: int = None,
+                 segmenter: str = "jieba",
+                 embedding_size: int = 100,
+                 num_rnn_layers: int = 1,
+                 rnn_hidden_size: int = 512,
+                 rnn_projection_size: int = 128,
+                 rnn_recurrent_clip: float = 3.0,
+                 rnn_projection_clip: float = 3.0,
+                 rnn_input_dropout: float = 0.5,
+                 rnn_recurrent_dropout: float = 0.5,
+                 rnn_output_dropout: float = 0.5,
+                 num_fc_layers: int = 2,
+                 fc_hidden_size: int = 128,
+                 rnn_kernel_initializer="glorot_uniform",
+                 rnn_recurrent_initializer="orthogonal",
+                 rnn_projection_initializer="glorot_uniform",
+                 rnn_bias_initializer="zeros",
                  rnn_kernel_regularizer=None,
                  rnn_recurrent_regularizer=None,
                  rnn_projection_regularizer=None,
@@ -36,37 +39,63 @@ class TextRNNClassifier(DeepClassifier, TextRNN):
                  **kwargs):
         super().__init__(classes,
                          is_multilabel=is_multilabel,
-                         segmenter=segmenter,
                          max_sequence_length=max_sequence_length,
+                         sequence_length=sequence_length,
+                         segmenter=segmenter,
                          embedding_size=embedding_size,
-                         algorithm='text_rnn',
-                         num_rnn_layers=num_rnn_layers,
-                         rnn_hidden_size=rnn_hidden_size,
-                         rnn_projection_size=rnn_projection_size,
-                         rnn_recurrent_clip=rnn_recurrent_clip,
-                         rnn_projection_clip=rnn_projection_clip,
-                         rnn_input_dropout=rnn_input_dropout,
-                         rnn_recurrent_dropout=rnn_recurrent_dropout,
-                         rnn_output_dropout=rnn_output_dropout,
-                         rnn_last_connection='last',
-                         num_fc_layers=num_fc_layers,
-                         fc_hidden_size=fc_hidden_size,
-                         rnn_kernel_initializer=rnn_kernel_initializer,
-                         rnn_recurrent_initializer=rnn_recurrent_initializer,
-                         rnn_projection_initializer=rnn_projection_initializer,
-                         rnn_bias_initializer=rnn_bias_initializer,
-                         rnn_kernel_regularizer=rnn_kernel_regularizer,
-                         rnn_recurrent_regularizer=rnn_recurrent_regularizer,
-                         rnn_projection_regularizer=rnn_projection_regularizer,
-                         rnn_bias_regularizer=rnn_bias_regularizer,
-                         rnn_kernel_constraint=rnn_kernel_constraint,
-                         rnn_recurrent_constraint=rnn_recurrent_constraint,
-                         rnn_projection_constraint=rnn_projection_constraint,
-                         rnn_bias_constraint=rnn_bias_constraint,
-                         text2vec=text2vec,
+                         algorithm="text_rnn",
                          **kwargs)
+        self.rnn_layer = MultiLSTMP(
+            num_rnn_layers,
+            rnn_hidden_size,
+            projection_size=rnn_projection_size,
+            recurrent_clip=rnn_recurrent_clip,
+            projection_clip=rnn_projection_clip,
+            input_dropout=rnn_input_dropout,
+            recurrent_dropout=rnn_recurrent_dropout,
+            output_dropout=rnn_output_dropout,
+            last_connection="last",
+            kernel_initializer=rnn_kernel_initializer,
+            recurrent_initializer=rnn_recurrent_initializer,
+            projection_initializer=rnn_projection_initializer,
+            bias_initializer=rnn_bias_initializer,
+            kernel_regularizer=rnn_kernel_regularizer,
+            recurrent_regularizer=rnn_recurrent_regularizer,
+            projection_regularizer=rnn_projection_regularizer,
+            bias_regularizer=rnn_bias_regularizer,
+            kernel_constraint=rnn_kernel_constraint,
+            recurrent_constraint=rnn_recurrent_constraint,
+            projection_constraint=rnn_projection_constraint,
+            bias_constraint=rnn_bias_constraint,
+            name="rnn"
+        )
+        self.mlp_layer = MLPLayer(
+            num_fc_layers, hidden_size=fc_hidden_size,
+            output_size=self.num_classes, name="mlp"
+        )
 
-    def get_config(self):
-        base_config = super().get_config()
-        del base_config['rnn_last_connection']
-        return base_config
+    def build_encode_layer(self, inputs):
+        return self.rnn_layer(inputs)
+
+    def build_output_layer(self, inputs):
+        return self.mlp_layer(inputs)
+
+    @property
+    def output_names(self) -> List[str]:
+        return ["mlp"]
+
+    @property
+    def output_types(self) -> List[str]:
+        return ["float"]
+
+    @property
+    def output_shapes(self) -> List[List[int]]:
+        return [[-1, self.num_classes]]
+
+    def get_custom_objects(self):
+        return {
+            **super().get_custom_objects(),
+            "MultiLSTMP": MultiLSTMP,
+            "MLPLayer": MLPLayer,
+            "LSTMP": LSTMP
+        }

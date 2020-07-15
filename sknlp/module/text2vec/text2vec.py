@@ -18,7 +18,7 @@ class Text2vec(BaseNLPModel):
     def __init__(
         self,
         vocab: Vocab,
-        segmenter: Optional[str] = "char",
+        segmenter: Optional[str] = None,
         max_sequence_length: Optional[int] = None,
         sequence_length: Optional[int] = None,
         name: str = "text2vec"
@@ -56,6 +56,14 @@ class Text2vec(BaseNLPModel):
             sequence_length=sequence_length,
             name=name
         )
+
+    @property
+    def vocab(self) -> Vocab:
+        return self._vocab
+
+    @property
+    def segmenter(self) -> str:
+        return self._segmenter
 
     def save_vocab(self, directory: str, filename: str = "vocab.json") -> None:
         with open(os.path.join(directory, filename), "w") as f:
@@ -98,15 +106,7 @@ class Text2vec(BaseNLPModel):
         self.save_vocab(d)
 
     def get_config(self) -> Dict[str, Any]:
-        return {**super().get_config(), "segmenter": self._segmenter}
-
-    @property
-    def vocab(self) -> Vocab:
-        return self._vocab
-
-    @property
-    def segmenter(self) -> str:
-        return self._segmenter
+        return {**super().get_config(), "segmenter": self.segmenter}
 
     def get_inputs(self) -> tf.Tensor:
         return self._model.input

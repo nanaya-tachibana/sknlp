@@ -290,7 +290,7 @@ class LSTMP(LSTM):
         units,
         projection_size: int = 100,
         activation: str = 'tanh',
-        recurrent_activation: str = 'hard_sigmoid',
+        recurrent_activation: str = 'sigmoid',
         use_bias: bool = True,
         kernel_initializer: WeightInitializer = 'glorot_uniform',
         recurrent_initializer: WeightInitializer = 'orthogonal',
@@ -362,15 +362,15 @@ class LSTMP(LSTM):
 
     @property
     def projection_initializer(self):
-        return self.cell.projection_initializer
+        return initializers.serialize(self.cell.projection_initializer)
 
     @property
     def projection_regularizer(self):
-        return self.cell.projection_regularizer
+        return regularizers.serialize(self.cell.projection_regularizer)
 
     @property
     def projection_constraint(self):
-        return self.cell.projection_constraint
+        return constraints.serialize(self.cell.projection_constraint)
 
     @property
     def recurrent_clip(self):

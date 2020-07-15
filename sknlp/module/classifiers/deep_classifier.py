@@ -26,16 +26,18 @@ class DeepClassifier(SupervisedNLPModel):
         self,
         classes: Sequence[str],
         is_multilabel: bool = True,
+        max_sequence_length: Optional[int] = None,
+        sequence_length: Optional[int] = None,
         segmenter: str = "jieba",
         embedding_size: int = 100,
-        max_sequence_length: int = 100,
         text2vec: Optional[Text2vec] = None,
         **kwargs
     ):
         super().__init__(classes,
+                         max_sequence_length=max_sequence_length,
+                         sequence_length=sequence_length,
                          segmenter=segmenter,
                          embedding_size=embedding_size,
-                         max_sequence_length=max_sequence_length,
                          text2vec=text2vec,
                          task="classification",
                          **kwargs)
@@ -56,6 +58,9 @@ class DeepClassifier(SupervisedNLPModel):
         else:
             return [PrecisionWithLogits(logits2scores="softmax"),
                     RecallWithLogits(logits2scores="softmax")]
+
+    def get_monitor(self) -> str:
+        return "val_f-score"
 
     def create_dataset_from_df(
         self,

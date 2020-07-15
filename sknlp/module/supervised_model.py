@@ -24,7 +24,7 @@ class SupervisedNLPModel(BaseNLPModel):
     def __init__(
         self,
         classes: Sequence[str],
-        max_sequence_length: int = 100,
+        max_sequence_length: int = None,
         sequence_length: Optional[int] = None,
         segmenter: str = "jieba",
         embedding_size: int = 100,
@@ -32,7 +32,7 @@ class SupervisedNLPModel(BaseNLPModel):
         task: Optional[str] = None,
         algorithm: Optional[str] = None,
         **kwargs
-    ):
+    ) -> None:
         super().__init__(
             max_sequence_length=max_sequence_length,
             sequence_length=sequence_length,
@@ -43,9 +43,9 @@ class SupervisedNLPModel(BaseNLPModel):
             self._segmenter = text2vec.segmenter
             self._embedding_size = text2vec.embedding_size
             self._max_sequence_length = (
-                text2vec._max_sequence_length or max_sequence_length
+                text2vec.max_sequence_length or max_sequence_length
             )
-            self._sequence_length = text2vec._sequence_length
+            self._sequence_length = text2vec.sequence_length
         else:
             self._segmenter = segmenter
             self._embedding_size = embedding_size
@@ -56,7 +56,14 @@ class SupervisedNLPModel(BaseNLPModel):
         self._algorithm = algorithm
         self._class2idx = dict(zip(list(classes), range(len(classes))))
         self._idx2class = dict(zip(range(len(classes)), list(classes)))
-        self._num_classes = len(self._class2idx)
+
+    @property
+    def num_classes(self) -> int:
+        return len(self._class2idx)
+
+    @property
+    def classes(self) -> List[str]:
+        return list(self._class2idx.keys())
 
     def get_inputs(self) -> tf.Tensor:
         return self._text2vec.get_inputs()
@@ -109,7 +116,7 @@ class SupervisedNLPModel(BaseNLPModel):
             y = ["|".join(map(str, y_i)) for y_i in y]
         df = pd.DataFrame(zip(X, y), columns=["text", "label"])
         dataset = self.create_dataset_from_df(
-            df, self._text2vec.vocab, self._text2vec.segmenter, self._class2idx.keys()
+            df, self._text2vec.vocab, self._text2vec.segmenter, self.classes
         )
         return dataset.batchify(
             batch_size, shuffle=shuffle, shuffle_buffer_size=df.shape[0]
@@ -131,6 +138,10 @@ class SupervisedNLPModel(BaseNLPModel):
         lr_update_factor: float = 0.5,
         lr_update_epochs: int = 10,
         clip: float = 5.0,
+        enable_early_stopping: bool = True,
+        early_stopping_patience: Optional[int] = None,
+        early_stopping_min_delta: float = 0,
+        early_stopping_use_best_epoch: bool = False,
         checkpoint: Optional[str] = None,
         save_frequency: int = 1,
         log_file: Optional[str] = None,
@@ -164,6 +175,14 @@ class SupervisedNLPModel(BaseNLPModel):
 
         lr_decay = tf.keras.callbacks.LearningRateScheduler(scheduler)
         callbacks = [*callbacks, lr_decay]
+        if enable_early_stopping:
+            callbacks.append(tf.keras.callbacks.EarlyStopping(
+                monitor=self.get_monitor(),
+                min_delta=early_stopping_min_delta,
+                patience=early_stopping_patience or lr_update_epochs,
+                mode="max",
+                restore_best_weights=early_stopping_use_best_epoch
+            ))
         if log_file is not None:
             callbacks.append(tf.keras.callbacks.CSVLogger(log_file))
         self._model.fit(
@@ -204,24 +223,25 @@ class SupervisedNLPModel(BaseNLPModel):
     def get_config(self) -> Dict[str, Any]:
         return {
             **super().get_config(),
-            "classes": list(self._class2idx.keys()),
+            "segmenter": self._segmenter,
+            "classes": self.classes,
             "task": self._task,
             "algorithm": self._algorithm
         }
 
-    def save(self, directory):
+    def save(self, directory: str) -> None:
         super().save(directory)
         self._text2vec.save_vocab(directory)
 
     @classmethod
-    def load(cls, directory):
+    def load(cls, directory: str) -> "SupervisedNLPModel":
         module = super().load(directory)
         with open(os.path.join(directory, "vocab.json")) as f:
             vocab = Vocab.from_json(f.read())
         module._text2vec = Text2vec(vocab)
         return module
 
-    def export(self, directory, name, version="0"):
+    def export(self, directory: str, name: str, version: str = "0") -> None:
         super().export(directory, name, version)
         d = os.path.join(directory, name, version)
         self._text2vec.save_vocab(d)
