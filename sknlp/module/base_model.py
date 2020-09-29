@@ -41,6 +41,8 @@ class BaseNLPModel:
         raise NotImplementedError()
 
     def build(self) -> None:
+        if self._built:
+            return
         self._model = tf.keras.Model(
             inputs=self.get_inputs(), outputs=self.get_outputs(), name=self._name
         )
@@ -48,6 +50,14 @@ class BaseNLPModel:
 
     def get_inputs(self) -> tf.Tensor:
         raise NotImplementedError()
+
+    @property
+    def sequence_length(self):
+        return self._sequence_length
+
+    @property
+    def max_sequence_length(self):
+        return self._max_sequence_length
 
     @property
     def input_names(self) -> List[str]:
@@ -117,7 +127,12 @@ class BaseNLPModel:
 
     def export(self, directory: str, name: str, version: str = "0") -> None:
         d = os.path.join(directory, name, version)
-        self._model.save(d, include_optimizer=False, save_format="tf")
+
+        model = tf.keras.models.model_from_json(
+            self._model.to_json(), custom_objects=self.get_custom_objects()
+        )
+        model.set_weights(self._model.get_weights())
+        model.save(d, include_optimizer=False, save_format="tf")
         self.save_config(d)
 
     def get_config(self) -> Dict[str, Any]:
@@ -128,18 +143,10 @@ class BaseNLPModel:
             "outputs": self.output_names,
             "output_types": self.output_types,
             "output_shapes": self.output_shapes,
-            "max_sequence_length": self._max_sequence_length,
-            "sequence_length": self._sequence_length,
+            "max_sequence_length": self.max_sequence_length,
+            "sequence_length": self.sequence_length,
             "name": self._name
         }
-
-    @property
-    def sequence_length(self) -> int:
-        return self._sequence_length
-
-    @property
-    def max_sequence_length(self) -> int:
-        return self._max_sequence_length
 
     @classmethod
     def _filter_config(cls, config) -> Dict[str, Any]:

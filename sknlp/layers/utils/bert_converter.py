@@ -1,4 +1,5 @@
 import logging
+from functools import partial
 
 import numpy as np
 import tensorflow as tf
@@ -23,7 +24,7 @@ BERT_NAME_REPLACEMENTS = (
     ("embeddings/position_embeddings", "position_embedding/embeddings"),
     ("embeddings/LayerNorm", "embeddings/layer_norm"),
     ("attention/self", "self_attention"),
-    ("attention/output/dense", "self_attention_output"),
+    ("attention/output/dense", "self_attention/attention_output"),
     ("attention/output/LayerNorm", "self_attention_layer_norm"),
     ("intermediate/dense", "intermediate"),
     ("output/dense", "output"),
@@ -66,7 +67,7 @@ def _get_permutation(name, permutations):
 
 def _get_new_shape(name, shape, num_heads):
   """Checks whether a variable requires reshape by pattern matching."""
-  if "self_attention_output/kernel" in name:
+  if "self_attention/attention_output/kernel" in name:
     return (num_heads, shape[0] // num_heads, shape[1])
   if "self_attention_output/bias" in name:
     return shape
@@ -83,7 +84,14 @@ def _get_new_shape(name, shape, num_heads):
   return None
 
 
-def convert_bert_checkpoint(checkpoint_from_path, checkpoint_to_path, num_heads):
+def convert_checkpoint(
+    checkpoint_from_path,
+    checkpoint_to_path,
+    num_heads,
+    name_replacements=None,
+    permutations=None,
+    exclude_patterns=None,
+):
   """Migrates the names of variables within a checkpoint.
   Args:
     checkpoint_from_path: Path to source checkpoint to be read in.
@@ -100,9 +108,9 @@ def convert_bert_checkpoint(checkpoint_from_path, checkpoint_to_path, num_heads)
     A dictionary that maps the new variable names to the Variable objects.
     A dictionary that maps the old variable names to the new variable names.
   """
-  name_replacements = BERT_NAME_REPLACEMENTS
-  permutations = BERT_PERMUTATIONS
-  exclude_patterns = ["adam", "Adam"]
+  name_replacements = name_replacements or tuple()
+  permutations = permutations or tuple()
+  exclude_patterns = exclude_patterns or ["adam", "Adam"]
   with tfv1.Graph().as_default():
     logger.info("Reading checkpoint_from_path %s", checkpoint_from_path)
     reader = tfv1.train.load_checkpoint(checkpoint_from_path)
@@ -155,6 +163,12 @@ def convert_bert_checkpoint(checkpoint_from_path, checkpoint_to_path, num_heads)
 
 
 
+convert_bert_checkpoint = partial(convert_checkpoint,
+                                  name_replacements=BERT_NAME_REPLACEMENTS,
+                                  permutations=BERT_PERMUTATIONS)
+
+
+
 def create_bert_model(cfg):
     """Creates a BERT keras core model from BERT configuration.
     Args:
@@ -171,7 +185,6 @@ def create_bert_model(cfg):
       activation=activations.gelu,
       dropout_rate=cfg.hidden_dropout_prob,
       attention_dropout_rate=cfg.attention_probs_dropout_prob,
-      sequence_length=80,
       max_sequence_length=cfg.max_position_embeddings,
       type_vocab_size=cfg.type_vocab_size,
       initializer=tf.keras.initializers.TruncatedNormal(stddev=cfg.initializer_range)

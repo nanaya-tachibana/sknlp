@@ -1,9 +1,12 @@
 from typing import Sequence, List, Dict, Any, Optional, Union
 
+import tensorflow as tf
 from tensorflow.keras.layers import Dropout
 import pandas as pd
 
-from sknlp.layers import MLPLayer
+from sknlp.layers import (
+    MLPLayer, BertLayer, AlbertLayer, BertPreprocessingLayer
+)
 from sknlp.vocab import Vocab
 from sknlp.data import BertClassificationDataset
 from ..text2vec import Bert2vec
@@ -67,17 +70,12 @@ class BertClassifier(DeepClassifier):
     def get_config(self):
         return {**super().get_config(), "output_dropout": self._output_dropout}
 
-    @property
-    def output_names(self) -> List[str]:
-        return ["mlp"]
-
-    @property
-    def output_types(self) -> List[str]:
-        return ["float"]
-
-    @property
-    def output_shapes(self) -> List[List[int]]:
-        return [[-1, self.num_classes]]
-
     def get_custom_objects(self):
-        return {**super().get_custom_objects(), 'MLPLayer': MLPLayer}
+        return {
+            **super().get_custom_objects(),
+            "MLPLayer": MLPLayer,
+            "BertLayer": BertLayer,
+            "AlbertLayer": AlbertLayer,
+            "BertPreprocessingLayer": BertPreprocessingLayer,
+            "TruncatedNormal": tf.keras.initializers.TruncatedNormal,
+        }

@@ -5,10 +5,19 @@ from tensorflow.keras import constraints
 from tensorflow.keras import initializers
 from tensorflow.keras import regularizers
 from tensorflow.keras.layers import InputSpec
-from tensorflow.python.keras.layers.recurrent import LSTMCell, LSTM
+from tensorflow.python.keras.layers.recurrent import LSTM, LSTMCell
+from tensorflow.python.keras.saving.saved_model import layer_serialization
 from tensorflow.python.training.tracking import data_structures
 
 from sknlp.typing import WeightRegularizer, WeightInitializer, WeightConstraint
+
+
+class CustomRNNSavedModelSaver(layer_serialization.RNNSavedModelSaver):
+  """RNN layer serialization."""
+
+  @property
+  def object_identifier(self):
+    return "_tf_keras_layer"
 
 
 class LSTMPCell(LSTMCell):
@@ -389,3 +398,7 @@ class LSTMP(LSTM):
         if 'implementation' in config and config['implementation'] == 0:
             config['implementation'] = 2
         return cls(**config)
+
+    @property
+    def _trackable_saved_model_saver(self):
+        return CustomRNNSavedModelSaver(self)

@@ -43,7 +43,7 @@ class SupervisedNLPModel(BaseNLPModel):
             self._segmenter = text2vec.segmenter
             self._embedding_size = text2vec.embedding_size
             self._max_sequence_length = (
-                text2vec.max_sequence_length or max_sequence_length
+                max_sequence_length or text2vec.max_sequence_length
             )
             self._sequence_length = text2vec.sequence_length
         else:
@@ -56,6 +56,14 @@ class SupervisedNLPModel(BaseNLPModel):
         self._algorithm = algorithm
         self._class2idx = dict(zip(list(classes), range(len(classes))))
         self._idx2class = dict(zip(range(len(classes)), list(classes)))
+
+    @property
+    def embedding_size(self) -> int:
+        return self._embedding_size
+
+    @property
+    def segmenter(self) -> str:
+        return self._segmenter
 
     @property
     def num_classes(self) -> int:
@@ -84,9 +92,15 @@ class SupervisedNLPModel(BaseNLPModel):
         inputs = self._text2vec.get_outputs()
         return self.build_output_layer(self.build_encode_layer(inputs))
 
+    def build(self) -> None:
+        if self._built:
+            return
+        assert self._text2vec is not None
+        super().build()
+
     @classmethod
     def create_dataset_from_df(
-        self,
+        cls,
         df: pd.DataFrame,
         vocab: Vocab,
         segmenter: str,
@@ -138,7 +152,7 @@ class SupervisedNLPModel(BaseNLPModel):
         lr_update_factor: float = 0.5,
         lr_update_epochs: int = 10,
         clip: float = 5.0,
-        enable_early_stopping: bool = True,
+        enable_early_stopping: bool = False,
         early_stopping_patience: Optional[int] = None,
         early_stopping_min_delta: float = 0,
         early_stopping_use_best_epoch: bool = False,

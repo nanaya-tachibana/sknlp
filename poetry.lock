@@ -11,6 +11,7 @@ six = "*"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -27,6 +28,7 @@ wheel = ">=0.23.0,<1.0"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -40,6 +42,7 @@ version = "1.3.0"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -58,6 +61,7 @@ tests = ["coverage", "hypothesis", "pympler", "pytest (>=4.3.0)", "six", "zope.i
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -70,6 +74,7 @@ version = "4.1.0"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -82,6 +87,7 @@ version = "2020.4.5.1"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -94,6 +100,7 @@ version = "3.0.4"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -107,6 +114,7 @@ version = "0.4.3"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -122,6 +130,7 @@ six = "*"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -134,6 +143,7 @@ version = "0.29.20"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -146,6 +156,7 @@ version = "0.6"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -161,6 +172,7 @@ graph = ["objgraph (>=1.7.2)"]
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -176,6 +188,7 @@ six = ">=1.12.0"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -188,6 +201,7 @@ version = "0.18.2"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -200,6 +214,7 @@ version = "0.3.3"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -221,6 +236,7 @@ tf-nightly = ["tf-nightly"]
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -247,6 +263,7 @@ grpcio-gcp = ["grpcio-gcp (>=0.2.2)"]
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -267,6 +284,7 @@ uritemplate = ">=3.0.0,<4dev"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -286,6 +304,7 @@ six = ">=1.9.0"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -302,6 +321,7 @@ httplib2 = ">=0.9.1"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -321,6 +341,7 @@ tool = ["click"]
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -349,6 +370,7 @@ tqdm = ["tqdm (>=4.0.0,<5.0.0dev)"]
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -367,6 +389,7 @@ grpc = ["grpcio (>=1.8.2,<2.0dev)"]
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -382,6 +405,7 @@ six = "*"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -400,6 +424,7 @@ requests = ["requests (>=2.18.0,<3.0.0dev)"]
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -418,6 +443,7 @@ grpc = ["grpcio (>=1.0.0)"]
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -433,6 +459,7 @@ six = ">=1.5.2"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -449,6 +476,7 @@ six = "*"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -461,6 +489,7 @@ version = "0.18.1"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -473,6 +502,7 @@ version = "2.9"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -493,6 +523,7 @@ testing = ["packaging", "importlib-resources"]
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -505,6 +536,7 @@ version = "0.53"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -517,6 +549,7 @@ version = "0.14.1"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -537,6 +570,7 @@ urllib3 = ">=1.15"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -558,6 +592,7 @@ tests = ["pandas", "pillow", "tensorflow", "keras", "pytest", "pytest-xdist", "p
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -570,6 +605,7 @@ version = "1.2.0"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -590,6 +626,7 @@ testing = ["coverage", "pyyaml"]
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -609,18 +646,7 @@ python-dateutil = ">=2.1"
 
 [package.source]
 reference = "aliyun"
-url = "https://mirrors.aliyun.com/pypi/simple"
-
-[[package]]
-category = "main"
-description = "Tools for logging MLPerf compliance tags."
-name = "mlperf-compliance"
-optional = false
-python-versions = "*"
-version = "0.0.10"
-
-[package.source]
-reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -633,6 +659,7 @@ version = "8.1.0"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -645,25 +672,7 @@ version = "1.18.1"
 
 [package.source]
 reference = "aliyun"
-url = "https://mirrors.aliyun.com/pypi/simple"
-
-[[package]]
-category = "main"
-description = "OAuth 2.0 client library"
-name = "oauth2client"
-optional = false
-python-versions = "*"
-version = "4.1.3"
-
-[package.dependencies]
-httplib2 = ">=0.9.1"
-pyasn1 = ">=0.1.7"
-pyasn1-modules = ">=0.0.5"
-rsa = ">=3.1.4"
-six = ">=1.6.1"
-
-[package.source]
-reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -681,6 +690,7 @@ signedtoken = ["cryptography", "pyjwt (>=1.0.0)"]
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -696,6 +706,7 @@ numpy = ">=1.11.1"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -715,6 +726,7 @@ tests = ["pytest", "pytest-cov", "pytest-pep8"]
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -731,6 +743,7 @@ six = "*"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -751,6 +764,7 @@ test = ["pytest (>=4.0.2)", "pytest-xdist", "hypothesis (>=3.58)"]
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -763,6 +777,7 @@ version = "7.1.2"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -783,6 +798,7 @@ dev = ["pre-commit", "tox"]
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -801,6 +817,7 @@ test = ["pytest (>=2.7.3)", "pytest-cov", "coveralls", "futures", "pytest-benchm
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -817,6 +834,7 @@ six = ">=1.9"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -829,6 +847,7 @@ version = "5.7.0"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -841,6 +860,7 @@ version = "1.8.1"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -853,6 +873,7 @@ version = "6.0.0"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -865,6 +886,7 @@ version = "0.4.8"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -880,6 +902,7 @@ pyasn1 = ">=0.4.6,<0.5.0"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -892,6 +915,7 @@ version = "2.4.6"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -921,6 +945,7 @@ testing = ["argcomplete", "hypothesis (>=3.56)", "mock", "nose", "requests", "xm
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -936,6 +961,7 @@ six = ">=1.5"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -948,6 +974,7 @@ version = "2019.3"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -960,6 +987,7 @@ version = "5.3.1"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -982,6 +1010,7 @@ socks = ["PySocks (>=1.5.6,<1.5.7 || >1.5.7)", "win-inet-pton"]
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -1001,6 +1030,7 @@ rsa = ["oauthlib (>=3.0.0)"]
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -1016,6 +1046,7 @@ pyasn1 = ">=0.1.3"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -1028,6 +1059,7 @@ version = "0.22.1"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -1040,6 +1072,7 @@ version = "1.4.1"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -1052,6 +1085,7 @@ version = "0.1.92"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -1064,6 +1098,7 @@ version = "1.13.0"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -1079,6 +1114,7 @@ scikit-learn = "*"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -1094,6 +1130,7 @@ widechars = ["wcwidth"]
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -1102,7 +1139,7 @@ description = "TensorBoard lets you watch Tensors Flow"
 name = "tensorboard"
 optional = false
 python-versions = ">= 2.7, != 3.0.*, != 3.1.*"
-version = "2.2.2"
+version = "2.3.0"
 
 [package.dependencies]
 absl-py = ">=0.4"
@@ -1124,6 +1161,7 @@ version = ">=0.26"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -1136,6 +1174,7 @@ version = "1.6.0.post3"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -1144,7 +1183,7 @@ description = "TensorFlow is an open source machine learning framework for every
 name = "tensorflow"
 optional = false
 python-versions = "*"
-version = "2.2.0"
+version = "2.3.0"
 
 [package.dependencies]
 absl-py = ">=0.7.0"
@@ -1153,26 +1192,21 @@ gast = "0.3.3"
 google-pasta = ">=0.1.8"
 grpcio = ">=1.8.6"
 h5py = ">=2.10.0,<2.11.0"
-keras-preprocessing = ">=1.1.0"
-numpy = ">=1.16.0,<2.0"
+keras-preprocessing = ">=1.1.1,<1.2"
+numpy = ">=1.16.0,<1.19.0"
 opt-einsum = ">=2.3.2"
-protobuf = ">=3.8.0"
+protobuf = ">=3.9.2"
+scipy = "1.4.1"
 six = ">=1.12.0"
-tensorboard = ">=2.2.0,<2.3.0"
-tensorflow-estimator = ">=2.2.0,<2.3.0"
+tensorboard = ">=2.3.0,<3"
+tensorflow-estimator = ">=2.3.0,<2.4.0"
 termcolor = ">=1.1.0"
+wheel = ">=0.26"
 wrapt = ">=1.11.1"
-
-[package.dependencies.scipy]
-python = ">=3"
-version = "1.4.1"
-
-[package.dependencies.wheel]
-python = ">=3"
-version = ">=0.26"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -1181,13 +1215,14 @@ description = "TensorFlow Addons."
 name = "tensorflow-addons"
 optional = false
 python-versions = "*"
-version = "0.10.0"
+version = "0.11.2"
 
 [package.dependencies]
 typeguard = ">=2.7"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -1240,6 +1275,7 @@ wikipedia = ["mwparserfromhell", "apache-beam"]
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -1248,10 +1284,11 @@ description = "TensorFlow Estimator."
 name = "tensorflow-estimator"
 optional = false
 python-versions = "*"
-version = "2.2.0"
+version = "2.3.0"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -1273,6 +1310,7 @@ make_nearest_neighbour_index = ["apache-beam", "annoy"]
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -1289,6 +1327,7 @@ protobuf = ">=3.7,<4"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -1306,6 +1345,7 @@ six = ">=1.10,<2.0"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -1314,17 +1354,18 @@ description = "TF.Text is a TensorFlow library of text related ops, modules, and
 name = "tensorflow-text"
 optional = false
 python-versions = "*"
-version = "2.2.0"
+version = "2.3.0"
 
 [package.dependencies]
-tensorflow = ">=2.2.0,<2.3"
+tensorflow = ">=2.3.0,<2.4"
 
 [package.extras]
-tensorflow_gpu = ["tensorflow-gpu (>=2.2.0,<2.3)"]
+tensorflow_gpu = ["tensorflow-gpu (>=2.1.0,<2.2)"]
 tests = ["absl-py", "pytest"]
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -1337,6 +1378,7 @@ version = "1.1.0"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -1345,7 +1387,7 @@ description = "TensorFlow Official Models"
 name = "tf-models-official"
 optional = false
 python-versions = ">=3.6"
-version = "2.2.0"
+version = "2.3.0"
 
 [package.dependencies]
 Cython = "*"
@@ -1356,9 +1398,7 @@ google-api-python-client = ">=1.6.7"
 google-cloud-bigquery = ">=0.31.0"
 kaggle = ">=1.3.9"
 matplotlib = "*"
-mlperf-compliance = "0.0.10"
 numpy = ">=1.15.4"
-oauth2client = ">=4.1.2"
 opencv-python-headless = "*"
 pandas = ">=0.22.0"
 psutil = ">=5.4.3"
@@ -1367,15 +1407,32 @@ pyyaml = "*"
 scipy = ">=0.19.1"
 sentencepiece = "*"
 six = "*"
-tensorflow = ">=2.2.0"
+tensorflow = ">=2.3.0"
 tensorflow-addons = "*"
 tensorflow-datasets = "*"
 tensorflow-hub = ">=0.6.0"
 tensorflow-model-optimization = ">=0.2.1"
-typing = "*"
+tf-slim = ">=1.1.0"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
+url = "https://mirrors.aliyun.com/pypi/simple"
+
+[[package]]
+category = "main"
+description = "TensorFlow-Slim: A lightweight library for defining, training and evaluating complex models in TensorFlow"
+name = "tf-slim"
+optional = false
+python-versions = "*"
+version = "1.1.0"
+
+[package.dependencies]
+absl-py = ">=0.2.2"
+
+[package.source]
+reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -1391,6 +1448,7 @@ dev = ["py-make (>=0.1.0)", "twine", "argopt", "pydoc-markdown"]
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -1407,18 +1465,7 @@ test = ["pytest", "typing-extensions"]
 
 [package.source]
 reference = "aliyun"
-url = "https://mirrors.aliyun.com/pypi/simple"
-
-[[package]]
-category = "main"
-description = "Type Hints for Python"
-name = "typing"
-optional = false
-python-versions = "*"
-version = "3.7.4.1"
-
-[package.source]
-reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -1431,6 +1478,7 @@ version = "3.0.1"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -1448,6 +1496,7 @@ socks = ["PySocks (>=1.5.6,<1.5.7 || >1.5.7,<2.0)"]
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -1460,6 +1509,7 @@ version = "0.1.8"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -1476,6 +1526,7 @@ watchdog = ["watchdog"]
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -1491,6 +1542,7 @@ test = ["pytest (>=3.0.0)", "pytest-cov"]
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -1503,6 +1555,7 @@ version = "1.12.1"
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [[package]]
@@ -1523,10 +1576,11 @@ testing = ["pathlib2", "contextlib2", "unittest2"]
 
 [package.source]
 reference = "aliyun"
+type = "legacy"
 url = "https://mirrors.aliyun.com/pypi/simple"
 
 [metadata]
-content-hash = "fa10a7fe7ec7411ff53982b5f33d37fac4da0e8f91319d651badfccd5a41ac02"
+content-hash = "5ef2c897a8328dccc8de775b5df575f372b70f6cf64b64359dcf1350cc8f75a8"
 python-versions = "^3.7"
 
 [metadata.files]
@@ -1805,10 +1859,6 @@ matplotlib = [
     {file = "matplotlib-3.2.1-pp373-pypy36_pp73-win32.whl", hash = "sha256:7a9baefad265907c6f0b037c8c35a10cf437f7708c27415a5513cf09ac6d6ddd"},
     {file = "matplotlib-3.2.1.tar.gz", hash = "sha256:ffe2f9cdcea1086fc414e82f42271ecf1976700b8edd16ca9d376189c6d93aee"},
 ]
-mlperf-compliance = [
-    {file = "mlperf_compliance-0.0.10-py3-none-any.whl", hash = "sha256:71fea2bb673645cef65648eb3877886c62cfef4d3a968b029a472c204e244b24"},
-    {file = "mlperf_compliance-0.0.10.tar.gz", hash = "sha256:0672c6d753ab9d5446f44c7a97658ceeedd7c89e1e4b9b3cce41e62a918cff72"},
-]
 more-itertools = [
     {file = "more-itertools-8.1.0.tar.gz", hash = "sha256:c468adec578380b6281a114cb8a5db34eb1116277da92d7c46f904f0b52d3288"},
     {file = "more_itertools-8.1.0-py3-none-any.whl", hash = "sha256:1a2a32c72400d365000412fe08eb4a24ebee89997c18d3d147544f70f5403b39"},
@@ -1835,10 +1885,6 @@ numpy = [
     {file = "numpy-1.18.1-cp38-cp38-win32.whl", hash = "sha256:590355aeade1a2eaba17617c19edccb7db8d78760175256e3cf94590a1a964f3"},
     {file = "numpy-1.18.1-cp38-cp38-win_amd64.whl", hash = "sha256:39d2c685af15d3ce682c99ce5925cc66efc824652e10990d2462dfe9b8918c6a"},
     {file = "numpy-1.18.1.zip", hash = "sha256:b6ff59cee96b454516e47e7721098e6ceebef435e3e21ac2d6c3b8b02628eb77"},
-]
-oauth2client = [
-    {file = "oauth2client-4.1.3-py2.py3-none-any.whl", hash = "sha256:b8a81cc5d60e2d364f0b1b98f958dbd472887acaf1a5b05e21c28c31a2d6d3ac"},
-    {file = "oauth2client-4.1.3.tar.gz", hash = "sha256:d486741e451287f69568a4d26d70d9acd73a2bbfa275746c535b4209891cccc6"},
 ]
 oauthlib = [
     {file = "oauthlib-3.1.0-py2.py3-none-any.whl", hash = "sha256:df884cd6cbe20e32633f1db1072e9356f53638e4361bef4e8b03c9127c9328ea"},
@@ -2095,46 +2141,46 @@ tabulate = [
     {file = "tabulate-0.8.6.tar.gz", hash = "sha256:5470cc6687a091c7042cee89b2946d9235fe9f6d49c193a4ae2ac7bf386737c8"},
 ]
 tensorboard = [
-    {file = "tensorboard-2.2.2-py3-none-any.whl", hash = "sha256:a3feb73e1221c0a512398ad2cd08570fb082d8a2ba364aa0562543ecbd3659ef"},
+    {file = "tensorboard-2.3.0-py3-none-any.whl", hash = "sha256:d34609ed83ff01dd5b49ef81031cfc9c166bba0dabd60197024f14df5e8eae5e"},
 ]
 tensorboard-plugin-wit = [
     {file = "tensorboard_plugin_wit-1.6.0.post3-py2-none-any.whl", hash = "sha256:243f117d117f9e81a21dc64b602b2bcb256ca5ba038867b96022d02271b17106"},
     {file = "tensorboard_plugin_wit-1.6.0.post3-py3-none-any.whl", hash = "sha256:1fdf4ac343f1665453205aef8bb227b0204893bb5ffb792d2ed4509b1daf3d4f"},
 ]
 tensorflow = [
-    {file = "tensorflow-2.2.0-cp35-cp35m-macosx_10_11_x86_64.whl", hash = "sha256:7ed67b47cdf6598a79583de5b57c595493eac2b8b6b3a828f912354716cb8149"},
-    {file = "tensorflow-2.2.0-cp35-cp35m-manylinux2010_x86_64.whl", hash = "sha256:267017724a49c367ca5df536e5f6d3d59643eaed946c82233d6b371e62b5ddc8"},
-    {file = "tensorflow-2.2.0-cp35-cp35m-win_amd64.whl", hash = "sha256:572f69d2d0a3d3d83ebfb2c24e6d73d88b85a09f5da796974ef4a0ad83ff7cde"},
-    {file = "tensorflow-2.2.0-cp36-cp36m-macosx_10_11_x86_64.whl", hash = "sha256:6735486ee9c3cb0807476e2b36ef7a4cd6c597cb24abf496e66b703360e1e54e"},
-    {file = "tensorflow-2.2.0-cp36-cp36m-manylinux2010_x86_64.whl", hash = "sha256:dc5548562308acde7931f040e73d46ae31b398924cf675c3486fd3504e00a4af"},
-    {file = "tensorflow-2.2.0-cp36-cp36m-win_amd64.whl", hash = "sha256:3ee8819732d8594913b7d22ded7b22e48a49aa015050d8dd8464eaa010ba2e41"},
-    {file = "tensorflow-2.2.0-cp37-cp37m-macosx_10_11_x86_64.whl", hash = "sha256:c332c7fc5cfd54cb86d5da99787c9693e3a924848097c54df1b71ee595a39c93"},
-    {file = "tensorflow-2.2.0-cp37-cp37m-manylinux2010_x86_64.whl", hash = "sha256:f5f27528570fc0d7b90668be10c5dfd90d6ceb8fd2ed62d7d679554acb616bfe"},
-    {file = "tensorflow-2.2.0-cp37-cp37m-win_amd64.whl", hash = "sha256:68ea22aee9c269a6a0c1061c141f1ec1cd1b1be7569390519c1bf4773f434a40"},
-    {file = "tensorflow-2.2.0-cp38-cp38-macosx_10_11_x86_64.whl", hash = "sha256:bbcfb04738099bd46822db91584db74703fdddacf4cd0a76acfc5e086956b5ba"},
-    {file = "tensorflow-2.2.0-cp38-cp38-manylinux2010_x86_64.whl", hash = "sha256:8f364528f70d895b96a0de36c7c6002644bf4c5df1ee3fbfa775f5cee6571ad7"},
-    {file = "tensorflow-2.2.0-cp38-cp38-win_amd64.whl", hash = "sha256:784ab8217e4b0eb4d121c28430c6cdc2ce56c02634a9720d84fb30598b338b8c"},
+    {file = "tensorflow-2.3.0-cp35-cp35m-macosx_10_11_x86_64.whl", hash = "sha256:c6fad4e944e20199e963e158fe626352e349865ea4ca71655f5456193a6d3b9d"},
+    {file = "tensorflow-2.3.0-cp35-cp35m-manylinux2010_x86_64.whl", hash = "sha256:6f74ef59dc59cf8f2002738c65dffa591e2c332e9b1b4ced33ff8d39b6fb477c"},
+    {file = "tensorflow-2.3.0-cp35-cp35m-win_amd64.whl", hash = "sha256:797d6ca09d4f69570458180b7813dc12efe9166ba60454b0df7bed531bb5e4f4"},
+    {file = "tensorflow-2.3.0-cp36-cp36m-macosx_10_11_x86_64.whl", hash = "sha256:b1699903cf3a9f41c379d79ada2279a206a071b7e05671646d7b5e7fc37e2eae"},
+    {file = "tensorflow-2.3.0-cp36-cp36m-manylinux2010_x86_64.whl", hash = "sha256:5c9f9a36d5b4d0ceb67b985486fe4cc6999a96e2bf89f3ba82ffd8317e5efadd"},
+    {file = "tensorflow-2.3.0-cp36-cp36m-win_amd64.whl", hash = "sha256:bc9d761a857839344930eef86f0d6409840b1c9ada9cbe56b92287b2077ef752"},
+    {file = "tensorflow-2.3.0-cp37-cp37m-macosx_10_11_x86_64.whl", hash = "sha256:0cfb0fbe875408cdbfc7677f12aa0b23656f3e6d8c5f568b3100450ec29262a7"},
+    {file = "tensorflow-2.3.0-cp37-cp37m-manylinux2010_x86_64.whl", hash = "sha256:92430b6e91f00f38a602c4f547bbbaca598a3a90376f90d5b2acd24bc18fa1d7"},
+    {file = "tensorflow-2.3.0-cp37-cp37m-win_amd64.whl", hash = "sha256:36a4ce9bbc9865385c1bb606fe34f0da96b0496ce3997e652d2b765a4382fe48"},
+    {file = "tensorflow-2.3.0-cp38-cp38-macosx_10_11_x86_64.whl", hash = "sha256:44c8d979b2d19ed56dbe6b03aef87616d6138a58fd80c43e7a758c90105e9adf"},
+    {file = "tensorflow-2.3.0-cp38-cp38-manylinux2010_x86_64.whl", hash = "sha256:c33a423eb1f39c4c6acc44c044a138979868f0d4c91e380c191bd8fddc7c2e9b"},
+    {file = "tensorflow-2.3.0-cp38-cp38-win_amd64.whl", hash = "sha256:2d9994157d6a222d9ffd956e99af4b5e46e47338428d2d197e325362283ec835"},
 ]
 tensorflow-addons = [
-    {file = "tensorflow_addons-0.10.0-cp35-cp35m-macosx_10_13_x86_64.whl", hash = "sha256:8dae39a84dcd5eeb0889ebaed86158bd2904c7dde9d5873598712fa12993095c"},
-    {file = "tensorflow_addons-0.10.0-cp35-cp35m-manylinux2010_x86_64.whl", hash = "sha256:8a607414f54248d6bfbfdd2afdc8d1ac2619d5caa37013c0302775b170024524"},
-    {file = "tensorflow_addons-0.10.0-cp35-cp35m-win_amd64.whl", hash = "sha256:0353c10ab3dd332d3c4f9474b0102bc9f277fc0748d9c7a249a77dca8680b881"},
-    {file = "tensorflow_addons-0.10.0-cp36-cp36m-macosx_10_13_x86_64.whl", hash = "sha256:91a3fd625c4550e08c952ca03cc0181362a66a916f8f55631c07a10e8c1d5076"},
-    {file = "tensorflow_addons-0.10.0-cp36-cp36m-manylinux2010_x86_64.whl", hash = "sha256:48e58343daa94f62b31bf5f418b5f1f3f7123c7b373ddc085e1574ea1299263e"},
-    {file = "tensorflow_addons-0.10.0-cp36-cp36m-win_amd64.whl", hash = "sha256:83c452a0ab8a91695837a9380218eca7de0cda0e700ca3c48b5c39b16841f61b"},
-    {file = "tensorflow_addons-0.10.0-cp37-cp37m-macosx_10_13_x86_64.whl", hash = "sha256:c1379b7eacd2ab254b3e5c5041d6e10caa2e373b86451de800c7dab77595e8b7"},
-    {file = "tensorflow_addons-0.10.0-cp37-cp37m-manylinux2010_x86_64.whl", hash = "sha256:c070d28a45ca09d323f2052d83bfab97f9186b6e59191016a8dd5f2547d486a3"},
-    {file = "tensorflow_addons-0.10.0-cp37-cp37m-win_amd64.whl", hash = "sha256:16a4184f42399843ffcad23ca96b9d256a3e0a5f2d3e76c7ceecff5bad6e1c1c"},
-    {file = "tensorflow_addons-0.10.0-cp38-cp38-macosx_10_13_x86_64.whl", hash = "sha256:e185716992fe0d2af6d5826042834b85feda4e4887ad1e29fddf5c9640c38da0"},
-    {file = "tensorflow_addons-0.10.0-cp38-cp38-manylinux2010_x86_64.whl", hash = "sha256:08034ad2c177038990afc6aef9e7a90546f2872f3a39c4f966d2561346a749ab"},
-    {file = "tensorflow_addons-0.10.0-cp38-cp38-win_amd64.whl", hash = "sha256:d5df84bcd4fbd7006cb2602c96b4a736a46a8667b4179e82a843a159d5802eab"},
+    {file = "tensorflow_addons-0.11.2-cp35-cp35m-macosx_10_13_x86_64.whl", hash = "sha256:c3dcf5fd56aeacf13fd41b198eb6c11567b9cf86f516673b9766a1f97061bde2"},
+    {file = "tensorflow_addons-0.11.2-cp35-cp35m-manylinux2010_x86_64.whl", hash = "sha256:adcfcddc62f879880f0e164344612198ea3b6de0f54978b9379cad5c350af5ff"},
+    {file = "tensorflow_addons-0.11.2-cp35-cp35m-win_amd64.whl", hash = "sha256:16b3fc4258a0251401bb0ced75742c6c02d7c5dee0531df976499da8208b5bb4"},
+    {file = "tensorflow_addons-0.11.2-cp36-cp36m-macosx_10_13_x86_64.whl", hash = "sha256:677bbe0714eb8286667d7ecf3a41e53234de72d93e67d23f63b6e55345da91b6"},
+    {file = "tensorflow_addons-0.11.2-cp36-cp36m-manylinux2010_x86_64.whl", hash = "sha256:cfbd34c93327de78ef0dee14956fed19bac9ef039670869000b0a4405f539c4e"},
+    {file = "tensorflow_addons-0.11.2-cp36-cp36m-win_amd64.whl", hash = "sha256:35ae042544b6f3334c2d05f111db7bc9692ac2a001078c20f4414d270c481832"},
+    {file = "tensorflow_addons-0.11.2-cp37-cp37m-macosx_10_13_x86_64.whl", hash = "sha256:22177e036e17d057afeeea0327f045d2aeb84539db31c4d81dbb5e7942692ce5"},
+    {file = "tensorflow_addons-0.11.2-cp37-cp37m-manylinux2010_x86_64.whl", hash = "sha256:76d7a1b99ddb69c3990581147fe751c9767f3b2555836f170c4a580525decdf9"},
+    {file = "tensorflow_addons-0.11.2-cp37-cp37m-win_amd64.whl", hash = "sha256:8663048652b8b5f7fb09c58b1c166c001fdf6e704e4a132307daef08f1b7beab"},
+    {file = "tensorflow_addons-0.11.2-cp38-cp38-macosx_10_13_x86_64.whl", hash = "sha256:e6b9acec0a8353b52854d7c7e422a1e96459c58c3307ee4c7ba7bf3afb035fb6"},
+    {file = "tensorflow_addons-0.11.2-cp38-cp38-manylinux2010_x86_64.whl", hash = "sha256:e36dd53520989dbd2c6850ea92a23739bd90fb481d7076777d8d521dce47fcc8"},
+    {file = "tensorflow_addons-0.11.2-cp38-cp38-win_amd64.whl", hash = "sha256:551b0097f28075c31dfebc3d8e717bc23bd8521ba03f2d69e2141c2bd687cd29"},
 ]
 tensorflow-datasets = [
     {file = "tensorflow-datasets-3.1.0.tar.gz", hash = "sha256:e59ca00b6307a6c9ba5a940f48172eac839db397405674aea92aa887ae42ddc7"},
     {file = "tensorflow_datasets-3.1.0-py3-none-any.whl", hash = "sha256:ed347054cc75fd47009b08d72b4fd4f8c97dfcf45fa5a727def68e3cd403b324"},
 ]
 tensorflow-estimator = [
-    {file = "tensorflow_estimator-2.2.0-py2.py3-none-any.whl", hash = "sha256:d09dacdd127f2579cea8d5af21f4a918036b8ae246adc82f26b61f91cc247dc2"},
+    {file = "tensorflow_estimator-2.3.0-py2.py3-none-any.whl", hash = "sha256:b75e034300ccb169403cf2695adf3368da68863aeb0c14c3760064c713d5c486"},
 ]
 tensorflow-hub = [
     {file = "tensorflow_hub-0.8.0-py2.py3-none-any.whl", hash = "sha256:9dc65aa9980851236e30a1f59f071286abc52523fa75933fdc1fba9e3c1c96c8"},
@@ -2146,19 +2192,24 @@ tensorflow-model-optimization = [
     {file = "tensorflow_model_optimization-0.3.0-py2.py3-none-any.whl", hash = "sha256:5f45cfd231d1f0d532f8225519accf1501d54743769659ee02c91284bbd05801"},
 ]
 tensorflow-text = [
-    {file = "tensorflow_text-2.2.0-cp35-cp35m-macosx_10_9_x86_64.whl", hash = "sha256:11a9042afe677bc826aa644fdbfbcea6ee79fd458158fafbac60ea586538b1e6"},
-    {file = "tensorflow_text-2.2.0-cp35-cp35m-manylinux1_x86_64.whl", hash = "sha256:e7f4952ebb958d56e4c2595ee4d9afa460447bb230cc04f694fd4ae7276fd028"},
-    {file = "tensorflow_text-2.2.0-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:07d3a238cc94f9c070fa27a76f559d2ee433bb04832bf5498adba62a89289aec"},
-    {file = "tensorflow_text-2.2.0-cp36-cp36m-manylinux1_x86_64.whl", hash = "sha256:53217438cbd69126a0c13a4e4ef6d0adb714dbe6ba5cfecff50949e3ccaa6759"},
-    {file = "tensorflow_text-2.2.0-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:e64b081a265b4bc53cecb12c78c86ac9f971f1bc9513ceee38bf92f907d12a06"},
-    {file = "tensorflow_text-2.2.0-cp37-cp37m-manylinux1_x86_64.whl", hash = "sha256:b18af6649a32edb6a1b3a4a7a1d75f997cea13d582ac8e260801b56a904280a9"},
+    {file = "tensorflow_text-2.3.0-cp35-cp35m-macosx_10_9_x86_64.whl", hash = "sha256:beca0ca7b724a1c2d42190bf09364beefe3a49936ae39d953104940a6bea180f"},
+    {file = "tensorflow_text-2.3.0-cp35-cp35m-manylinux1_x86_64.whl", hash = "sha256:2938a7493e6f3c304554327740699771c77e514222a23aab33b3a49a7f3e94a4"},
+    {file = "tensorflow_text-2.3.0-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:7c940343c98ede59d829be61dcb4f0f2f136b87c93c72ce0149a427b56aca9a5"},
+    {file = "tensorflow_text-2.3.0-cp36-cp36m-manylinux1_x86_64.whl", hash = "sha256:7bd146f0e4ce413da861d384d02a8843795a02feb84a143477e2904252eba093"},
+    {file = "tensorflow_text-2.3.0-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:96a7a71d6d7b53d8b13fe2509b06e5ca5a4664071a2f59e4383a2061c6ae6656"},
+    {file = "tensorflow_text-2.3.0-cp37-cp37m-manylinux1_x86_64.whl", hash = "sha256:ec3dda6454d17fbc32df7eb191fc9abe723a08d26c491177f4b0af5b6229f074"},
+    {file = "tensorflow_text-2.3.0-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:2832bd05d9a07d6c8ba49bfbfcba2bfc1463a03e12dc38358c7a58ff965a79c3"},
+    {file = "tensorflow_text-2.3.0-cp38-cp38-manylinux1_x86_64.whl", hash = "sha256:3c627dc7d865f505a785e011995a1600cfaaa406121bb9d35d8e92efd245a1b2"},
 ]
 termcolor = [
     {file = "termcolor-1.1.0.tar.gz", hash = "md5:043e89644f8909d462fbbfa511c768df"},
 ]
 tf-models-official = [
-    {file = "tf-models-official-2.2.0.tar.gz", hash = "sha256:2cc9bc3af50711c41ed8a637ef8a33fdb002da7363218aa5adbbf7e58efc47d6"},
-    {file = "tf_models_official-2.2.0-py2.py3-none-any.whl", hash = "sha256:f8b5c979c91ecdbf7cc5ba405b6e7f4d840d6e0ce3d2d059e238d0ff19d2a20a"},
+    {file = "tf-models-official-2.3.0.tar.gz", hash = "sha256:7728064c5d1c4e579ac4fb8e221eec01e1fb4d486bcd7b337b426d5741ea10fb"},
+    {file = "tf_models_official-2.3.0-py2.py3-none-any.whl", hash = "sha256:ce84f95c6d16a4be5ac03b879c500fec856c913fb425d160793a6c163e622a80"},
+]
+tf-slim = [
+    {file = "tf_slim-1.1.0-py2.py3-none-any.whl", hash = "sha256:fa2bab63b3925bd42601102e7f178dce997f525742596bf404fa8a6918e146ff"},
 ]
 tqdm = [
     {file = "tqdm-4.46.1-py2.py3-none-any.whl", hash = "sha256:07c06493f1403c1380b630ae3dcbe5ae62abcf369a93bbc052502279f189ab8c"},
@@ -2167,11 +2218,6 @@ tqdm = [
 typeguard = [
     {file = "typeguard-2.9.1-py3-none-any.whl", hash = "sha256:e258567e62d28f9a51d4f7c71f491154e9ef0889286ad2f37e3e22e4f668b21b"},
     {file = "typeguard-2.9.1.tar.gz", hash = "sha256:529ef3d88189cc457f4340388028412f71be8091c2c943465146d4170fb67288"},
-]
-typing = [
-    {file = "typing-3.7.4.1-py2-none-any.whl", hash = "sha256:c8cabb5ab8945cd2f54917be357d134db9cc1eb039e59d1606dc1e60cb1d9d36"},
-    {file = "typing-3.7.4.1-py3-none-any.whl", hash = "sha256:f38d83c5a7a7086543a0f649564d661859c5146a85775ab90c0d2f93ffaa9714"},
-    {file = "typing-3.7.4.1.tar.gz", hash = "sha256:91dfe6f3f706ee8cc32d38edbbf304e9b7583fb37108fef38229617f8b3eba23"},
 ]
 uritemplate = [
     {file = "uritemplate-3.0.1-py2.py3-none-any.whl", hash = "sha256:07620c3f3f8eed1f12600845892b0e036a2420acf513c53f7de0abd911a5894f"},

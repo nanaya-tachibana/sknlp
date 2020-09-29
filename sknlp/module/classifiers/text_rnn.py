@@ -1,6 +1,8 @@
 from typing import List, Optional, Dict, Any
 
-from sknlp.layers import MultiLSTMP, MLPLayer, LSTMP
+import tensorflow as tf
+
+from sknlp.layers import MultiLSTMP, MLPLayer, LSTMP, LSTMPCell
 from .deep_classifier import DeepClassifier
 
 
@@ -95,7 +97,11 @@ class TextRNNClassifier(DeepClassifier):
     def get_custom_objects(self):
         return {
             **super().get_custom_objects(),
-            "MultiLSTMP": MultiLSTMP,
             "MLPLayer": MLPLayer,
-            "LSTMP": LSTMP
+            "LSTMPCell": LSTMPCell,
+            "LSTMP": LSTMP,
+            "MultiLSTMP": MultiLSTMP,
+            "GlorotUniform": tf.keras.initializers.GlorotUniform,
+            "Orthogonal": tf.keras.initializers.Orthogonal,
+            "Zeros": tf.keras.initializers.Zeros
         }

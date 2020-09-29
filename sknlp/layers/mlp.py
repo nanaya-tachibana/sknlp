@@ -12,6 +12,7 @@ class MLPLayer(Layer):
         hidden_size: int = 256,
         output_size: int = 1,
         activation: str = "tanh",
+        l2: int = 0.01,
         name: str = "mlp",
         **kwargs
     ) -> None:
@@ -30,11 +31,13 @@ class MLPLayer(Layer):
             else:
                 _activation = activation if i == num_layers - 2 else "relu"
                 self.dense_layers.append(Dense(
-                    hidden_size, activation=_activation, name="dense-%d" % i
+                    hidden_size,
+                    activation=_activation,
+                    kernel_regularizer=tf.keras.regularizers.L2(l2=l2),
+                    bias_regularizer=tf.keras.regularizers.L2(l2=l2),
+                    name="dense-%d" % i
                 ))
-                self.batchnorm_layers.append(BatchNormalization(
-                    momentum=0.9, epsilon=1e-5, axis=-1
-                ))
+                self.batchnorm_layers.append(BatchNormalization())
 
     def build(self, input_shape: tf.TensorShape) -> None:
         last_dim = input_shape[-1]

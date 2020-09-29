@@ -67,7 +67,7 @@ class Text2vec(BaseNLPModel):
 
     def save_vocab(self, directory: str, filename: str = "vocab.json") -> None:
         with open(os.path.join(directory, filename), "w") as f:
-            f.write(self._vocab.to_json())
+            f.write(self.vocab.to_json())
 
     def save(self, directory: str) -> None:
         super().save(directory)
@@ -113,14 +113,6 @@ class Text2vec(BaseNLPModel):
 
     def get_outputs(self) -> tf.Tensor:
         return self._model.output
-
-    @property
-    def input_shape(self) -> tf.TensorShape:
-        return self._model.input.shape
-
-    @property
-    def output_shape(self) -> tf.TensorShape:
-        return self._model.output.shape
 
     @property
     def weights(self) -> List[tf.Tensor]:

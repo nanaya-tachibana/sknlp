@@ -39,8 +39,8 @@ class BertClassificationDataset(NLPDataset):
                          text_padding_value=vocab.pad,
                          label_padding_value=0.0)
 
-    def _text_transform(self, text: tf.Tensor) -> List[tf.Tensor]:
-        return [text]
+    def _text_transform(self, text: tf.Tensor) -> str:
+        return text.numpy().decode('utf-8')[:self.max_length]
 
     def _label_binarizer(self, labels: List[str]) -> np.ndarray:
         label2idx = self.label2idx

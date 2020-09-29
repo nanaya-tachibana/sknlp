@@ -14,13 +14,14 @@ class Word2vec(Text2vec):
     def __init__(
         self,
         vocab: Vocab,
-        embedding_size,
+        embedding_size: int,
         segmenter: str = "jieba",
+        max_sequence_length: Optional[int] = None,
+        sequence_length: Optional[int] = None,
         embeddings_initializer: WeightInitializer = "uniform",
         embeddings_regularizer: Optional[WeightRegularizer] = None,
         embeddings_constraint: Optional[WeightConstraint] = None,
-        name: str = "word2vec",
-        **kwargs
+        name: str = "word2vec"
     ) -> None:
         """
         基础符号->向量模块.
@@ -48,7 +49,11 @@ class Word2vec(Text2vec):
         ----------
         3D tensor with shape: `(batch_size, input_length, embed_size)`.
         """
-        super().__init__(vocab, segmenter=segmenter, name=name, **kwargs)
+        super().__init__(vocab,
+                         segmenter=segmenter,
+                         max_sequence_length=max_sequence_length,
+                         sequence_length=sequence_length,
+                         name=name)
         self._embedding_size = embedding_size
         embedding = Embedding(
             len(vocab),

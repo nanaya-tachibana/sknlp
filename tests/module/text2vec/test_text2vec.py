@@ -6,12 +6,17 @@ from sknlp.module.text2vec import Text2vec
 
 class TestText2vec:
 
-    vocab = Vocab(Counter({'a': 10, 'b': 12, 'c': 22}))
-    segmenter = 'jieba'
-    module = Text2vec(vocab, segmenter)
+    vocab = Vocab(Counter({"a": 10, "b": 12, "c": 22}))
+    segmenter = "jieba"
+    sequence_length = None
+    max_sequence_length = 100
+    module = Text2vec(vocab,
+                      segmenter,
+                      max_sequence_length=max_sequence_length,
+                      sequence_length=sequence_length)
 
     def test_vocab(self):
-        assert self.module.vocab['a'] == self.vocab['a']
+        assert self.module.vocab["a"] == self.vocab["a"]
 
     def test_segmeter(self):
         assert self.module.segmenter == self.segmenter

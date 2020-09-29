@@ -24,10 +24,10 @@ class TestSupervisedNLPModel(TestBaseNLPModel):
 
     def test_init(self):
         if self.word2vec is not None:
-            assert self.model._segmenter == self.word2vec.segmenter
-            assert self.model._embedding_size == self.word2vec.embedding_size
+            assert self.model.segmenter == self.word2vec.segmenter
+            assert self.model.embedding_size == self.word2vec.embedding_size
         else:
-            assert self.model._segmenter == self.segmenter
+            assert self.model.segmenter == self.segmenter
 
     def test_get_config(self):
         super().test_get_config()

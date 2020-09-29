@@ -8,15 +8,21 @@ from sknlp.module.text2vec import Word2vec
 from .test_text2vec import TestText2vec
 
 
-class TestToken2vec(TestText2vec):
+class TestWord2vec(TestText2vec):
 
-    vocab = Vocab(Counter({'a': 10, 'b': 12, 'c': 22}))
+    vocab = Vocab(Counter({"a": 10, "b": 12, "c": 22}))
     embed_size = 10
-    segmenter = 'jieba'
-    module = Word2vec(vocab, embed_size, segmenter)
+    segmenter = "jieba"
+    sequence_length = None
+    max_sequence_length = 100
+    module = Word2vec(vocab,
+                      embed_size,
+                      segmenter,
+                      max_sequence_length=max_sequence_length,
+                      sequence_length=sequence_length)
 
     def test_save_load(self, tmp_path):
-        filename = 'tmp.tar'
+        filename = "tmp.tar"
         tmp_file = tmp_path / filename
         self.module.save_archive(str(tmp_file))
         new_module = Word2vec.load_archive(str(tmp_file))
@@ -25,11 +31,26 @@ class TestToken2vec(TestText2vec):
         )
         assert new_module.vocab["a"] == self.module.vocab["a"]
 
+    def test_embedding_size(self):
+        assert self.module.embedding_size == self.embed_size
+
+    def test_input_names(self):
+        assert self.module.input_names == ["embeddings_input"]
+
+    def test_input_types(self):
+        assert self.module.input_types == ["float"]
+
     def test_input_shape(self):
-        assert self.module.input_shape.as_list() == [None, None]
+        assert self.module.input_shapes == [[-1, -1]]
+
+    def test_output_names(self):
+        assert self.module.output_names == ["embeddings"]
+
+    def test_output_types(self):
+        assert self.module.output_types == ["float"]
 
     def test_output_shape(self):
-        assert self.module.output_shape.as_list() == [None, None, self.embed_size]
+        assert self.module.output_shapes == [[-1, self.embed_size]]
 
     def test_get_config(self):
         super().test_get_config()
