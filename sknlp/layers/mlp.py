@@ -5,14 +5,12 @@ from tensorflow.keras.layers import Layer, Dense, BatchNormalization, InputSpec
 
 
 class MLPLayer(Layer):
-
     def __init__(
         self,
         num_layers: int,
         hidden_size: int = 256,
         output_size: int = 1,
         activation: str = "tanh",
-        l2: int = 0.01,
         name: str = "mlp",
         **kwargs
     ) -> None:
@@ -30,13 +28,9 @@ class MLPLayer(Layer):
                 self.dense_layers.append(Dense(output_size, name="dense-%d" % i))
             else:
                 _activation = activation if i == num_layers - 2 else "relu"
-                self.dense_layers.append(Dense(
-                    hidden_size,
-                    activation=_activation,
-                    kernel_regularizer=tf.keras.regularizers.L2(l2=l2),
-                    bias_regularizer=tf.keras.regularizers.L2(l2=l2),
-                    name="dense-%d" % i
-                ))
+                self.dense_layers.append(
+                    Dense(hidden_size, activation=_activation, name="dense-%d" % i)
+                )
                 self.batchnorm_layers.append(BatchNormalization())
 
     def build(self, input_shape: tf.TensorShape) -> None:
@@ -64,7 +58,7 @@ class MLPLayer(Layer):
             "num_layers": self.num_layers,
             "hidden_size": self.hidden_size,
             "output_size": self.output_size,
-            "activation": self.activation
+            "activation": self.activation,
         }
         base_config = super().get_config()
         return dict(**base_config, **config)

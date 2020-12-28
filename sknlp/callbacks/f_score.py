@@ -1,11 +1,11 @@
-#import logging
+import logging
 import tensorflow as tf
 
 
-# logger = logging.getLogger(__name__)
-# logger.setLevel(logging.INFO)
-# stream = logging.StreamHandler()
-# logger.addHandler(stream)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+stream = logging.StreamHandler()
+logger.addHandler(stream)
 
 
 def f_score(p, r, beta):
@@ -26,6 +26,6 @@ class FScore(tf.keras.callbacks.Callback):
         else:
             logs['val_f-score'] = 0
         logs['f-score'] = f_score(p, r, self.beta)
-        # logger.info('f-score: %.2f, val_f-score: %.2f' % (
-        #     logs['f-score'] * 100, logs['val_f-score'] * 100
-        # ))
+        logger.info('f-score: %.2f, val_f-score: %.2f' % (
+            logs['f-score'] * 100, logs['val_f-score'] * 100
+        ))

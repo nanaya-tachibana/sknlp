@@ -7,41 +7,44 @@ import tensorflow as tf
 
 from sknlp.vocab import Vocab
 from sknlp.data import ClassificationDataset
-from sknlp.metrics import PrecisionWithLogits, RecallWithLogits
-from sknlp.callbacks import FScore
+from sknlp.metrics import PrecisionWithLogits, RecallWithLogits, FBetaScoreWithLogits
 
 from ..supervised_model import SupervisedNLPModel
 from ..text2vec import Text2vec
 
-from .utils import (
-    logits2probabilities,
-    probabilities2classes,
-    classification_fscore
-)
+from .utils import logits2probabilities, probabilities2classes, classification_fscore
 
 
 class DeepClassifier(SupervisedNLPModel):
-
     def __init__(
         self,
         classes: Sequence[str],
         is_multilabel: bool = True,
         max_sequence_length: Optional[int] = None,
         sequence_length: Optional[int] = None,
-        segmenter: str = "jieba",
+        segmenter: Optional[str] = "jieba",
         embedding_size: int = 100,
         text2vec: Optional[Text2vec] = None,
+        loss: str = None,
         **kwargs
     ):
-        super().__init__(classes,
-                         max_sequence_length=max_sequence_length,
-                         sequence_length=sequence_length,
-                         segmenter=segmenter,
-                         embedding_size=embedding_size,
-                         text2vec=text2vec,
-                         task="classification",
-                         **kwargs)
+        classes = list(classes)
+        if not is_multilabel and "NULL" != classes[0]:
+            if "NULL" in classes:
+                classes.remove("NULL")
+            classes.insert(0, "NULL")
+        super().__init__(
+            classes,
+            max_sequence_length=max_sequence_length,
+            sequence_length=sequence_length,
+            segmenter=segmenter,
+            embedding_size=embedding_size,
+            text2vec=text2vec,
+            task="classification",
+            **kwargs
+        )
         self._is_multilabel = is_multilabel
+        self._loss = loss
 
     def get_loss(self):
         if self._is_multilabel:
@@ -50,24 +53,27 @@ class DeepClassifier(SupervisedNLPModel):
             return tf.keras.losses.CategoricalCrossentropy(from_logits=True)
 
     def get_callbacks(self) -> List[tf.keras.callbacks.Callback]:
-        return [FScore()]
+        return []
 
     def get_metrics(self) -> List[tf.keras.metrics.Metric]:
         if self._is_multilabel:
-            return [PrecisionWithLogits(), RecallWithLogits()]
+            return [
+                PrecisionWithLogits(),
+                RecallWithLogits(),
+                FBetaScoreWithLogits(self.num_classes),
+            ]
         else:
-            return [PrecisionWithLogits(logits2scores="softmax"),
-                    RecallWithLogits(logits2scores="softmax")]
+            return [
+                PrecisionWithLogits(logits2scores="softmax"),
+                RecallWithLogits(logits2scores="softmax"),
+                FBetaScoreWithLogits(self.num_classes, logits2scores="softmax"),
+            ]
 
     def get_monitor(self) -> str:
-        return "val_f-score"
+        return "val_fbeta_score"
 
     def create_dataset_from_df(
-        self,
-        df: pd.DataFrame,
-        vocab: Vocab,
-        segmenter: str,
-        labels: Sequence[str]
+        self, df: pd.DataFrame, vocab: Vocab, segmenter: str, labels: Sequence[str]
     ) -> ClassificationDataset:
         return ClassificationDataset(
             vocab,
@@ -75,8 +81,11 @@ class DeepClassifier(SupervisedNLPModel):
             df=df,
             is_multilabel=self._is_multilabel,
             max_length=self._max_sequence_length,
-            text_segmenter=segmenter
+            text_segmenter=segmenter,
         )
+
+    def dummy_y(self, X: Sequence[str]) -> List[str]:
+        return ["O" for _ in range(len(X))]
 
     def predict_proba(
         self,
@@ -140,5 +149,6 @@ class DeepClassifier(SupervisedNLPModel):
         return {
             **super().get_custom_objects(),
             "PrecisionWithLogits": PrecisionWithLogits,
-            "RecallWithLogits": RecallWithLogits
+            "RecallWithLogits": RecallWithLogits,
+            "FBetaScoreWithLogits": FBetaScoreWithLogits,
         }

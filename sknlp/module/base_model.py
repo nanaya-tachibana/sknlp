@@ -1,4 +1,4 @@
-from typing import Sequence, Optional, Dict, Any, Callable, List
+from typing import Sequence, Optional, Dict, Any, Callable
 
 import json
 import os
@@ -16,12 +16,28 @@ class BaseNLPModel:
         self,
         max_sequence_length: Optional[int] = None,
         sequence_length: Optional[int] = None,
-        name: Optional[str] = None
+        segmenter: Optional[str] = None,
+        name: Optional[str] = None,
+        **kwargs
     ) -> None:
         self._max_sequence_length = max_sequence_length
         self._sequence_length = sequence_length
+        self._segmenter = segmenter
         self._name = name
+        self._kwargs = kwargs
         self._built = False
+
+    @property
+    def max_sequence_length(self) -> Optional[int]:
+        return self._max_sequence_length
+
+    @property
+    def sequence_length(self) -> Optional[int]:
+        return self._sequence_length
+
+    @property
+    def segmenter(self) -> Optional[str]:
+        return self._segmenter
 
     @staticmethod
     def build_vocab(
@@ -51,42 +67,10 @@ class BaseNLPModel:
     def get_inputs(self) -> tf.Tensor:
         raise NotImplementedError()
 
-    @property
-    def sequence_length(self):
-        return self._sequence_length
-
-    @property
-    def max_sequence_length(self):
-        return self._max_sequence_length
-
-    @property
-    def input_names(self) -> List[str]:
-        return []
-
-    @property
-    def input_types(self) -> List[str]:
-        return []
-
-    @property
-    def input_shapes(self) -> List[List[int]]:
-        return []
-
     def get_outputs(self) -> tf.Tensor:
         raise NotImplementedError()
 
-    @property
-    def output_names(self) -> List[str]:
-        return []
-
-    @property
-    def output_types(self) -> List[str]:
-        return []
-
-    @property
-    def output_shapes(self) -> List[List[int]]:
-        return []
-
-    def get_loss(self):
+    def get_loss(self) -> tf.keras.losses.Loss:
         raise NotImplementedError()
 
     def get_metrics(self):
@@ -129,7 +113,11 @@ class BaseNLPModel:
         d = os.path.join(directory, name, version)
 
         model = tf.keras.models.model_from_json(
-            self._model.to_json(), custom_objects=self.get_custom_objects()
+            self._model.to_json(), 
+            custom_objects={
+                **self.get_custom_objects(), 
+                "TruncatedNormal": tf.keras.initializers.TruncatedNormal,
+            }
         )
         model.set_weights(self._model.get_weights())
         model.save(d, include_optimizer=False, save_format="tf")
@@ -137,25 +125,14 @@ class BaseNLPModel:
 
     def get_config(self) -> Dict[str, Any]:
         return {
-            "inputs": self.input_names,
-            "input_types": self.input_types,
-            "input_shapes": self.input_shapes,
-            "outputs": self.output_names,
-            "output_types": self.output_types,
-            "output_shapes": self.output_shapes,
             "max_sequence_length": self.max_sequence_length,
             "sequence_length": self.sequence_length,
+            "segmenter": self.segmenter,
             "name": self._name
         }
 
     @classmethod
-    def _filter_config(cls, config) -> Dict[str, Any]:
-        config.pop("inputs", None)
-        config.pop("input_types", None)
-        config.pop("input_shapes", None)
-        config.pop("outputs", None)
-        config.pop("output_types", None)
-        config.pop("output_shapes", None)
+    def _filter_config(cls, config: Dict[str, Any]) -> Dict[str, Any]:
         return config
 
     @classmethod

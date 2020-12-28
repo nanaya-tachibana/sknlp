@@ -55,7 +55,7 @@ def test_validate_thresholds(thresholds, length, expected):
     [
         (np.array([[0.4, 0.8]]), True, 0.5, [[1]]),
         (np.array([[0.4, 0.8]]), True, [0.5, 0.9], [[]]),
-        (np.array([[0.4, 0.6], [0.2, 0.8]]), False, 0.8, [1, 1]),
+        (np.array([[0.4, 0.6], [0.2, 0.8]]), False, 0.6, [0, 1]),
         (np.array([0.4, 0.6]), False, 0.8, None)
     ],
     ids=[

@@ -14,14 +14,13 @@ from sknlp.module.base_model import BaseNLPModel
 
 
 class Text2vec(BaseNLPModel):
-
     def __init__(
         self,
         vocab: Vocab,
         segmenter: Optional[str] = None,
         max_sequence_length: Optional[int] = None,
         sequence_length: Optional[int] = None,
-        name: str = "text2vec"
+        name: str = "text2vec",
     ) -> None:
         """
         基础符号->向量模块.
@@ -54,7 +53,7 @@ class Text2vec(BaseNLPModel):
         super().__init__(
             max_sequence_length=max_sequence_length,
             sequence_length=sequence_length,
-            name=name
+            name=name,
         )
 
     @property
@@ -81,8 +80,7 @@ class Text2vec(BaseNLPModel):
             vocab = Vocab.from_json(f.read())
         module = cls.from_config({"vocab": vocab, **meta})
         module._model = tf.keras.models.load_model(
-            os.path.join(directory, "model"),
-            custom_objects=module.get_custom_objects()
+            os.path.join(directory, "model"), custom_objects=module.get_custom_objects()
         )
         module._built = True
         return module

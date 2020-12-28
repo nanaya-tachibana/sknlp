@@ -1,4 +1,4 @@
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any
 
 import tensorflow as tf
 from tensorflow.keras.layers import Embedding
@@ -10,7 +10,6 @@ from .text2vec import Text2vec
 
 
 class Word2vec(Text2vec):
-
     def __init__(
         self,
         vocab: Vocab,
@@ -21,7 +20,7 @@ class Word2vec(Text2vec):
         embeddings_initializer: WeightInitializer = "uniform",
         embeddings_regularizer: Optional[WeightRegularizer] = None,
         embeddings_constraint: Optional[WeightConstraint] = None,
-        name: str = "word2vec"
+        name: str = "word2vec",
     ) -> None:
         """
         基础符号->向量模块.
@@ -49,11 +48,13 @@ class Word2vec(Text2vec):
         ----------
         3D tensor with shape: `(batch_size, input_length, embed_size)`.
         """
-        super().__init__(vocab,
-                         segmenter=segmenter,
-                         max_sequence_length=max_sequence_length,
-                         sequence_length=sequence_length,
-                         name=name)
+        super().__init__(
+            vocab,
+            segmenter=segmenter,
+            max_sequence_length=max_sequence_length,
+            sequence_length=sequence_length,
+            name=name,
+        )
         self._embedding_size = embedding_size
         embedding = Embedding(
             len(vocab),
@@ -62,7 +63,7 @@ class Word2vec(Text2vec):
             embeddings_regularizer=embeddings_regularizer,
             embeddings_constraint=embeddings_constraint,
             mask_zero=True,
-            name="embeddings"
+            name="embeddings",
         )
         self._model = tf.keras.Sequential(embedding, name=name)
 
@@ -73,32 +74,5 @@ class Word2vec(Text2vec):
     def embedding_size(self) -> int:
         return self._embedding_size
 
-    @property
-    def input_names(self) -> List[str]:
-        return ["embeddings_input"]
-
-    @property
-    def input_types(self) -> List[str]:
-        return ["float"]
-
-    @property
-    def input_shapes(self) -> List[List[int]]:
-        return [[-1, -1]]
-
-    @property
-    def output_names(self) -> List[str]:
-        return ["embeddings"]
-
-    @property
-    def output_types(self) -> List[str]:
-        return ["float"]
-
-    @property
-    def output_shapes(self) -> List[List[int]]:
-        return [[-1, self.embedding_size]]
-
     def get_config(self) -> Dict[str, Any]:
-        return {
-            **super().get_config(),
-            "embedding_size": self.embedding_size
-        }
+        return {**super().get_config(), "embedding_size": self.embedding_size}

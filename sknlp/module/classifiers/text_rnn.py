@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict, Any
+from typing import List, Dict, Any
 
 import tensorflow as tf
 
@@ -45,6 +45,7 @@ class TextRNNClassifier(DeepClassifier):
                          sequence_length=sequence_length,
                          segmenter=segmenter,
                          embedding_size=embedding_size,
+                         text2vec=text2vec,
                          algorithm="text_rnn",
                          **kwargs)
         self.rnn_layer = MultiLSTMP(
@@ -82,19 +83,7 @@ class TextRNNClassifier(DeepClassifier):
     def build_output_layer(self, inputs):
         return self.mlp_layer(inputs)
 
-    @property
-    def output_names(self) -> List[str]:
-        return ["mlp"]
-
-    @property
-    def output_types(self) -> List[str]:
-        return ["float"]
-
-    @property
-    def output_shapes(self) -> List[List[int]]:
-        return [[-1, self.num_classes]]
-
-    def get_custom_objects(self):
+    def get_custom_objects(self) -> Dict[str, Any]:
         return {
             **super().get_custom_objects(),
             "MLPLayer": MLPLayer,

@@ -34,24 +34,6 @@ class TestWord2vec(TestText2vec):
     def test_embedding_size(self):
         assert self.module.embedding_size == self.embed_size
 
-    def test_input_names(self):
-        assert self.module.input_names == ["embeddings_input"]
-
-    def test_input_types(self):
-        assert self.module.input_types == ["float"]
-
-    def test_input_shape(self):
-        assert self.module.input_shapes == [[-1, -1]]
-
-    def test_output_names(self):
-        assert self.module.output_names == ["embeddings"]
-
-    def test_output_types(self):
-        assert self.module.output_types == ["float"]
-
-    def test_output_shape(self):
-        assert self.module.output_shapes == [[-1, self.embed_size]]
-
     def test_get_config(self):
         super().test_get_config()
         config = self.module.get_config()

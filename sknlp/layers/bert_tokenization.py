@@ -26,29 +26,30 @@ class BertTokenizationLayer(tf.keras.layers.Layer):
     tokens are attended to.
     See more details in https://github.com/tensorflow/models/blob/ad423d065701785587d13d0fe7b566191e7378c6/official/nlp/data/classifier_data_lib.py#L668
     """
-    def __init__(self, sep="@!@", name="bert_tokenization", **kwargs):
-        self.sep = sep
+    def __init__(self,
+                 cls_token: str = "[CLS]",
+                 sep_token: str = "[SEP]",
+                 name: str = "bert_tokenization",
+                 **kwargs) -> None:
+        self.cls_token = cls_token
+        self.sep_token = sep_token
         super().__init__(name=name, **kwargs)
 
     def call(self, inputs):
-
-        def padding_string(x):
-            return (
-                tf.constant(["[CLS]" + self.sep])
-                + x
-                + tf.constant([self.sep + "[SEP]"])
-            )
-
-        padded_inputs = tf.ragged.map_flat_values(padding_string, inputs)
-        r = tf.strings.split(padded_inputs, sep=self.sep)
-        return tf.concat(
-            [
-                r[:, :1],
-                tf.strings.unicode_split(tf.squeeze(r[:, 1:-1], axis=1), "UTF-8"),
-                r[:, -1:]
-            ],
-            axis=1
+        tokens = tf.strings.unicode_split(inputs, "UTF-8")
+        cls_tokens = tf.reshape(
+            tf.tile(tf.constant([self.cls_token], dtype=tf.string), [tokens.nrows()]),
+            [tokens.nrows(), 1]
         )
+        sep_tokens = tf.reshape(
+            tf.tile(tf.constant([self.sep_token], dtype=tf.string), [tokens.nrows()]),
+            [tokens.nrows(), 1]
+        )
+        return tf.concat([cls_tokens, tokens, sep_tokens], axis=1)
 
     def get_config(self):
-        return {**super().get_config(), "sep": self.sep}
+        return {
+            **super().get_config(),
+            "sep_token": self.sep_token,
+            "cls_token": self.cls_token
+        }

@@ -5,13 +5,12 @@ from collections import defaultdict, Counter
 
 
 class Vocab:
-
     def __init__(
         self,
         counter: Optional[Counter] = None,
         min_frequency: int = 1,
         pad_token: str = "<pad>",
-        unk_token: str = "<unk>"
+        unk_token: str = "<unk>",
     ) -> None:
         self._min_frequency = min_frequency
         self._unk_token = unk_token
@@ -31,10 +30,7 @@ class Vocab:
         self._idx2token = dict(zip(self._token2idx.values(), self._token2idx.keys()))
 
     def set_vocab(
-        self,
-        token2idx: Dict[str, int],
-        pad_token: str,
-        unk_token: str
+        self, token2idx: Dict[str, int], pad_token: str, unk_token: str
     ) -> None:
         if token2idx.get(pad_token, None) != 0:
             raise ValueError("padding token should have index 0")
@@ -62,13 +58,13 @@ class Vocab:
         if isinstance(indices, int):
             idx = indices
             if idx not in self._idx2token:
-                raise KeyError('index %d is out of vacab' % idx)
+                raise KeyError("index %d is out of vacab" % idx)
             return self._idx2token[idx]
         elif isinstance(indices, (list, tuple)):
             res = []
             for idx in indices:
                 if idx not in self._idx2token:
-                    raise KeyError('index %d is out of vacab' % idx)
+                    raise KeyError("index %d is out of vacab" % idx)
                 res.append(self.idx2token(idx))
             return res
         else:
@@ -91,23 +87,21 @@ class Vocab:
     def to_json(self) -> str:
         return json.dumps(
             {
-                'tokens': self._token_frequency,
-                'token2idx': self._token2idx,
-                'unk': self.unk,
-                'pad': self.pad
+                "tokens": self._token_frequency,
+                "token2idx": self._token2idx,
+                "unk": self.unk,
+                "pad": self.pad,
             },
-            ensure_ascii=False
+            ensure_ascii=False,
         )
 
     @classmethod
     def from_json(cls, json_str: str) -> "Vocab":
         vocab_dict = json.loads(json_str)
         vocab = cls(
-            min_frequency=1,
-            pad_token=vocab_dict['pad'],
-            unk_token=vocab_dict['unk']
+            min_frequency=1, pad_token=vocab_dict["pad"], unk_token=vocab_dict["unk"]
         )
-        vocab.set_vocab(vocab_dict["token2idx"], vocab_dict['pad'], vocab_dict['unk'])
+        vocab.set_vocab(vocab_dict["token2idx"], vocab_dict["pad"], vocab_dict["unk"])
         return vocab
 
     def __getitem__(self, tokens: Union[str, Sequence[str]]) -> List[int]:

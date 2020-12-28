@@ -93,18 +93,6 @@ class TextRCNNClassifier(DeepClassifier):
     def build_output_layer(self, inputs):
         return self.mlp_layer(inputs)
 
-    @property
-    def output_names(self) -> List[str]:
-        return ["mlp"]
-
-    @property
-    def output_types(self) -> List[str]:
-        return ["float"]
-
-    @property
-    def output_shapes(self) -> List[List[int]]:
-        return [[-1, self.num_classes]]
-
     def get_custom_objects(self):
         return {
             **super().get_custom_objects(),

@@ -76,14 +76,16 @@ def probabilities2classes(
             "probabilities should have shape(`n_samples`, `n_classes`), "
             "but shape%s was given" % str(probabilities.shape)
         )
+    thresholds = _validate_thresholds(thresholds, probabilities.shape[1])
     if is_multilabel:
-        thresholds = _validate_thresholds(thresholds, probabilities.shape[1])
         return [
             np.where(probabilities[i, :] > thresholds)[0].tolist()
             for i in range(probabilities.shape[0])
         ]
     else:
-        return np.argmax(probabilities, axis=1).tolist()
+        classes = np.argmax(probabilities, axis=1)
+        classes[np.all(probabilities <= thresholds, axis=1)] = 0
+        return classes.tolist()
 
 
 def logits2classes(

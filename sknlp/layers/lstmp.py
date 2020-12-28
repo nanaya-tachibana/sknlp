@@ -12,14 +12,6 @@ from tensorflow.python.training.tracking import data_structures
 from sknlp.typing import WeightRegularizer, WeightInitializer, WeightConstraint
 
 
-class CustomRNNSavedModelSaver(layer_serialization.RNNSavedModelSaver):
-  """RNN layer serialization."""
-
-  @property
-  def object_identifier(self):
-    return "_tf_keras_layer"
-
-
 class LSTMPCell(LSTMCell):
     """
     Long-Short Term Memory Projected (LSTMP) network cell with cell clip.
@@ -86,13 +78,13 @@ class LSTMPCell(LSTMCell):
         self,
         units: int,
         projection_size: int = 100,
-        activation: str = 'tanh',
-        recurrent_activation: str = 'hard_sigmoid',
+        activation: str = "tanh",
+        recurrent_activation: str = "hard_sigmoid",
         use_bias: bool = True,
-        kernel_initializer: WeightInitializer = 'glorot_uniform',
-        recurrent_initializer: WeightInitializer = 'orthogonal',
-        projection_initializer: WeightInitializer = 'glorot_uniform',
-        bias_initializer: WeightInitializer = 'zeros',
+        kernel_initializer: WeightInitializer = "glorot_uniform",
+        recurrent_initializer: WeightInitializer = "orthogonal",
+        projection_initializer: WeightInitializer = "glorot_uniform",
+        bias_initializer: WeightInitializer = "zeros",
         unit_forget_bias: bool = True,
         kernel_regularizer: Optional[WeightRegularizer] = None,
         recurrent_regularizer: Optional[WeightRegularizer] = None,
@@ -102,86 +94,91 @@ class LSTMPCell(LSTMCell):
         recurrent_constraint: Optional[WeightConstraint] = None,
         projection_constraint: Optional[WeightConstraint] = None,
         bias_constraint: Optional[WeightConstraint] = None,
-        dropout: float = 0.,
-        recurrent_dropout: float = 0.,
+        dropout: float = 0.0,
+        recurrent_dropout: float = 0.0,
         recurrent_clip: Optional[float] = None,
         projection_clip: Optional[float] = None,
         implementation: int = 2,
         **kwargs
     ) -> None:
-        super().__init__(units,
-                         activation=activation,
-                         recurrent_activation=recurrent_activation,
-                         use_bias=use_bias,
-                         kernel_initializer=kernel_initializer,
-                         recurrent_initializer=recurrent_initializer,
-                         bias_initializer=bias_initializer,
-                         unit_forget_bias=unit_forget_bias,
-                         kernel_regularizer=kernel_regularizer,
-                         recurrent_regularizer=recurrent_regularizer,
-                         bias_regularizer=bias_regularizer,
-                         kernel_constraint=kernel_constraint,
-                         recurrent_constraint=recurrent_constraint,
-                         bias_constraint=bias_constraint,
-                         dropout=dropout,
-                         recurrent_dropout=recurrent_dropout,
-                         implementation=implementation,
-                         **kwargs)
+        super().__init__(
+            units,
+            activation=activation,
+            recurrent_activation=recurrent_activation,
+            use_bias=use_bias,
+            kernel_initializer=kernel_initializer,
+            recurrent_initializer=recurrent_initializer,
+            bias_initializer=bias_initializer,
+            unit_forget_bias=unit_forget_bias,
+            kernel_regularizer=kernel_regularizer,
+            recurrent_regularizer=recurrent_regularizer,
+            bias_regularizer=bias_regularizer,
+            kernel_constraint=kernel_constraint,
+            recurrent_constraint=recurrent_constraint,
+            bias_constraint=bias_constraint,
+            dropout=dropout,
+            recurrent_dropout=recurrent_dropout,
+            implementation=implementation,
+            **kwargs
+        )
         self.projection_size = projection_size
         self.recurrent_clip = recurrent_clip
         self.projection_clip = projection_clip
         self.projection_initializer = initializers.get(projection_initializer)
         self.projection_regularizer = regularizers.get(projection_regularizer)
         self.projection_constraint = constraints.get(projection_constraint)
-        self.state_size = data_structures.NoDependency([
-            self.projection_size, self.units
-        ])
+        self.state_size = data_structures.NoDependency(
+            [self.projection_size, self.units]
+        )
         self.output_size = self.projection_size
 
     def build(self, input_shape):
         input_dim = input_shape[-1]
         self.kernel = self.add_weight(
             shape=(input_dim, self.units * 4),
-            name='kernel',
+            name="kernel",
             initializer=self.kernel_initializer,
             regularizer=self.kernel_regularizer,
-            constraint=self.kernel_constraint
+            constraint=self.kernel_constraint,
         )
         self.recurrent_kernel = self.add_weight(
             shape=(self.projection_size, self.units * 4),
-            name='recurrent_kernel',
+            name="recurrent_kernel",
             initializer=self.recurrent_initializer,
             regularizer=self.recurrent_regularizer,
-            constraint=self.recurrent_constraint
+            constraint=self.recurrent_constraint,
         )
 
         if self.use_bias:
             if self.unit_forget_bias:
 
                 def bias_initializer(_, *args, **kwargs):
-                    return K.concatenate([
-                        self.bias_initializer((self.units,), *args, **kwargs),
-                        initializers.Ones()((self.units,), *args, **kwargs),
-                        self.bias_initializer((self.units * 2,), *args, **kwargs),
-                    ])
+                    return K.concatenate(
+                        [
+                            self.bias_initializer((self.units,), *args, **kwargs),
+                            initializers.Ones()((self.units,), *args, **kwargs),
+                            self.bias_initializer((self.units * 2,), *args, **kwargs),
+                        ]
+                    )
+
             else:
                 bias_initializer = self.bias_initializer
             self.bias = self.add_weight(
                 shape=(self.units * 4,),
-                name='bias',
+                name="bias",
                 initializer=bias_initializer,
                 regularizer=self.bias_regularizer,
-                constraint=self.bias_constraint
+                constraint=self.bias_constraint,
             )
         else:
             self.bias = None
 
         self.projection_kernel = self.add_weight(
             shape=(self.units, self.projection_size),
-            name='projection_kernel',
+            name="projection_kernel",
             initializer=self.projection_initializer,
             regularizer=self.projection_regularizer,
-            constraint=self.projection_constraint
+            constraint=self.projection_constraint,
         )
         self.built = True
 
@@ -196,12 +193,12 @@ class LSTMPCell(LSTMCell):
 
     def get_config(self):
         config = {
-            'projection_size': self.projection_size,
-            'recurrent_clip': self.recurrent_clip,
-            'projection_clip': self.projection_clip,
-            'projection_initializer': self.projection_initializer,
-            'projection_regularizer': self.projection_regularizer,
-            'projection_constraint': self.projection_constraint
+            "projection_size": self.projection_size,
+            "recurrent_clip": self.recurrent_clip,
+            "projection_clip": self.projection_clip,
+            "projection_initializer": self.projection_initializer,
+            "projection_regularizer": self.projection_regularizer,
+            "projection_constraint": self.projection_constraint,
         }
         base_config = super().get_config()
         return {**base_config, **config}
@@ -298,13 +295,13 @@ class LSTMP(LSTM):
         self,
         units,
         projection_size: int = 100,
-        activation: str = 'tanh',
-        recurrent_activation: str = 'sigmoid',
+        activation: str = "tanh",
+        recurrent_activation: str = "sigmoid",
         use_bias: bool = True,
-        kernel_initializer: WeightInitializer = 'glorot_uniform',
-        recurrent_initializer: WeightInitializer = 'orthogonal',
-        projection_initializer: WeightInitializer = 'glorot_uniform',
-        bias_initializer: WeightInitializer = 'zeros',
+        kernel_initializer: WeightInitializer = "glorot_uniform",
+        recurrent_initializer: WeightInitializer = "orthogonal",
+        projection_initializer: WeightInitializer = "glorot_uniform",
+        bias_initializer: WeightInitializer = "zeros",
         unit_forget_bias: bool = True,
         kernel_regularizer: Optional[WeightRegularizer] = None,
         recurrent_regularizer: Optional[WeightRegularizer] = None,
@@ -314,8 +311,8 @@ class LSTMP(LSTM):
         recurrent_constraint: Optional[WeightConstraint] = None,
         projection_constraint: Optional[WeightConstraint] = None,
         bias_constraint: Optional[WeightConstraint] = None,
-        dropout: float = 0.,
-        recurrent_dropout: float = 0.,
+        dropout: float = 0.0,
+        recurrent_dropout: float = 0.0,
         recurrent_clip: Optional[float] = None,
         projection_clip: Optional[float] = None,
         implementation: int = 2,
@@ -351,7 +348,7 @@ class LSTMP(LSTM):
             recurrent_clip=recurrent_clip,
             projection_clip=projection_clip,
             implementation=implementation,
-            dtype=kwargs.get('dtype')
+            dtype=kwargs.get("dtype"),
         )
         super(LSTM, self).__init__(
             cell,
@@ -395,10 +392,6 @@ class LSTMP(LSTM):
 
     @classmethod
     def from_config(cls, config):
-        if 'implementation' in config and config['implementation'] == 0:
-            config['implementation'] = 2
+        if "implementation" in config and config["implementation"] == 0:
+            config["implementation"] = 2
         return cls(**config)
-
-    @property
-    def _trackable_saved_model_saver(self):
-        return CustomRNNSavedModelSaver(self)

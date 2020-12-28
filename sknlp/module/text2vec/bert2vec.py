@@ -1,24 +1,44 @@
-from typing import Optional, List, Dict, Any
+from typing import Optional, Dict, Any, Callable
 import os
+import tempfile
+from enum import Enum
 from collections import Counter
 
 import tensorflow as tf
 from tensorflow.keras.initializers import TruncatedNormal
 from official.modeling import activations
+from official.nlp.bert.configs import BertConfig
 
 from sknlp.vocab import Vocab
-from sknlp.layers import BertLayer, BertPreprocessingLayer, AlbertLayer
-
+from sknlp.layers import BertLayer
+from sknlp.layers.utils import (
+    convert_bert_checkpoint,
+    convert_electra_checkpoint,
+    convert_albert_checkpoint,
+)
 from .text2vec import Text2vec
 
 
-class Bert2vec(Text2vec):
+class BertFamily(Enum):
+    BERT = 1
+    ALBERT = 2
+    ELECTRA = 3
 
+
+def get_activation(activation_string: str) -> Callable:
+    if activation_string == "gelu":
+        return activations.gelu
+    else:
+        return tf.keras.activations.get(activation_string)
+
+
+class Bert2vec(Text2vec):
     def __init__(
         self,
         vocab: Vocab,
         segmenter: Optional[str] = None,
         hidden_size: int = 768,
+        embedding_size: int = 768,
         num_layers: int = 12,
         num_attention_heads: int = 12,
         sequence_length: Optional[int] = None,
@@ -30,6 +50,8 @@ class Bert2vec(Text2vec):
         attention_dropout_rate: float = 0.1,
         initializer: tf.keras.initializers.Initializer = TruncatedNormal(stddev=0.02),
         return_all_encoder_outputs: bool = False,
+        share_layer: bool = False,
+        cls_pooling: bool = True,
         name: str = "bert2vec",
         **kwargs
     ) -> None:
@@ -41,11 +63,12 @@ class Bert2vec(Text2vec):
             name=name,
             **kwargs
         )
-        self._hidden_size = hidden_size
-        self._only_output_cls = False
-        bert_preprocessing_layer = BertPreprocessingLayer(self.vocab.sorted_tokens)
+        if embedding_size is None:
+            embedding_size = hidden_size
+        self._embedding_size = embedding_size
         bert_layer = BertLayer(
-            len(self.vocab),
+            len(self.vocab.sorted_tokens),
+            embedding_size=embedding_size,
             hidden_size=hidden_size,
             num_layers=num_layers,
             num_attention_heads=num_attention_heads,
@@ -58,138 +81,20 @@ class Bert2vec(Text2vec):
             attention_dropout_rate=attention_dropout_rate,
             initializer=initializer,
             return_all_encoder_outputs=return_all_encoder_outputs,
-            name="bert_layer"
-        )
-        inputs = tf.keras.Input(shape=(), dtype=tf.string, name="text_input")
-        outputs = bert_layer(bert_preprocessing_layer(inputs))
-        self._model = tf.keras.Model(inputs=inputs, outputs=outputs, name=name)
-        self.bert_layer = bert_layer
-
-    def __call__(self, inputs: tf.Tensor) -> tf.Tensor:
-        return self._model(inputs)
-
-    @property
-    def embedding_size(self):
-        return self._hidden_size
-
-    @classmethod
-    def from_tfv1_checkpoint(
-        cls,
-        v1_checkpoint: str,
-        config_filename: str = "bert_config.json",
-        sequence_length: Optional[int] = None
-    ):
-        bert_layer = BertLayer.from_tfv1_checkpoint(
-            v1_checkpoint,
-            config_filename=config_filename,
-            sequence_length=sequence_length
-        )
-        with open(os.path.join(v1_checkpoint, "vocab.txt")) as f:
-            token_list = f.read().split("\n")
-            bert_preprocessing_layer = BertPreprocessingLayer(token_list)
-            vocab = Vocab(
-                Counter(token_list), pad_token=token_list[0], unk_token=token_list[1]
-            )
-
-        module = cls(
-            vocab,
-            hidden_size=bert_layer.hidden_size,
-            num_layers=bert_layer.num_layers,
-            num_attention_heads=bert_layer.num_attention_heads,
-            sequence_length=bert_layer.sequence_length,
-            max_sequence_length=bert_layer.max_sequence_length,
-            type_vocab_size=bert_layer.type_vocab_size,
-            intermediate_size=bert_layer.intermediate_size,
-            activation=bert_layer.activation,
-            dropout_rate=bert_layer.dropout_rate,
-            attention_dropout_rate=bert_layer.attention_dropout_rate,
-            initializer=bert_layer.initializer,
-            return_all_encoder_outputs=bert_layer.return_all_encoder_outputs,
-        )
-        inputs = tf.keras.Input(shape=(), dtype=tf.string, name="text_input")
-        outputs = bert_layer(bert_preprocessing_layer(inputs))
-        module._model = tf.keras.Model(inputs=inputs, outputs=outputs, name="bert2vec")
-        return module
-
-    def export(
-        self,
-        directory: str,
-        name: str,
-        version: str = "0",
-        only_output_cls: bool = False
-    ) -> None:
-        if only_output_cls:
-            self._only_output_cls = True
-            self._model = tf.keras.Model(
-                inputs=self._model.inputs,
-                outputs=self._model.outputs[1:],
-                name="bert2vec"
-            )
-        super().export(directory, name, version)
-        d = os.path.join(directory, name, version)
-        self.save_vocab(d)
-
-    def get_custom_objects(self) -> Dict[str, Any]:
-        return {
-            **super().get_custom_objects(),
-            "BertLayer": BertLayer,
-            "BertPreprocessingLayer": BertPreprocessingLayer,
-        }
-
-
-
-class Albert2vec(Text2vec):
-
-    def __init__(
-        self,
-        vocab: Vocab,
-        segmenter: Optional[str] = None,
-        embedding_size: int = 128,
-        hidden_size: int = 768,
-        num_layers: int = 12,
-        num_attention_heads: int = 12,
-        sequence_length: Optional[int] = None,
-        max_sequence_length: int = 512,
-        type_vocab_size: int = 16,
-        intermediate_size: int = 3072,
-        activation: activations = activations.gelu,
-        dropout_rate: float = 0.1,
-        attention_dropout_rate: float = 0.1,
-        initializer: tf.keras.initializers.Initializer = TruncatedNormal(stddev=0.02),
-        name: str = "albert2vec",
-        **kwargs
-    ) -> None:
-        super().__init__(
-            vocab,
-            segmenter=segmenter,
-            sequence_length=sequence_length,
-            max_sequence_length=max_sequence_length,
+            share_layer=share_layer,
+            cls_pooling=cls_pooling,
             name=name,
-            **kwargs
         )
-        self._embedding_size = embedding_size
-        self._only_output_cls = False
-        bert_preprocessing_layer = BertPreprocessingLayer(self.vocab.sorted_tokens)
-        bert_layer = AlbertLayer(
-            len(self.vocab),
-            hidden_size=hidden_size,
-            embedding_size=embedding_size,
-            num_layers=num_layers,
-            num_attention_heads=num_attention_heads,
-            sequence_length=sequence_length,
-            max_sequence_length=max_sequence_length,
-            type_vocab_size=type_vocab_size,
-            intermediate_size=intermediate_size,
-            activation=activation,
-            dropout_rate=dropout_rate,
-            attention_dropout_rate=attention_dropout_rate,
-            initializer=initializer,
-            name="albert_layer"
+        token_ids = tf.keras.Input(
+            shape=(sequence_length,), dtype=tf.int64, name="input_token_ids"
         )
-        inputs = tf.keras.Input(shape=(), dtype=tf.string, name="text_input")
-        outputs = bert_layer(bert_preprocessing_layer(inputs))
-        self._model = tf.keras.Model(inputs=inputs, outputs=outputs, name=name)
-        self.bert_layer = bert_layer
+        type_ids = tf.keras.Input(
+            shape=(sequence_length,), dtype=tf.int64, name="input_type_ids"
+        )
+        outputs = bert_layer([token_ids, type_ids])
+        self._model = tf.keras.Model(
+            inputs=[token_ids, type_ids], outputs=outputs, name=name
+        )
 
     def __call__(self, inputs: tf.Tensor) -> tf.Tensor:
         return self._model(inputs)
@@ -201,40 +106,59 @@ class Albert2vec(Text2vec):
     @classmethod
     def from_tfv1_checkpoint(
         cls,
+        model_type: BertFamily,
         v1_checkpoint: str,
-        config_filename: str = "albert_config.json",
-        sequence_length: Optional[int] = None
+        config_filename: str = "bert_config.json",
+        cls_pooling: bool = True,
+        sequence_length: Optional[int] = None,
+        name: str = "bert",
     ):
-        bert_layer = AlbertLayer.from_tfv1_checkpoint(
-            v1_checkpoint,
-            config_filename=config_filename,
-            sequence_length=sequence_length
-        )
+        config = BertConfig.from_json_file(os.path.join(v1_checkpoint, config_filename))
         with open(os.path.join(v1_checkpoint, "vocab.txt")) as f:
-            token_list = f.read().split("\n")
-            bert_preprocessing_layer = BertPreprocessingLayer(token_list)
+            token_list = f.read().strip("\n").split("\n")
             vocab = Vocab(
                 Counter(token_list), pad_token=token_list[0], unk_token=token_list[1]
             )
-
+        share_layer, cls_pooling = False, True
+        convert_checkpoint = convert_bert_checkpoint
+        if model_type is BertFamily.ALBERT:
+            share_layer = True
+            convert_checkpoint = convert_albert_checkpoint
+        if model_type is BertFamily.ELECTRA:
+            cls_pooling = False
+            convert_checkpoint = convert_electra_checkpoint
+        activation = get_activation(config.hidden_act)
         module = cls(
             vocab,
-            embedding_size=bert_layer.embedding_size,
-            hidden_size=bert_layer.hidden_size,
-            num_layers=bert_layer.num_layers,
-            num_attention_heads=bert_layer.num_attention_heads,
-            sequence_length=bert_layer.sequence_length,
-            max_sequence_length=bert_layer.max_sequence_length,
-            type_vocab_size=bert_layer.type_vocab_size,
-            intermediate_size=bert_layer.intermediate_size,
-            activation=bert_layer.activation,
-            dropout_rate=bert_layer.dropout_rate,
-            attention_dropout_rate=bert_layer.attention_dropout_rate,
-            initializer=bert_layer.initializer,
+            embedding_size=config.embedding_size,
+            hidden_size=config.hidden_size,
+            num_layers=config.num_hidden_layers,
+            num_attention_heads=config.num_attention_heads,
+            intermediate_size=config.intermediate_size,
+            activation=activation,
+            dropout_rate=config.hidden_dropout_prob,
+            attention_dropout_rate=config.attention_probs_dropout_prob,
+            sequence_length=sequence_length,
+            max_sequence_length=config.max_position_embeddings,
+            type_vocab_size=config.type_vocab_size,
+            initializer=tf.keras.initializers.TruncatedNormal(
+                stddev=config.initializer_range
+            ),
+            share_layer=share_layer,
+            cls_pooling=cls_pooling,
+            name=name,
         )
-        inputs = tf.keras.Input(shape=(), dtype=tf.string, name="text_input")
-        outputs = bert_layer(bert_preprocessing_layer(inputs))
-        module._model = tf.keras.Model(inputs=inputs, outputs=outputs, name="albert2vec")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temporary_checkpoint = os.path.join(temp_dir, "ckpt")
+            convert_checkpoint(
+                checkpoint_from_path=v1_checkpoint,
+                checkpoint_to_path=temporary_checkpoint,
+                num_heads=config.num_attention_heads,
+                converted_root_name=name,
+            )
+            module._model.load_weights(
+                temporary_checkpoint
+            ).assert_existing_objects_matched()
         return module
 
     def export(
@@ -242,22 +166,17 @@ class Albert2vec(Text2vec):
         directory: str,
         name: str,
         version: str = "0",
-        only_output_cls: bool = False
+        only_output_cls: bool = False,
     ) -> None:
         if only_output_cls:
-            self._only_output_cls = True
             self._model = tf.keras.Model(
                 inputs=self._model.inputs,
                 outputs=self._model.outputs[1:],
-                name="albert2vec"
+                name="bert2vec",
             )
         super().export(directory, name, version)
         d = os.path.join(directory, name, version)
         self.save_vocab(d)
 
     def get_custom_objects(self) -> Dict[str, Any]:
-        return {
-            **super().get_custom_objects(),
-            "AlbertLayer": AlbertLayer,
-            "BertPreprocessingLayer": BertPreprocessingLayer,
-        }
+        return {**super().get_custom_objects(), "BertLayer": BertLayer}
