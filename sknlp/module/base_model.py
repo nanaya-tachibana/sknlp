@@ -7,7 +7,7 @@ from collections import Counter
 
 import tensorflow as tf
 
-from ..vocab import Vocab
+from sknlp.vocab import Vocab
 
 
 class BaseNLPModel:
@@ -70,13 +70,13 @@ class BaseNLPModel:
     def get_outputs(self) -> tf.Tensor:
         raise NotImplementedError()
 
-    def get_loss(self) -> tf.keras.losses.Loss:
+    def get_loss(self, *args, **kwargs) -> tf.keras.losses.Loss:
         raise NotImplementedError()
 
-    def get_metrics(self):
+    def get_metrics(self, *args, **kwargs):
         raise NotImplementedError()
 
-    def get_callbacks(self):
+    def get_callbacks(self, *args, **kwargs):
         raise NotImplementedError()
 
     def get_monitor(self):

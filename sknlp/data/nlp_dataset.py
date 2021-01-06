@@ -1,4 +1,4 @@
-from typing import Optional, List, Union
+from typing import Optional, List, Union, Tuple
 
 import pandas as pd
 import tensorflow as tf
@@ -24,9 +24,10 @@ class NLPDataset:
             df is not None or csv_file is not None
         ), "either df or csv_file may not be None"
         if df is not None:
-            self._dataset = self.dataframe_to_dataset(df)
+            self._original_dataset = self.dataframe_to_dataset(df)
+            self.size = df.shape[0]
         elif csv_file is not None:
-            self._dataset, self.size = self.load_csv(csv_file, "\t", in_memory)
+            self._original_dataset, self.size = self.load_csv(csv_file, "\t", in_memory)
         self.text_cutter = get_segmenter(text_segmenter)
         self.max_length = max_length or 99999
         self.text_dtype = text_dtype
@@ -36,7 +37,19 @@ class NLPDataset:
         self.text_padding_value = text_padding_value
         self.label_padding_value = label_padding_value
 
-        self._dataset = self._transform(self._dataset)
+        self._dataset = self._transform(self._original_dataset)
+
+    @property
+    def text(self) -> List[str]:
+        return [
+            x.decode("utf-8") for x, _ in self._original_dataset.as_numpy_iterator()
+        ]
+
+    @property
+    def label(self) -> List[str]:
+        return [
+            y.decode("utf-8") for _, y in self._original_dataset.as_numpy_iterator()
+        ]
 
     def _text_transform(self, text: tf.Tensor) -> Union[List[str], str]:
         return self.text_cutter(text.numpy().decode("utf-8"))[: self.max_length]
@@ -56,12 +69,14 @@ class NLPDataset:
         )
 
     def batchify(
-        self, batch_size: int, shuffle: bool = True, shuffle_buffer_size: int = 100000
+        self,
+        batch_size: int,
+        shuffle: bool = True,
+        shuffle_buffer_size: Optional[int] = None,
     ) -> tf.data.Dataset:
         dataset = self._dataset
         if shuffle:
-            if shuffle_buffer_size <= 0:
-                shuffle_buffer_size = 100000
+            shuffle_buffer_size = shuffle_buffer_size or self.size or 100000
             dataset = dataset.shuffle(shuffle_buffer_size)
 
         return dataset.padded_batch(
@@ -71,12 +86,14 @@ class NLPDataset:
         ).prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
     @classmethod
-    def dataframe_to_dataset(cls, df: pd.DataFrame):
+    def dataframe_to_dataset(cls, df: pd.DataFrame) -> tf.data.Dataset:
         df.fillna("", inplace=True)
         return tf.data.Dataset.from_tensor_slices((df.text, df.label))
 
     @classmethod
-    def load_csv(cls, filename: str, sep: str, in_memory: bool):
+    def load_csv(
+        cls, filename: str, sep: str, in_memory: bool
+    ) -> Tuple[tf.data.Dataset, Optional[int]]:
         if in_memory:
             df = pd.read_csv(filename, sep=sep, dtype=str)
             return cls.dataframe_to_dataset(df), df.shape[0]
@@ -88,5 +105,5 @@ class NLPDataset:
                 field_delim=sep,
                 na_value="",
             ),
-            -1,
+            None,
         )

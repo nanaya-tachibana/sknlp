@@ -33,14 +33,16 @@ class CrfLossLayer(tf.keras.layers.Layer):
         likelihoods, _ = crf_log_likelihood(
             emissions, tag_ids, sequence_lengths, self.transition_weight
         )
-        self.add_loss(tf.math.negative(tf.math.reduce_mean(likelihoods)))
-        decoded_tag_ids, _ = crf_decode(
-            emissions, self.transition_weight, sequence_lengths
-        )
-        return tf.pad(
-            decoded_tag_ids * mask,
-            [[0, 0], [0, self.max_sequence_length - tf.shape(decoded_tag_ids)[1]]],
-            mode="CONSTANT",
+        loss = tf.math.negative(tf.math.reduce_mean(likelihoods))
+        self.add_loss(loss)
+        return (
+            tf.pad(
+                emissions,
+                [[0, 0], [0, self.max_sequence_length + 2 - tf.shape(mask)[1]], [0, 0]],
+            ),
+            tf.pad(
+                mask, [[0, 0], [0, self.max_sequence_length + 2 - tf.shape(mask)[1]]]
+            ),
         )
 
     def get_config(self):
@@ -80,7 +82,7 @@ class CrfDecodeLayer(tf.keras.layers.Layer):
         )
         return tf.pad(
             decoded_tag_ids * mask,
-            [[0, 0], [0, self.max_sequence_length - tf.shape(decoded_tag_ids)[1]]],
+            [[0, 0], [0, self.max_sequence_length + 2 - tf.shape(decoded_tag_ids)[1]]],
             mode="CONSTANT",
         )
 

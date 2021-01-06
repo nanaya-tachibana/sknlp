@@ -1,17 +1,17 @@
+from operator import attrgetter
 from typing import Sequence, Union, Optional, Dict, Any, List
 
 import os
 import logging
 
 import tensorflow as tf
-from tensorflow.python.keras.engine import training
 import tensorflow_addons as tfa
 import pandas as pd
 
-from ..data import NLPDataset
-from ..data.text_segmenter import get_segmenter
-from ..vocab import Vocab
-from ..callbacks import WeightDecayScheduler
+from sknlp.data import NLPDataset
+from sknlp.data.text_segmenter import get_segmenter
+from sknlp.vocab import Vocab
+from sknlp.callbacks import WeightDecayScheduler
 from .text2vec import Word2vec, Text2vec
 from .base_model import BaseNLPModel
 
@@ -68,6 +68,24 @@ class SupervisedNLPModel(BaseNLPModel):
     def classes(self) -> List[str]:
         return list(self._class2idx.keys())
 
+    @property
+    def text2vec(self) -> Text2vec:
+        return self._text2vec
+
+    @property
+    def train_dataset(self) -> tf.data.Dataset:
+        return getattr(self, "_train_dataset", None)
+
+    @property
+    def valid_dataset(self) -> tf.data.Dataset:
+        return getattr(self, "_valid_dataset", None)
+
+    def class2idx(self, class_name: str) -> int:
+        return self._class2idx.get(class_name, None)
+
+    def idx2class(self, class_idx: int) -> str:
+        return self._idx2class.get(class_idx, None)
+
     def get_inputs(self) -> tf.Tensor:
         return self._text2vec.get_inputs()
 
@@ -87,32 +105,27 @@ class SupervisedNLPModel(BaseNLPModel):
     ) -> NLPDataset:
         raise NotImplementedError()
 
-    def prepare_tf_dataset(
+    def prepare_dataset(
         self,
         X: Sequence[str],
         y: Sequence[str],
         dataset: NLPDataset,
-        batch_size: int,
-        shuffle: bool = True,
     ) -> tf.data.Dataset:
-        assert not ((X is None or y is None) and dataset is None)
+        assert (X is not None and y is not None) or dataset is not None
 
         if self._text2vec is None:
-            cut = get_segmenter(self._segmenter)
-            vocab = self.build_vocab(X, cut)
-            self._text2vec = Word2vec(vocab, self._embedding_size, self._segmenter)
+            cut = get_segmenter(self.segmenter)
+            vocab = self.build_vocab(X or dataset.text, cut)
+            self._text2vec = Word2vec(vocab, self.embedding_size, self.segmenter)
 
         if dataset is not None:
-            return dataset.batchify(batch_size, shuffle=shuffle)
+            return dataset
 
         if isinstance(y[0], (list, tuple)):
             y = ["|".join(map(str, y_i)) for y_i in y]
         df = pd.DataFrame(zip(X, y), columns=["text", "label"])
-        dataset = self.create_dataset_from_df(
-            df, self._text2vec.vocab, self._text2vec.segmenter, self.classes
-        )
-        return dataset.batchify(
-            batch_size, shuffle=shuffle, shuffle_buffer_size=df.shape[0]
+        return self.create_dataset_from_df(
+            df, self.text2vec.vocab, self.text2vec.segmenter, self.classes
         )
 
     def fit(
@@ -125,16 +138,16 @@ class SupervisedNLPModel(BaseNLPModel):
         valid_y: Union[Sequence[Sequence[str]], Sequence[str]] = None,
         valid_dataset: NLPDataset = None,
         batch_size: int = 128,
-        n_epochs: int = 30,
+        n_epochs: int = 10,
         optimizer: str = "adam",
         lr: float = 1e-3,
-        weight_decay: float = 1e-4,
+        weight_decay: float = 0.0,
         lr_update_factor: float = 0.5,
         lr_update_epochs: int = 10,
-        clip: float = 5.0,
+        clip: Optional[float] = 5.0,
         enable_early_stopping: bool = False,
         early_stopping_patience: Optional[int] = None,
-        early_stopping_min_delta: float = 0,
+        early_stopping_min_delta: float = 0.0,
         early_stopping_use_best_epoch: bool = False,
         early_stopping_monitor: int = 2,  # 1 for loss, 2 for metric
         checkpoint: Optional[str] = None,
@@ -142,34 +155,32 @@ class SupervisedNLPModel(BaseNLPModel):
         log_file: Optional[str] = None,
         verbose: int = 2
     ) -> None:
-        assert not (
-            self._text2vec is None and X is None
-        ), "When text2vec is not given, X must be provided"
+        # assert not (
+        #     self._text2vec is None and X is None
+        # ), "When text2vec is not given, X must be provided"
 
-        self.train_dataset = self.prepare_tf_dataset(
-            X,
-            y,
-            dataset,
-            batch_size,
-        )
+        self._train_dataset = self.prepare_dataset(X, y, dataset)
         if (valid_X is None or valid_y is None) and valid_dataset is None:
-            self.valid_dataset = None
+            self._valid_dataset = None
         else:
-            self.valid_dataset = self.prepare_tf_dataset(
-                valid_X,
-                valid_y,
-                valid_dataset,
-                batch_size,
-                shuffle=False,
-            )
+            self._valid_dataset = self.prepare_dataset(valid_X, valid_y, valid_dataset)
+
         if not self._built:
             self.build()
-        optimizer = tfa.optimizers.AdamW(weight_decay, learning_rate=lr, clipnorm=clip)
-        if optimizer != "adam":
-            pass
+
+        optimizer_kwargs = {}
+        if clip is not None:
+            optimizer_kwargs["clipnorm"] = clip
+        if weight_decay > 0:
+            optimizer = tfa.optimizers.AdamW(
+                weight_decay, learning_rate=lr, **optimizer_kwargs
+            )
+        else:
+            optimizer = tf.keras.optimizers.Adam(learning_rate=lr, **optimizer_kwargs)
+
         loss = self.get_loss()
         metrics = self.get_metrics()
-        callbacks = self.get_callbacks()
+        callbacks = self.get_callbacks(batch_size)
         self._model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
 
         def lr_scheduler(epoch, lr):
@@ -181,8 +192,9 @@ class SupervisedNLPModel(BaseNLPModel):
         lr_decay = tf.keras.callbacks.LearningRateScheduler(
             lr_scheduler, verbose=verbose
         )
-        weight_decay = WeightDecayScheduler(wd_scheduler, verbose=verbose)
-        callbacks = [*callbacks, lr_decay, weight_decay]
+        callbacks = [*callbacks, lr_decay]
+        if weight_decay > 0:
+            callbacks.append(WeightDecayScheduler(wd_scheduler, verbose=verbose))
         if enable_early_stopping:
             if early_stopping_monitor == 2 and self.get_monitor():
                 mode = "max"
@@ -202,9 +214,9 @@ class SupervisedNLPModel(BaseNLPModel):
         if log_file is not None:
             callbacks.append(tf.keras.callbacks.CSVLogger(log_file))
         self._model.fit(
-            self.train_dataset,
+            self.train_dataset.batchify(batch_size),
             epochs=n_epochs,
-            validation_data=self.valid_dataset,
+            validation_data=self.valid_dataset.batchify(batch_size, shuffle=False),
             callbacks=callbacks,
             verbose=verbose,
         )
@@ -221,15 +233,14 @@ class SupervisedNLPModel(BaseNLPModel):
     ) -> tf.Tensor:
         assert self._built
         y = None if X is None else self.dummy_y(X)
-        dataset = self.prepare_tf_dataset(X, y, dataset, batch_size, shuffle=False)
-        return self._model.predict(dataset)
+        dataset = self.prepare_dataset(X, y, dataset)
+        return self._model.predict(dataset.batchify(batch_size, shuffle=False))
 
     def score(
         self,
         X: Sequence[str] = None,
         y: Union[Sequence[Sequence[str]], Sequence[str]] = None,
         *,
-        dataset: NLPDataset = None,
         thresholds: Union[float, Dict[str, float]] = 0.5,
         batch_size: int = 128
     ) -> pd.DataFrame:
@@ -245,7 +256,7 @@ class SupervisedNLPModel(BaseNLPModel):
 
     def save(self, directory: str) -> None:
         super().save(directory)
-        self._text2vec.save_vocab(directory)
+        self.text2vec.save_vocab(directory)
 
     @classmethod
     def load(cls, directory: str) -> "SupervisedNLPModel":
@@ -263,7 +274,7 @@ class SupervisedNLPModel(BaseNLPModel):
     def export(self, directory: str, name: str, version: str = "0") -> None:
         super().export(directory, name, version)
         d = os.path.join(directory, name, version)
-        self._text2vec.save_vocab(d)
+        self.text2vec.save_vocab(d)
 
     def get_custom_objects(self) -> Dict[str, Any]:
         return {**super().get_custom_objects(), "AdamW": tfa.optimizers.AdamW}

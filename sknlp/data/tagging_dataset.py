@@ -8,6 +8,10 @@ from sknlp.vocab import Vocab
 from .nlp_dataset import NLPDataset
 
 
+def _combine_xy(x, y):
+    return (x, y), y
+
+
 class TaggingDataset(NLPDataset):
     def __init__(
         self,
@@ -25,7 +29,7 @@ class TaggingDataset(NLPDataset):
         text_padding_shape: tuple = (None,),
         label_padding_shape: tuple = (None,),
         text_padding_value: Union[str, int, float, None] = None,
-        label_padding_value: Union[str, int, float, None] = 0
+        label_padding_value: Union[str, int, float, None] = 0,
     ):
         self.vocab = vocab
         self.start_tag = start_tag
@@ -45,6 +49,13 @@ class TaggingDataset(NLPDataset):
             label_padding_value=label_padding_value,
         )
 
+    @property
+    def label(self) -> List[List[str]]:
+        return [
+            y.decode("utf-8").split("|")
+            for _, y in self._original_dataset.as_numpy_iterator()
+        ]
+
     def _text_transform(self, text: tf.Tensor) -> np.ndarray:
         tokens = super()._text_transform(text)
         return np.array(
@@ -61,9 +72,6 @@ class TaggingDataset(NLPDataset):
                 self.label2idx[self.end_tag],
             ]
         return labels
-
-    def _combine_xy(self, x, y):
-        return (x, y), y
 
     def batchify(
         self,
@@ -83,6 +91,6 @@ class TaggingDataset(NLPDataset):
                 padded_shapes=(self.text_padding_shape, self.label_padding_shape),
                 padding_values=(self.text_padding_value, self.label_padding_value),
             )
-            .map(self._combine_xy)
+            .map(_combine_xy)
             .prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
         )

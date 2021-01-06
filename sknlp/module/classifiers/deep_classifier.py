@@ -46,17 +46,21 @@ class DeepClassifier(SupervisedNLPModel):
         self._is_multilabel = is_multilabel
         self._loss = loss
 
-    def get_loss(self):
-        if self._is_multilabel:
+    @property
+    def is_multilabel(self):
+        return self._is_multilabel
+
+    def get_loss(self, *args, **kwargs):
+        if self.is_multilabel:
             return tf.keras.losses.BinaryCrossentropy(from_logits=True)
         else:
             return tf.keras.losses.CategoricalCrossentropy(from_logits=True)
 
-    def get_callbacks(self) -> List[tf.keras.callbacks.Callback]:
+    def get_callbacks(self, *args, **kwargs) -> List[tf.keras.callbacks.Callback]:
         return []
 
-    def get_metrics(self) -> List[tf.keras.metrics.Metric]:
-        if self._is_multilabel:
+    def get_metrics(self, *args, **kwargs) -> List[tf.keras.metrics.Metric]:
+        if self.is_multilabel:
             return [
                 PrecisionWithLogits(),
                 RecallWithLogits(),
@@ -79,8 +83,8 @@ class DeepClassifier(SupervisedNLPModel):
             vocab,
             list(labels),
             df=df,
-            is_multilabel=self._is_multilabel,
-            max_length=self._max_sequence_length,
+            is_multilabel=self.is_multilabel,
+            max_length=self.max_sequence_length,
             text_segmenter=segmenter,
         )
 
@@ -95,7 +99,7 @@ class DeepClassifier(SupervisedNLPModel):
         batch_size: int = 128
     ) -> np.ndarray:
         logits = super().predict(X=X, dataset=dataset, batch_size=batch_size)
-        return logits2probabilities(logits, self._is_multilabel)
+        return logits2probabilities(logits, self.is_multilabel)
 
     def predict(
         self,
@@ -107,14 +111,14 @@ class DeepClassifier(SupervisedNLPModel):
     ) -> Union[List[str], List[List[str]]]:
         probabilities = self.predict_proba(X=X, dataset=dataset, batch_size=batch_size)
         predictions = probabilities2classes(
-            probabilities, self._is_multilabel, thresholds=thresholds
+            probabilities, self.is_multilabel, thresholds=thresholds
         )
-        if self._is_multilabel:
+        if self.is_multilabel:
             return [
-                [self._idx2class[i] for i in prediction] for prediction in predictions
+                [self.idx2class(i) for i in prediction] for prediction in predictions
             ]
         else:
-            return [self._idx2class[i] for i in predictions]
+            return [self.idx2class(i) for i in predictions]
 
     def score(
         self,
@@ -125,11 +129,12 @@ class DeepClassifier(SupervisedNLPModel):
         thresholds: Union[float, List[float]] = 0.5,
         batch_size: int = 128
     ) -> pd.DataFrame:
+        dataset = self.prepare_dataset(X, y, dataset)
         predictions = self.predict(
-            X=X, dataset=dataset, thresholds=thresholds, batch_size=batch_size
+            dataset=dataset, thresholds=thresholds, batch_size=batch_size
         )
         return classification_fscore(
-            y, predictions, self._is_multilabel, classes=list(self._class2idx.keys())
+            dataset.label, predictions, self.is_multilabel, classes=self.classes
         )
 
     def format_score(self, score_df: pd.DataFrame, format: str = "markdown") -> str:

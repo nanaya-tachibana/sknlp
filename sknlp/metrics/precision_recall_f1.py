@@ -84,7 +84,7 @@ class FBetaScoreWithLogits(FBetaScore):
         num_classes: int,
         average: str = "micro",
         beta: float = 1.0,
-        threshold: float = 0.5,
+        thresholds: float = 0.5,
         name: str = "fbeta_score",
         dtype: Optional[tf.DType] = None,
         logits2scores: str = "sigmoid",
@@ -93,9 +93,9 @@ class FBetaScoreWithLogits(FBetaScore):
             num_classes,
             average=average,
             beta=beta,
-            threshold=threshold,
+            threshold=thresholds,
             name=name,
-            dtype=dtype
+            dtype=dtype,
         )
         self.logits2scores = logits2scores
         if logits2scores == "sigmoid":
@@ -112,4 +112,10 @@ class FBetaScoreWithLogits(FBetaScore):
         super().update_state(y_true, self._l2s(y_logits), sample_weight=sample_weight)
 
     def get_config(self) -> Dict[str, Any]:
-        return {**super().get_config(), "logits2scores": self.logits2scores}
+        configs = super().get_config()
+        configs.pop("threshold", None)
+        return {
+            **configs,
+            "logits2scores": self.logits2scores,
+            "thresholds": self.threshold,
+        }

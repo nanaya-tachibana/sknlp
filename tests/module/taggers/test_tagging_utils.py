@@ -70,15 +70,13 @@ def test_parse_tagged_text(text, tag_names, expected):
                 "I-详细",
             ],
             ["省", "市", "区", "详细"],
-            {"省": (1, 1, 1), "市": (1, 1, 1), "区": (1, 1, 1), "详细": (1, 2, 1)},
+            {"省": (1, 1, 1), "市": (1, 1, 1), "区": (1, 1, 1), "详细": (1, 2, 1), "avg": (4, 5, 4)},
         )
     ],
 )
 def test_compute_counts(text, label, prediction, classes, expected):
     counts = _compute_counts(text, label, prediction, classes)
     for count in counts:
-        if count[0] == "avg":
-            continue
         assert expected[count[0]] == count[1:]
 
 

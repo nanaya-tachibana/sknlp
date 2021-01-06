@@ -81,3 +81,53 @@ def tagging_fscore(
     df.fillna(0, inplace=True)
     df.reset_index(inplace=True)
     return df[["class", "precision", "recall", "fscore", "support"]]
+
+
+def viterbi_decode(transitions, emissions, mask=None):
+    """
+    Decode the highest scoring sequence of tags outside of mxnet.
+    Parameters:
+    ----
+    transitions: numpy array, shape(num_tags, num_tags)
+    emissions: numpy array, shape(seq_length, batch_size, num_tags)
+    mask: numpy array, shape(seq_length, batch_size)
+    Returns:
+    ----
+    best_tags_list: list of list
+      Each list in best_tags_list is the best path of each sequence.
+    """
+    seq_legnth, batch_size, num_tags = emissions.shape
+    if mask is None:
+        mask = np.ones((seq_legnth, batch_size))
+    assert mask[0].all()
+
+    sequence_lengths = mask.sum(axis=0).astype(np.int64)
+    # list to store the decode paths
+    best_tags_list = []
+    # (seq_length, batch_size, num_tags)
+    viterbi_scores = np.zeros_like(emissions, dtype=np.float32)
+    viterbi_scores[0] = emissions[0]
+    # (seq_length, batch_size, num_tags)
+    viterbi_paths = np.zeros_like(emissions, dtype=np.int64)
+
+    # use dynamic programing to compute the viterbi score
+    for i, emission in enumerate(emissions[1:]):
+        # (batch_size, num_tags, 1)
+        broadcast_log_prob = viterbi_scores[i].reshape((-1, num_tags, 1))
+        # (batch_size, num_tags, num_tags)
+        score = broadcast_log_prob + transitions
+        viterbi_paths[i] = score.argmax(axis=1)
+        viterbi_scores[i + 1] = emission + score.max(axis=1)
+    # search best path for each batch according to the viterbi score
+    # get the best tag for the last emission
+    for idx in range(batch_size):
+        seq_end_idx = sequence_lengths[idx] - 1
+        best_last_tag = viterbi_scores[seq_end_idx, idx].argmax()
+        best_tags = [best_last_tag]
+        # trace back all best tags based on the last best tag and viterbi path
+        for path in np.flip(viterbi_paths[:sequence_lengths[idx] - 1], 0):
+            best_last_tag = path[idx][best_tags[-1]]
+            best_tags.append(best_last_tag)
+        best_tags.reverse()
+        best_tags_list.append(best_tags)
+    return best_tags_list

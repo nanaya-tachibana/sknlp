@@ -45,6 +45,13 @@ class ClassificationDataset(NLPDataset):
             label_padding_value=label_padding_value or 0.0,
         )
 
+    @property
+    def label(self) -> Union[List[str], List[List[str]]]:
+        return [
+            y.decode("utf-8").split("|") if self.is_multilabel else y.decode("Utf-8")
+            for _, y in self._original_dataset.as_numpy_iterator()
+        ]
+
     def _text_transform(self, text: tf.Tensor) -> np.ndarray:
         tokens = super()._text_transform(text)
         return np.array(

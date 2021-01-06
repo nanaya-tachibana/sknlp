@@ -1,6 +1,6 @@
-from .f_score import FScore
+from .model_score import ModelScoreCallback
 from .save import ModelSave
 from .weight_decay import WeightDecayScheduler
 
 
-__all__ = ['FScore', 'WeightDecayScheduler', 'ModelSave']
+__all__ = ['ModelScoreCallback', 'WeightDecayScheduler', 'ModelSave']
