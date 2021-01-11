@@ -68,17 +68,21 @@ class NLPDataset:
             num_parallel_calls=tf.data.experimental.AUTOTUNE,
         )
 
+    def shuffled_dataset(
+        self, shuffle_buffer_size: Optional[int] = None
+    ) -> tf.data.Dataset:
+        shuffle_buffer_size = shuffle_buffer_size or self.size or 100000
+        return self._dataset.shuffle(shuffle_buffer_size)
+
     def batchify(
         self,
         batch_size: int,
         shuffle: bool = True,
         shuffle_buffer_size: Optional[int] = None,
     ) -> tf.data.Dataset:
-        dataset = self._dataset
-        if shuffle:
-            shuffle_buffer_size = shuffle_buffer_size or self.size or 100000
-            dataset = dataset.shuffle(shuffle_buffer_size)
-
+        dataset = (
+            self.shuffled_dataset(shuffle_buffer_size) if shuffle else self._dataset
+        )
         return dataset.padded_batch(
             batch_size,
             padded_shapes=(self.text_padding_shape, self.label_padding_shape),

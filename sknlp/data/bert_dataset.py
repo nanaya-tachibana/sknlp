@@ -41,14 +41,14 @@ class BertClassificationDataset(ClassificationDataset):
         return text.numpy().decode("utf-8")[: self.max_length]
 
     def batchify(
-        self, batch_size: int, shuffle: bool = True, shuffle_buffer_size: int = 100000
+        self,
+        batch_size: int,
+        shuffle: bool = True,
+        shuffle_buffer_size: Optional[int] = None,
     ) -> tf.data.Dataset:
-        dataset = self._dataset
-        if shuffle:
-            if shuffle_buffer_size <= 0:
-                shuffle_buffer_size = 100000
-            dataset = dataset.shuffle(shuffle_buffer_size)
-
+        dataset = (
+            self.shuffled_dataset(shuffle_buffer_size) if shuffle else self._dataset
+        )
         return dataset.batch(batch_size).prefetch(
             buffer_size=tf.data.experimental.AUTOTUNE
         )

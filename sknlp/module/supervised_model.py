@@ -213,10 +213,17 @@ class SupervisedNLPModel(BaseNLPModel):
             )
         if log_file is not None:
             callbacks.append(tf.keras.callbacks.CSVLogger(log_file))
+
+        train_tf_dataset = self.train_dataset.batchify(batch_size)
+        valid_tf_dataset = None
+        if self.valid_dataset is not None:
+            valid_tf_dataset = self.valid_dataset.batchify(batch_size, shuffle=False)
         self._model.fit(
-            self.train_dataset.batchify(batch_size),
+            train_tf_dataset,
             epochs=n_epochs,
-            validation_data=self.valid_dataset.batchify(batch_size, shuffle=False),
+            validation_data=valid_tf_dataset
+            if self.valid_dataset
+            else None,
             callbacks=callbacks,
             verbose=verbose,
         )

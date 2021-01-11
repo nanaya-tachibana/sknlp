@@ -1,11 +1,9 @@
 from typing import Sequence, List, Dict, Any, Optional
 from functools import partial
 
-import numpy as np
 import pandas as pd
 from tabulate import tabulate
 import tensorflow as tf
-from tensorflow.python.ops.gen_batch_ops import batch
 
 from sknlp.vocab import Vocab
 from sknlp.data import TaggingDataset
@@ -74,16 +72,17 @@ class DeepTagger(SupervisedNLPModel):
     def get_callbacks(self, batch_size: int) -> List[tf.keras.callbacks.Callback]:
         callbacks = []
         if self.valid_dataset is not None:
-            callbacks.append(ModelScoreCallback(partial(
+            score_func = partial(
                 self.score, dataset=self.valid_dataset, batch_size=batch_size
-            )))
+            )
+            callbacks.append(ModelScoreCallback(score_func))
         return callbacks
 
     def get_metrics(self) -> List[tf.keras.metrics.Metric]:
         return []
 
     def get_monitor(self) -> str:
-        return None
+        return "val_fscore"
 
     def create_dataset_from_df(
         self, df: pd.DataFrame, vocab: Vocab, segmenter: str, labels: Sequence[str]
@@ -146,8 +145,8 @@ class DeepTagger(SupervisedNLPModel):
     def get_config(self) -> Dict[str, Any]:
         return {
             **super().get_config(),
-            "start_tag": self._start_tag,
-            "end_tag": self._end_tag,
+            "start_tag": self.start_tag,
+            "end_tag": self.end_tag,
         }
 
     @classmethod
