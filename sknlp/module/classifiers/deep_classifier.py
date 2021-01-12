@@ -141,7 +141,7 @@ class DeepClassifier(SupervisedNLPModel):
         return tabulate(score_df, headers="keys", tablefmt="github", showindex=False)
 
     def get_config(self) -> Dict[str, Any]:
-        return {**super().get_config(), "is_multilabel": self._is_multilabel}
+        return {**super().get_config(), "is_multilabel": self.is_multilabel}
 
     @classmethod
     def _filter_config(cls, config):

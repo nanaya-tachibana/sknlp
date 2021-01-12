@@ -9,7 +9,6 @@ from .lstmp import LSTMP
 
 
 class MultiLSTMP(Layer):
-
     def __init__(
         self,
         num_layers: int,
@@ -27,9 +26,9 @@ class MultiLSTMP(Layer):
         recurrent_constraint: Optional[WeightConstraint] = None,
         projection_constraint: Optional[WeightConstraint] = None,
         bias_constraint: Optional[WeightConstraint] = None,
-        input_dropout: float = 0.,
-        recurrent_dropout: float = 0.,
-        output_dropout: float = 0.,
+        input_dropout: float = 0.0,
+        recurrent_dropout: float = 0.0,
+        output_dropout: float = 0.0,
         recurrent_clip: Optional[float] = None,
         projection_clip: Optional[float] = None,
         last_connection: str = "last",
@@ -41,31 +40,32 @@ class MultiLSTMP(Layer):
 
         self.layers = []
         for i in range(num_layers):
-            return_sequences = (
-                i != num_layers - 1
-                or last_connection != "last"
+            return_sequences = i != num_layers - 1 or last_connection != "last"
+            self.layers.append(
+                Bidirectional(
+                    LSTMP(
+                        units,
+                        projection_size,
+                        kernel_initializer=kernel_initializer,
+                        recurrent_initializer=recurrent_initializer,
+                        projection_initializer=projection_initializer,
+                        bias_initializer=bias_initializer,
+                        kernel_regularizer=kernel_regularizer,
+                        recurrent_regularizer=recurrent_regularizer,
+                        projection_regularizer=projection_regularizer,
+                        bias_regularizer=bias_regularizer,
+                        kernel_constraint=kernel_constraint,
+                        recurrent_constraint=recurrent_constraint,
+                        projection_constraint=projection_constraint,
+                        bias_constraint=bias_constraint,
+                        dropout=input_dropout,
+                        recurrent_dropout=recurrent_dropout,
+                        recurrent_clip=recurrent_clip,
+                        projection_clip=projection_clip,
+                        return_sequences=return_sequences,
+                    )
+                )
             )
-            self.layers.append(Bidirectional(LSTMP(
-                units,
-                projection_size,
-                kernel_initializer=kernel_initializer,
-                recurrent_initializer=recurrent_initializer,
-                projection_initializer=projection_initializer,
-                bias_initializer=bias_initializer,
-                kernel_regularizer=kernel_regularizer,
-                recurrent_regularizer=recurrent_regularizer,
-                projection_regularizer=projection_regularizer,
-                bias_regularizer=bias_regularizer,
-                kernel_constraint=kernel_constraint,
-                recurrent_constraint=recurrent_constraint,
-                projection_constraint=projection_constraint,
-                bias_constraint=bias_constraint,
-                dropout=input_dropout,
-                recurrent_dropout=recurrent_dropout,
-                recurrent_clip=recurrent_clip,
-                projection_clip=projection_clip,
-                return_sequences=return_sequences
-            )))
         super().__init__(**kwargs)
 
     def call(self, inputs: tf.Tensor) -> tf.Tensor:
@@ -75,9 +75,9 @@ class MultiLSTMP(Layer):
             noise_shape = (None, 1, self.layers[0].forward_layer.projection_size * 2)
             if self.last_connection == "last":
                 noise_shape = None
-            return Dropout(self.output_dropout,
-                           noise_shape=noise_shape,
-                           name="output_dropout")(inputs)
+            return Dropout(
+                self.output_dropout, noise_shape=noise_shape, name="output_dropout"
+            )(inputs)
         else:
             return inputs
 
@@ -89,11 +89,15 @@ class MultiLSTMP(Layer):
             "projection_size": self.layers[0].forward_layer.projection_size,
             "kernel_initializer": self.layers[0].forward_layer.kernel_initializer,
             "recurrent_initializer": self.layers[0].forward_layer.recurrent_initializer,
-            "projection_initializer": self.layers[0].forward_layer.projection_initializer,
+            "projection_initializer": self.layers[
+                0
+            ].forward_layer.projection_initializer,
             "bias_initializer": self.layers[0].forward_layer.bias_initializer,
             "kernel_regularizer": self.layers[0].forward_layer.kernel_regularizer,
             "recurrent_regularizer": self.layers[0].forward_layer.recurrent_regularizer,
-            "projection_regularizer": self.layers[0].forward_layer.projection_regularizer,
+            "projection_regularizer": self.layers[
+                0
+            ].forward_layer.projection_regularizer,
             "bias_regularizer": self.layers[0].forward_layer.bias_regularizer,
             "kernel_constraint": self.layers[0].forward_layer.kernel_constraint,
             "recurrent_constraint": self.layers[0].forward_layer.recurrent_constraint,

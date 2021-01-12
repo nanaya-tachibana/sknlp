@@ -87,11 +87,13 @@ class SupervisedNLPModel(BaseNLPModel):
         return self._idx2class.get(class_idx, None)
 
     def get_inputs(self) -> tf.Tensor:
-        return self._text2vec.get_inputs()
+        if getattr(self, "inputs", None) is None:
+            return self.text2vec.get_inputs()
+        else:
+            return self.inputs
 
     def get_outputs(self) -> tf.Tensor:
-        inputs = self._text2vec.get_outputs()
-        return self.build_output_layer(self.build_encode_layer(inputs))
+        return self.build_output_layer(self.build_encode_layer(self.get_inputs()))
 
     def build(self) -> None:
         if self._built:
@@ -155,10 +157,6 @@ class SupervisedNLPModel(BaseNLPModel):
         log_file: Optional[str] = None,
         verbose: int = 2
     ) -> None:
-        # assert not (
-        #     self._text2vec is None and X is None
-        # ), "When text2vec is not given, X must be provided"
-
         self._train_dataset = self.prepare_dataset(X, y, dataset)
         if (valid_X is None or valid_y is None) and valid_dataset is None:
             self._valid_dataset = None
@@ -221,9 +219,7 @@ class SupervisedNLPModel(BaseNLPModel):
         self._model.fit(
             train_tf_dataset,
             epochs=n_epochs,
-            validation_data=valid_tf_dataset
-            if self.valid_dataset
-            else None,
+            validation_data=valid_tf_dataset if self.valid_dataset else None,
             callbacks=callbacks,
             verbose=verbose,
         )

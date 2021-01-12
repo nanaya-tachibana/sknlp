@@ -98,7 +98,7 @@ class TextRNNClassifier(DeepClassifier):
             projection_constraint=self.rnn_projection_constraint,
             bias_constraint=self.rnn_bias_constraint,
             name="rnn",
-        )(inputs)
+        )(self.text2vec(inputs))
 
     def build_output_layer(self, inputs):
         return MLPLayer(

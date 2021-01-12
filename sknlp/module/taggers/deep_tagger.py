@@ -22,18 +22,18 @@ class DeepTagger(SupervisedNLPModel):
         classes: Sequence[str],
         start_tag: Optional[str] = None,
         end_tag: Optional[str] = None,
+        use_crf: bool = True,
         max_sequence_length: Optional[int] = None,
         sequence_length: Optional[int] = None,
         segmenter: str = "char",
         embedding_size: int = 100,
         text2vec: Optional[Text2vec] = None,
-        loss: str = None,
         **kwargs,
     ):
         classes = list(classes)
+        self._start_tag = start_tag
+        self._end_tag = end_tag
         if start_tag is not None and end_tag is not None:
-            self._start_tag = start_tag
-            self._end_tag = end_tag
             if start_tag not in classes:
                 classes.append(start_tag)
             if end_tag not in classes:
@@ -41,6 +41,7 @@ class DeepTagger(SupervisedNLPModel):
         self._pad_tag = "[PAD]"
         if self._pad_tag != classes[0]:
             classes.insert(0, self._pad_tag)
+        self._use_crf = use_crf
         super().__init__(
             classes,
             max_sequence_length=max_sequence_length,
@@ -51,8 +52,10 @@ class DeepTagger(SupervisedNLPModel):
             task="tagging",
             **kwargs,
         )
-        self._decode_model = None
-        self._loss = loss
+
+    @property
+    def use_crf(self) -> bool:
+        return self._use_crf
 
     @property
     def start_tag(self) -> str:
@@ -142,11 +145,28 @@ class DeepTagger(SupervisedNLPModel):
     def format_score(self, score_df: pd.DataFrame, format: str = "markdown") -> str:
         return tabulate(score_df, headers="keys", tablefmt="github", showindex=False)
 
+    def export(self, directory: str, name: str, version: str = "0") -> None:
+        if self.use_crf:
+            mask = self._model.get_layer("mask_layer").output
+            emissions = self._model.get_layer("mlp").output
+            crf = CrfDecodeLayer(self.num_classes, self.max_sequence_length)
+            crf.set_weights(self._model.get_layer("crf").get_weights())
+            model = tf.keras.Model(
+                inputs=self._model.inputs[0], outputs=crf(emissions, mask)
+            )
+            original_model = self._model
+            self._model = model
+            super().export(directory, name, version=version)
+            self._model = original_model
+        else:
+            super().export(directory, name, version=version)
+
     def get_config(self) -> Dict[str, Any]:
         return {
             **super().get_config(),
             "start_tag": self.start_tag,
             "end_tag": self.end_tag,
+            "use_crf": self.use_crf
         }
 
     @classmethod

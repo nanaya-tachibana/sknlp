@@ -28,7 +28,8 @@ class BertTagger(DeepTagger):
         num_fc_layers: int = 2,
         fc_hidden_size: int = 256,
         output_dropout: float = 0.5,
-        text2vec: Optional[Bert2vec] = None, **kwargs
+        text2vec: Optional[Bert2vec] = None,
+        **kwargs
     ) -> None:
         super().__init__(
             classes,
@@ -58,12 +59,6 @@ class BertTagger(DeepTagger):
             df=df,
             max_length=self.max_sequence_length,
         )
-
-    def get_inputs(self) -> tf.Tensor:
-        return self.inputs
-
-    def get_outputs(self) -> tf.Tensor:
-        return self.build_output_layer(self.build_encode_layer(self.get_inputs()))
 
     def build_encode_layer(self, inputs: tf.Tensor) -> tf.Tensor:
         texts, tag_ids = inputs
@@ -99,19 +94,6 @@ class BertTagger(DeepTagger):
         config.pop("start_tag", None)
         config.pop("end_tag", None)
         return config
-
-    def export(self, directory: str, name: str, version: str = "0") -> None:
-        mask = self._model.get_layer("mask_layer").output
-        emissions = self._model.get_layer("mlp").output
-        crf = CrfDecodeLayer(self.num_classes, self.max_sequence_length)
-        crf.set_weights(self._model.get_layer("crf").get_weights())
-        model = tf.keras.Model(
-            inputs=self._model.inputs[0], outputs=crf(emissions, mask)
-        )
-        original_model = self._model
-        self._model = model
-        super().export(directory, name, version=version)
-        self._model = original_model
 
     def get_config(self) -> Dict[str, Any]:
         return {**super().get_config(), "output_dropout": self.output_dropout}

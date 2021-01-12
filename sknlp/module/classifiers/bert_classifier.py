@@ -56,12 +56,6 @@ class BertClassifier(DeepClassifier):
             max_length=self.max_sequence_length,
         )
 
-    def get_inputs(self) -> tf.Tensor:
-        return self.inputs
-
-    def get_outputs(self) -> tf.Tensor:
-        return self.build_output_layer(self.build_encode_layer(self.get_inputs()))
-
     def build_encode_layer(self, inputs: tf.Tensor) -> tf.Tensor:
         preprocessing_layer = BertPreprocessingLayer(self.text2vec.vocab.sorted_tokens)
         token_ids = preprocessing_layer(inputs)
