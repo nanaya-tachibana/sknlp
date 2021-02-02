@@ -6,7 +6,6 @@ from tensorflow.keras import initializers
 from tensorflow.keras import regularizers
 from tensorflow.keras.layers import InputSpec
 from tensorflow.python.keras.layers.recurrent import LSTM, LSTMCell
-from tensorflow.python.keras.saving.saved_model import layer_serialization
 from tensorflow.python.training.tracking import data_structures
 
 from sknlp.typing import WeightRegularizer, WeightInitializer, WeightConstraint

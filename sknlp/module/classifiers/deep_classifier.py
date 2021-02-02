@@ -1,4 +1,4 @@
-from typing import Sequence, List, Dict, Any, Optional, Union
+from typing import Sequence, List, Dict, Any, Optional, Union, Tuple
 
 import numpy as np
 import pandas as pd
@@ -24,8 +24,9 @@ class DeepClassifier(SupervisedNLPModel):
         sequence_length: Optional[int] = None,
         segmenter: Optional[str] = "jieba",
         embedding_size: int = 100,
+        use_bath_normal: bool = True,
         text2vec: Optional[Text2vec] = None,
-        loss: str = None,
+        loss: Optional[Tuple[tf.keras.losses.Loss, Dict[str, Any]]] = None,
         **kwargs
     ):
         classes = list(classes)
@@ -44,20 +45,25 @@ class DeepClassifier(SupervisedNLPModel):
             **kwargs
         )
         self._is_multilabel = is_multilabel
+        self._use_batch_normal = use_bath_normal
         self._loss = loss
 
     @property
     def is_multilabel(self):
         return self._is_multilabel
 
+    @property
+    def use_batch_normal(self):
+        return self._use_batch_normal
+
     def get_loss(self, *args, **kwargs):
         if self.is_multilabel:
+            if self._loss is not None:
+                loss_func, loss_kwargs = self._loss
+                return loss_func(from_logits=True, **loss_kwargs)
             return tf.keras.losses.BinaryCrossentropy(from_logits=True)
         else:
             return tf.keras.losses.CategoricalCrossentropy(from_logits=True)
-
-    def get_callbacks(self, *args, **kwargs) -> List[tf.keras.callbacks.Callback]:
-        return []
 
     def get_metrics(self, *args, **kwargs) -> List[tf.keras.metrics.Metric]:
         if self.is_multilabel:
@@ -73,7 +79,8 @@ class DeepClassifier(SupervisedNLPModel):
                 FBetaScoreWithLogits(self.num_classes, logits2scores="softmax"),
             ]
 
-    def get_monitor(self) -> str:
+    @classmethod
+    def get_monitor(cls) -> str:
         return "val_fbeta_score"
 
     def create_dataset_from_df(
@@ -137,11 +144,16 @@ class DeepClassifier(SupervisedNLPModel):
             dataset.label, predictions, self.is_multilabel, classes=self.classes
         )
 
-    def format_score(self, score_df: pd.DataFrame, format: str = "markdown") -> str:
+    @classmethod
+    def format_score(cls, score_df: pd.DataFrame, format: str = "markdown") -> str:
         return tabulate(score_df, headers="keys", tablefmt="github", showindex=False)
 
     def get_config(self) -> Dict[str, Any]:
-        return {**super().get_config(), "is_multilabel": self.is_multilabel}
+        return {
+            **super().get_config(),
+            "is_multilabel": self.is_multilabel,
+            "use_batch_normal": self.use_batch_normal,
+        }
 
     @classmethod
     def _filter_config(cls, config):
@@ -150,7 +162,8 @@ class DeepClassifier(SupervisedNLPModel):
         config.pop("task", None)
         return config
 
-    def get_custom_objects(self) -> Dict[str, Any]:
+    @classmethod
+    def get_custom_objects(cls) -> Dict[str, Any]:
         return {
             **super().get_custom_objects(),
             "PrecisionWithLogits": PrecisionWithLogits,

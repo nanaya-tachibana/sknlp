@@ -125,7 +125,7 @@ def viterbi_decode(transitions, emissions, mask=None):
         best_last_tag = viterbi_scores[seq_end_idx, idx].argmax()
         best_tags = [best_last_tag]
         # trace back all best tags based on the last best tag and viterbi path
-        for path in np.flip(viterbi_paths[:sequence_lengths[idx] - 1], 0):
+        for path in np.flip(viterbi_paths[: sequence_lengths[idx] - 1], 0):
             best_last_tag = path[idx][best_tags[-1]]
             best_tags.append(best_last_tag)
         best_tags.reverse()

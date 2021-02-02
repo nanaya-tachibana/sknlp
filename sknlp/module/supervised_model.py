@@ -1,5 +1,4 @@
-from operator import attrgetter
-from typing import Sequence, Union, Optional, Dict, Any, List
+from typing import Sequence, Union, Optional, Dict, Any, List, Tuple, Type
 
 import os
 import logging
@@ -11,7 +10,7 @@ import pandas as pd
 from sknlp.data import NLPDataset
 from sknlp.data.text_segmenter import get_segmenter
 from sknlp.vocab import Vocab
-from sknlp.callbacks import WeightDecayScheduler
+from sknlp.callbacks import default_supervised_model_callbacks
 from .text2vec import Word2vec, Text2vec
 from .base_model import BaseNLPModel
 
@@ -101,9 +100,8 @@ class SupervisedNLPModel(BaseNLPModel):
         assert self._text2vec is not None
         super().build()
 
-    @classmethod
     def create_dataset_from_df(
-        cls, df: pd.DataFrame, vocab: Vocab, segmenter: str, labels: Sequence[str]
+        self, df: pd.DataFrame, vocab: Vocab, segmenter: str, labels: Sequence[str]
     ) -> NLPDataset:
         raise NotImplementedError()
 
@@ -112,22 +110,29 @@ class SupervisedNLPModel(BaseNLPModel):
         X: Sequence[str],
         y: Sequence[str],
         dataset: NLPDataset,
-    ) -> tf.data.Dataset:
+    ) -> NLPDataset:
         assert (X is not None and y is not None) or dataset is not None
-
-        if self._text2vec is None:
-            cut = get_segmenter(self.segmenter)
-            vocab = self.build_vocab(X or dataset.text, cut)
-            self._text2vec = Word2vec(vocab, self.embedding_size, self.segmenter)
-
         if dataset is not None:
             return dataset
-
         if isinstance(y[0], (list, tuple)):
             y = ["|".join(map(str, y_i)) for y_i in y]
         df = pd.DataFrame(zip(X, y), columns=["text", "label"])
         return self.create_dataset_from_df(
             df, self.text2vec.vocab, self.text2vec.segmenter, self.classes
+        )
+
+    def compile_optimizer(self, **kwargs) -> None:
+        if not self._built:
+            self.build()
+        weight_decay = kwargs.pop("weight_decay", 0)
+        if weight_decay > 0:
+            optimizer = tfa.optimizers.AdamW(weight_decay, **kwargs)
+        else:
+            optimizer = tfa.optimizers.LazyAdam(**kwargs)
+        self._model.compile(
+            optimizer=optimizer,
+            loss=self.get_loss(),
+            metrics=self.get_metrics(),
         )
 
     def fit(
@@ -141,12 +146,11 @@ class SupervisedNLPModel(BaseNLPModel):
         valid_dataset: NLPDataset = None,
         batch_size: int = 128,
         n_epochs: int = 10,
-        optimizer: str = "adam",
-        lr: float = 1e-3,
+        learning_rate: float = 1e-3,
         weight_decay: float = 0.0,
-        lr_update_factor: float = 0.5,
-        lr_update_epochs: int = 10,
         clip: Optional[float] = 5.0,
+        learning_rate_update_factor: float = 0.5,
+        learning_rate_update_epochs: int = 10,
         enable_early_stopping: bool = False,
         early_stopping_patience: Optional[int] = None,
         early_stopping_min_delta: float = 0.0,
@@ -157,65 +161,48 @@ class SupervisedNLPModel(BaseNLPModel):
         log_file: Optional[str] = None,
         verbose: int = 2
     ) -> None:
+        if self._text2vec is None:
+            cut = get_segmenter(self.segmenter)
+            vocab = self.build_vocab(X or dataset.text, cut)
+            self._text2vec = Word2vec(vocab, self.embedding_size, self.segmenter)
+
         self._train_dataset = self.prepare_dataset(X, y, dataset)
         if (valid_X is None or valid_y is None) and valid_dataset is None:
             self._valid_dataset = None
         else:
             self._valid_dataset = self.prepare_dataset(valid_X, valid_y, valid_dataset)
-
-        if not self._built:
-            self.build()
-
-        optimizer_kwargs = {}
-        if clip is not None:
-            optimizer_kwargs["clipnorm"] = clip
-        if weight_decay > 0:
-            optimizer = tfa.optimizers.AdamW(
-                weight_decay, learning_rate=lr, **optimizer_kwargs
-            )
-        else:
-            optimizer = tf.keras.optimizers.Adam(learning_rate=lr, **optimizer_kwargs)
-
-        loss = self.get_loss()
-        metrics = self.get_metrics()
-        callbacks = self.get_callbacks(batch_size)
-        self._model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
-
-        def lr_scheduler(epoch, lr):
-            return lr * lr_update_factor ** ((epoch + 1) % lr_update_epochs == 0)
-
-        def wd_scheduler(epoch, wd):
-            return wd * lr_update_factor ** ((epoch + 1) % lr_update_epochs == 0)
-
-        lr_decay = tf.keras.callbacks.LearningRateScheduler(
-            lr_scheduler, verbose=verbose
-        )
-        callbacks = [*callbacks, lr_decay]
-        if weight_decay > 0:
-            callbacks.append(WeightDecayScheduler(wd_scheduler, verbose=verbose))
-        if enable_early_stopping:
-            if early_stopping_monitor == 2 and self.get_monitor():
-                mode = "max"
-                monitor = self.get_monitor()
-            else:
-                mode = "min"
-                monitor = "val_loss"
-            callbacks.append(
-                tf.keras.callbacks.EarlyStopping(
-                    monitor=monitor,
-                    min_delta=early_stopping_min_delta,
-                    patience=early_stopping_patience or lr_update_epochs,
-                    mode=mode,
-                    restore_best_weights=early_stopping_use_best_epoch,
-                )
-            )
-        if log_file is not None:
-            callbacks.append(tf.keras.callbacks.CSVLogger(log_file))
-
         train_tf_dataset = self.train_dataset.batchify(batch_size)
         valid_tf_dataset = None
         if self.valid_dataset is not None:
             valid_tf_dataset = self.valid_dataset.batchify(batch_size, shuffle=False)
+
+        optimizer_kwargs = {
+            "learning_rate": learning_rate,
+            "weight_decay": weight_decay,
+        }
+        if clip is not None:
+            optimizer_kwargs["clipnorm"] = clip
+        self.compile_optimizer(**optimizer_kwargs)
+
+        monitor = "val_loss"
+        monitor_direction = "min"
+        if early_stopping_monitor == 2 and self.get_monitor():
+            monitor = self.get_monitor()
+            monitor_direction = "max"
+        callbacks = default_supervised_model_callbacks(
+            learning_rate_update_factor=learning_rate_update_factor,
+            learning_rate_update_epochs=learning_rate_update_epochs,
+            use_weight_decay=weight_decay > 0,
+            enable_early_stopping=enable_early_stopping,
+            early_stopping_monitor=monitor,
+            early_stopping_monitor_direction=monitor_direction,
+            early_stopping_patience=early_stopping_patience,
+            early_stopping_min_delta=early_stopping_min_delta,
+            early_stopping_use_best_epoch=early_stopping_use_best_epoch,
+            log_file=log_file,
+        )
+        callbacks.extend(self.get_callbacks(batch_size))
+
         self._model.fit(
             train_tf_dataset,
             epochs=n_epochs,
@@ -279,5 +266,6 @@ class SupervisedNLPModel(BaseNLPModel):
         d = os.path.join(directory, name, version)
         self.text2vec.save_vocab(d)
 
-    def get_custom_objects(self) -> Dict[str, Any]:
+    @classmethod
+    def get_custom_objects(cls) -> Dict[str, Any]:
         return {**super().get_custom_objects(), "AdamW": tfa.optimizers.AdamW}

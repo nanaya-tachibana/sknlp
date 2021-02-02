@@ -25,6 +25,10 @@ class TextRNNClassifier(DeepClassifier):
         rnn_output_dropout: float = 0.5,
         num_fc_layers: int = 2,
         fc_hidden_size: int = 128,
+        fc_activation: str = "relu",
+        fc_last_activation: str = "tanh",
+        fc_momentum: float = 0.9,
+        fc_epsilon: float = 1e-5,
         rnn_kernel_initializer="glorot_uniform",
         rnn_recurrent_initializer="orthogonal",
         rnn_projection_initializer="glorot_uniform",
@@ -73,6 +77,10 @@ class TextRNNClassifier(DeepClassifier):
         self.rnn_bias_constraint = rnn_bias_constraint
         self.num_fc_layers = num_fc_layers
         self.fc_hidden_size = fc_hidden_size
+        self.fc_activation = fc_activation
+        self.fc_last_activation = fc_last_activation
+        self.fc_momentum = fc_momentum
+        self.fc_epsilon = fc_epsilon
 
     def build_encode_layer(self, inputs):
         return MultiLSTMP(
@@ -105,9 +113,15 @@ class TextRNNClassifier(DeepClassifier):
             self.num_fc_layers,
             hidden_size=self.fc_hidden_size,
             output_size=self.num_classes,
+            activation=self.fc_activation,
+            last_activation=self.fc_last_activation,
+            batch_normal=self.use_batch_normal,
+            momentum=self.fc_momentum,
+            epsilon=self.fc_epsilon,
             name="mlp",
         )(inputs)
 
+    @classmethod
     def get_custom_objects(self) -> Dict[str, Any]:
         return {
             **super().get_custom_objects(),

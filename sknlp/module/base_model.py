@@ -1,4 +1,4 @@
-from typing import Sequence, Optional, Dict, Any, Callable
+from typing import Sequence, Optional, Dict, Any, Callable, List
 
 import json
 import os
@@ -11,7 +11,6 @@ from sknlp.vocab import Vocab
 
 
 class BaseNLPModel:
-
     def __init__(
         self,
         max_sequence_length: Optional[int] = None,
@@ -25,6 +24,7 @@ class BaseNLPModel:
         self._segmenter = segmenter
         self._name = name
         self._kwargs = kwargs
+        self._model: tf.keras.Model = None
         self._built = False
 
     @property
@@ -43,7 +43,7 @@ class BaseNLPModel:
     def build_vocab(
         texts: Sequence[str],
         segment_func: Callable[[str], Sequence[str]],
-        min_frequency=5
+        min_frequency=5,
     ) -> Vocab:
         counter = Counter(
             itertools.chain.from_iterable(segment_func(text) for text in texts)
@@ -73,16 +73,18 @@ class BaseNLPModel:
     def get_loss(self, *args, **kwargs) -> tf.keras.losses.Loss:
         raise NotImplementedError()
 
-    def get_metrics(self, *args, **kwargs):
+    def get_metrics(self, *args, **kwargs) -> List[tf.keras.metrics.Metric]:
+        return []
+
+    def get_callbacks(self, *args, **kwargs) -> List[tf.keras.callbacks.Callback]:
+        return []
+
+    @classmethod
+    def get_monitor(cls) -> str:
         raise NotImplementedError()
 
-    def get_callbacks(self, *args, **kwargs):
-        raise NotImplementedError()
-
-    def get_monitor(self):
-        raise NotImplementedError()
-
-    def get_custom_objects(self) -> Dict[str, Any]:
+    @classmethod
+    def get_custom_objects(cls) -> Dict[str, Any]:
         return {}
 
     def freeze(self) -> None:
@@ -103,8 +105,7 @@ class BaseNLPModel:
             meta = json.loads(f.read())
         module = cls.from_config(meta)
         module._model = tf.keras.models.load_model(
-            os.path.join(directory, "model"),
-            custom_objects=module.get_custom_objects()
+            os.path.join(directory, "model"), custom_objects=module.get_custom_objects()
         )
         module._built = True
         return module
@@ -112,12 +113,12 @@ class BaseNLPModel:
     def export(self, directory: str, name: str, version: str = "0") -> None:
         d = os.path.join(directory, name, version)
 
-        model = tf.keras.models.model_from_json(
-            self._model.to_json(), 
+        model: tf.keras.Model = tf.keras.models.model_from_json(
+            self._model.to_json(),
             custom_objects={
-                **self.get_custom_objects(), 
+                **self.get_custom_objects(),
                 "TruncatedNormal": tf.keras.initializers.TruncatedNormal,
-            }
+            },
         )
         model.set_weights(self._model.get_weights())
         model.save(d, include_optimizer=False, save_format="tf")
@@ -128,7 +129,7 @@ class BaseNLPModel:
             "max_sequence_length": self.max_sequence_length,
             "sequence_length": self.sequence_length,
             "segmenter": self.segmenter,
-            "name": self._name
+            "name": self._name,
         }
 
     @classmethod

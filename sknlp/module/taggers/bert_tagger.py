@@ -27,6 +27,10 @@ class BertTagger(DeepTagger):
         max_sequence_length: int = 120,
         num_fc_layers: int = 2,
         fc_hidden_size: int = 256,
+        fc_activation: str = "relu",
+        fc_last_activation: str = "relu",
+        fc_momentum: float = 0.9,
+        fc_epsilon: float = 1e-5,
         output_dropout: float = 0.5,
         text2vec: Optional[Bert2vec] = None,
         **kwargs
@@ -44,6 +48,10 @@ class BertTagger(DeepTagger):
         )
         self.num_fc_layers = num_fc_layers
         self.fc_hidden_size = fc_hidden_size
+        self.fc_activation = fc_activation
+        self.fc_last_activation = fc_last_activation
+        self.fc_momentum = fc_momentum
+        self.fc_epsilon = fc_epsilon
         self.output_dropout = output_dropout
         self.inputs = [
             tf.keras.Input(shape=(), dtype=tf.string, name="text_input"),
@@ -84,6 +92,11 @@ class BertTagger(DeepTagger):
             self.num_fc_layers,
             hidden_size=self.fc_hidden_size,
             output_size=self.num_classes,
+            activation=self.fc_activation,
+            last_activation=self.fc_last_activation,
+            batch_normal=self.use_batch_normal,
+            momentum=self.fc_momentum,
+            epsilon=self.fc_epsilon,
             name="mlp",
         )(embeddings)
         return CrfLossLayer(self.num_classes)([emissions, tag_ids], mask)

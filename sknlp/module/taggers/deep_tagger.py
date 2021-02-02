@@ -1,3 +1,4 @@
+from logging import warning
 from typing import Sequence, List, Dict, Any, Optional
 from functools import partial
 
@@ -27,6 +28,7 @@ class DeepTagger(SupervisedNLPModel):
         sequence_length: Optional[int] = None,
         segmenter: str = "char",
         embedding_size: int = 100,
+        use_batch_normal: bool = True,
         text2vec: Optional[Text2vec] = None,
         **kwargs,
     ):
@@ -42,6 +44,7 @@ class DeepTagger(SupervisedNLPModel):
         if self._pad_tag != classes[0]:
             classes.insert(0, self._pad_tag)
         self._use_crf = use_crf
+        self._use_batch_normal = use_batch_normal
         super().__init__(
             classes,
             max_sequence_length=max_sequence_length,
@@ -58,6 +61,10 @@ class DeepTagger(SupervisedNLPModel):
         return self._use_crf
 
     @property
+    def use_batch_normal(self) -> bool:
+        return self._use_batch_normal
+
+    @property
     def start_tag(self) -> str:
         return self._start_tag
 
@@ -72,11 +79,13 @@ class DeepTagger(SupervisedNLPModel):
     def get_loss(self) -> None:
         return None
 
-    def get_callbacks(self, batch_size: int) -> List[tf.keras.callbacks.Callback]:
-        callbacks = []
+    def get_callbacks(self, *args, **kwargs) -> List[tf.keras.callbacks.Callback]:
+        callbacks = super().get_callbacks(*args, **kwargs)
         if self.valid_dataset is not None:
             score_func = partial(
-                self.score, dataset=self.valid_dataset, batch_size=batch_size
+                self.score,
+                dataset=self.valid_dataset,
+                batch_size=kwargs.get("batch_size", None) or 128,
             )
             callbacks.append(ModelScoreCallback(score_func))
         return callbacks
@@ -84,9 +93,11 @@ class DeepTagger(SupervisedNLPModel):
     def get_metrics(self) -> List[tf.keras.metrics.Metric]:
         return []
 
-    def get_monitor(self) -> str:
+    @classmethod
+    def get_monitor(cls) -> str:
         return "val_fscore"
 
+    @classmethod
     def create_dataset_from_df(
         self, df: pd.DataFrame, vocab: Vocab, segmenter: str, labels: Sequence[str]
     ) -> TaggingDataset:
@@ -137,11 +148,12 @@ class DeepTagger(SupervisedNLPModel):
         dataset: TaggingDataset = None,
         batch_size: int = 128,
     ) -> pd.DataFrame:
-        dataset = self.prepare_dataset(X, y, dataset)
+        dataset = self._prepare_dataset(X, y, dataset)
         predictions = self.predict(dataset=dataset, batch_size=batch_size)
         labels = list(set([c.split("-")[-1] for c in self.classes if "-" in c]))
         return tagging_fscore(dataset.text, dataset.label, predictions, labels)
 
+    @classmethod
     def format_score(self, score_df: pd.DataFrame, format: str = "markdown") -> str:
         return tabulate(score_df, headers="keys", tablefmt="github", showindex=False)
 
@@ -166,17 +178,19 @@ class DeepTagger(SupervisedNLPModel):
             **super().get_config(),
             "start_tag": self.start_tag,
             "end_tag": self.end_tag,
-            "use_crf": self.use_crf
+            "use_crf": self.use_crf,
+            "use_batch_normal": self.use_batch_normal,
         }
 
     @classmethod
-    def _filter_config(cls, config):
+    def _filter_config(cls, config: Dict[str, Any]) -> Dict[str, Any]:
         config = super()._filter_config(config)
         config.pop("algorithm", None)
         config.pop("task", None)
         return config
 
-    def get_custom_objects(self) -> Dict[str, Any]:
+    @classmethod
+    def get_custom_objects(cls) -> Dict[str, Any]:
         return {
             **super().get_custom_objects(),
             "CrfDecodeLayer": CrfDecodeLayer,
