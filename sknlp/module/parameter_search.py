@@ -24,13 +24,14 @@ def create_model_builder(
     model_type: Type[SupervisedNLPModel],
     model_args: List[Any],
     model_kwargs: Dict[str, Any],
+    optimizer: str,
     optimizer_parameters: Dict[str, Any],
     distribute_strategy: Optional[tf.distribute.Strategy] = None,
 ):
     def model_builder(hp):
         with maybe_distribute(distribute_strategy):
             model = model_type(*model_args, **model_kwargs)
-            model.compile_optimizer(**optimizer_parameters)
+            model.compile_optimizer(optimizer, **optimizer_parameters)
             return model._model
 
     return model_builder
@@ -62,6 +63,8 @@ class ParameterSearcher:
         valid_dataset: NLPDataset = None,
         batch_size: int = 128,
         n_epochs: int = 10,
+        optimizer: str = "adam",
+        optimizer_kwargs: Optional[Dict[str, Any]] = None,
         learning_rate: float = 1e-3,
         weight_decay: float = 0.0,
         clip: Optional[float] = 5.0,
@@ -107,9 +110,11 @@ class ParameterSearcher:
             log_file=log_file,
         )
 
+        optimizer_kwargs = optimizer_kwargs or dict()
         optimizer_parameters = {
             "learning_rate": learning_rate,
             "weight_decay": weight_decay,
+            **optimizer_kwargs,
         }
         if clip is not None:
             optimizer_parameters["clipnorm"] = clip
@@ -117,15 +122,16 @@ class ParameterSearcher:
             self.model_type,
             self.model_args,
             self.model_kwargs,
+            optimizer,
             optimizer_parameters,
             distribute_strategy=distribute_strategy,
         )
 
-        monitor = self.temp_model.get_monitor()
         objective = kt.Objective(monitor, monitor_direction)
         directory = None
         project_name = None
         if search_result_directory is not None:
+            search_result_directory = search_result_directory.rstrip(".\\/")
             directory = os.path.dirname(search_result_directory)
             project_name = os.path.basename(search_result_directory)
             if directory == project_name:
@@ -139,7 +145,7 @@ class ParameterSearcher:
             directory=directory,
             project_name=project_name,
             distribution_strategy=distribute_strategy,
-            overwrite=True,
+            overwrite=False,
         )
         self.tuner.search(
             train_tf_dataset,

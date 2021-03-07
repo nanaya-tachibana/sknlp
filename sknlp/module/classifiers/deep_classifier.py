@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from tabulate import tabulate
 import tensorflow as tf
+import tensorflow_addons as tfa
 
 from sknlp.vocab import Vocab
 from sknlp.data import ClassificationDataset
@@ -24,9 +25,10 @@ class DeepClassifier(SupervisedNLPModel):
         sequence_length: Optional[int] = None,
         segmenter: Optional[str] = "jieba",
         embedding_size: int = 100,
-        use_bath_normal: bool = True,
+        use_batch_normalization: bool = True,
         text2vec: Optional[Text2vec] = None,
-        loss: Optional[Tuple[tf.keras.losses.Loss, Dict[str, Any]]] = None,
+        loss: Optional[str] = None,
+        loss_kwargs: Optional[Dict[str, Any]] = None,
         **kwargs
     ):
         classes = list(classes)
@@ -45,22 +47,24 @@ class DeepClassifier(SupervisedNLPModel):
             **kwargs
         )
         self._is_multilabel = is_multilabel
-        self._use_batch_normal = use_bath_normal
+        self._use_batch_normalization = use_batch_normalization
         self._loss = loss
+        self._loss_kwargs = loss_kwargs
 
     @property
     def is_multilabel(self):
         return self._is_multilabel
 
     @property
-    def use_batch_normal(self):
-        return self._use_batch_normal
+    def use_batch_normalization(self):
+        return self._use_batch_normalization
 
     def get_loss(self, *args, **kwargs):
         if self.is_multilabel:
-            if self._loss is not None:
-                loss_func, loss_kwargs = self._loss
-                return loss_func(from_logits=True, **loss_kwargs)
+            if self._loss == "focal":
+                return tfa.losses.SigmoidFocalCrossEntropy(
+                    from_logits=True, **self._loss_kwargs
+                )
             return tf.keras.losses.BinaryCrossentropy(from_logits=True)
         else:
             return tf.keras.losses.CategoricalCrossentropy(from_logits=True)
@@ -140,9 +144,7 @@ class DeepClassifier(SupervisedNLPModel):
         predictions = self.predict(
             dataset=dataset, thresholds=thresholds, batch_size=batch_size
         )
-        return classification_fscore(
-            dataset.label, predictions, self.is_multilabel, classes=self.classes
-        )
+        return classification_fscore(dataset.label, predictions, classes=self.classes)
 
     @classmethod
     def format_score(cls, score_df: pd.DataFrame, format: str = "markdown") -> str:
@@ -152,7 +154,7 @@ class DeepClassifier(SupervisedNLPModel):
         return {
             **super().get_config(),
             "is_multilabel": self.is_multilabel,
-            "use_batch_normal": self.use_batch_normal,
+            "use_batch_normalization": self.use_batch_normalization,
         }
 
     @classmethod

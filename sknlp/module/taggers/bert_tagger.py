@@ -24,11 +24,11 @@ class BertTagger(DeepTagger):
         classes: Sequence[str],
         segmenter: Optional[str] = None,
         embedding_size: int = 100,
+        use_batch_normalization: bool = True,
         max_sequence_length: int = 120,
         num_fc_layers: int = 2,
         fc_hidden_size: int = 256,
-        fc_activation: str = "relu",
-        fc_last_activation: str = "relu",
+        fc_activation: str = "tanh",
         fc_momentum: float = 0.9,
         fc_epsilon: float = 1e-5,
         output_dropout: float = 0.5,
@@ -40,6 +40,7 @@ class BertTagger(DeepTagger):
             segmenter=segmenter,
             algorithm="bert",
             embedding_size=embedding_size,
+            use_batch_normalization=use_batch_normalization,
             max_sequence_length=max_sequence_length,
             start_tag="[CLS]",
             end_tag="[SEP]",
@@ -49,7 +50,6 @@ class BertTagger(DeepTagger):
         self.num_fc_layers = num_fc_layers
         self.fc_hidden_size = fc_hidden_size
         self.fc_activation = fc_activation
-        self.fc_last_activation = fc_last_activation
         self.fc_momentum = fc_momentum
         self.fc_epsilon = fc_epsilon
         self.output_dropout = output_dropout
@@ -93,13 +93,14 @@ class BertTagger(DeepTagger):
             hidden_size=self.fc_hidden_size,
             output_size=self.num_classes,
             activation=self.fc_activation,
-            last_activation=self.fc_last_activation,
-            batch_normal=self.use_batch_normal,
+            batch_normalization=self.use_batch_normalization,
             momentum=self.fc_momentum,
             epsilon=self.fc_epsilon,
             name="mlp",
         )(embeddings)
-        return CrfLossLayer(self.num_classes)([emissions, tag_ids], mask)
+        return CrfLossLayer(
+            self.num_classes, max_sequence_length=self.max_sequence_length
+        )([emissions, tag_ids], mask)
 
     @classmethod
     def _filter_config(cls, config: Dict[str, Any]) -> Dict[str, Any]:

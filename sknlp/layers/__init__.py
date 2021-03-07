@@ -2,7 +2,12 @@ from .mlp import MLPLayer
 from .lstmp import LSTMPCell, LSTMP
 from .multi_lstmp import MultiLSTMP
 from .bert_tokenization import BertTokenizationLayer
-from .bert_layer import BertLayer, BertPreprocessingLayer, BertCharPreprocessingLayer
+from .bert_layer import (
+    BertLayer,
+    BertPreprocessingLayer,
+    BertCharPreprocessingLayer,
+    BertPairPreprocessingLayer,
+)
 from .crf_layer import CrfLossLayer, CrfDecodeLayer
 
 
@@ -15,6 +20,7 @@ __all__ = [
     "BertLayer",
     "BertPreprocessingLayer",
     "BertCharPreprocessingLayer",
+    "BertPairPreprocessingLayer",
     "CrfLossLayer",
-    "CrfDecodeLayer"
+    "CrfDecodeLayer",
 ]

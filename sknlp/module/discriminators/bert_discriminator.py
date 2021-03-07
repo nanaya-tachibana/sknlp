@@ -5,22 +5,16 @@ import tensorflow.keras.backend as K
 from tensorflow.keras.layers import Dropout
 import pandas as pd
 
-from sknlp.layers import (
-    MLPLayer,
-    BertLayer,
-    BertPreprocessingLayer,
-)
+from sknlp.layers import MLPLayer, BertLayer, BertPairPreprocessingLayer
 from sknlp.vocab import Vocab
-from sknlp.data import BertClassificationDataset
+from sknlp.data import BertSimilarityDataset
 from sknlp.module.text2vec import Bert2vec
-from .deep_classifier import DeepClassifier
+from .deep_discriminator import DeepDiscriminator
 
 
-class BertClassifier(DeepClassifier):
+class BertDiscriminator(DeepDiscriminator):
     def __init__(
         self,
-        classes: Sequence[str],
-        is_multilabel: bool = True,
         segmenter: Optional[str] = None,
         embedding_size: int = 100,
         use_batch_normalization: bool = True,
@@ -35,8 +29,6 @@ class BertClassifier(DeepClassifier):
         **kwargs
     ) -> None:
         super().__init__(
-            classes,
-            is_multilabel=is_multilabel,
             segmenter=segmenter,
             algorithm="bert",
             embedding_size=embedding_size,
@@ -51,28 +43,27 @@ class BertClassifier(DeepClassifier):
         self.fc_momentum = fc_momentum
         self.fc_epsilon = fc_epsilon
         self.output_dropout = output_dropout
-        self.inputs = tf.keras.Input(shape=(), dtype=tf.string, name="text_input")
+        self.inputs = [
+            tf.keras.Input(shape=(), dtype=tf.string, name="text_input"),
+            tf.keras.Input(shape=(), dtype=tf.string, name="context_input"),
+        ]
 
     def create_dataset_from_df(
         self, df: pd.DataFrame, vocab: Vocab, segmenter: str, labels: Sequence[str]
-    ) -> BertClassificationDataset:
-        return BertClassificationDataset(
+    ) -> BertSimilarityDataset:
+        return BertSimilarityDataset(
             vocab,
             list(labels),
             df=df,
-            is_multilabel=self.is_multilabel,
             max_length=self.max_sequence_length,
         )
 
     def build_encode_layer(self, inputs: tf.Tensor) -> tf.Tensor:
-        preprocessing_layer = BertPreprocessingLayer(self.text2vec.vocab.sorted_tokens)
-        token_ids = preprocessing_layer(inputs)
-        _, _, cls = self.text2vec(
-            [
-                token_ids,
-                K.zeros_like(token_ids, dtype=tf.int64),
-            ]
+        preprocessing_layer = BertPairPreprocessingLayer(
+            self.text2vec.vocab.sorted_tokens
         )
+        token_ids, type_ids = preprocessing_layer(inputs)
+        _, _, cls = self.text2vec([token_ids, type_ids])
         if self.output_dropout:
             return Dropout(self.output_dropout, name="embedding_dropout")(cls)
         return cls
@@ -97,5 +88,5 @@ class BertClassifier(DeepClassifier):
             **super().get_custom_objects(),
             "MLPLayer": MLPLayer,
             "BertLayer": BertLayer,
-            "BertPreprocessingLayer": BertPreprocessingLayer,
+            "BertPairPreprocessingLayer": BertPairPreprocessingLayer,
         }

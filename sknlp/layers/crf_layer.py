@@ -11,18 +11,18 @@ class CrfLossLayer(tf.keras.layers.Layer):
         self,
         num_tags: int,
         max_sequence_length: int = 120,
-        initializer: Optional[WeightInitializer] = None,
+        initializer: WeightInitializer = "Orthogonal",
         name: str = "crf",
         **kwargs
     ):
         super().__init__(name=name, **kwargs)
         self.num_tags = num_tags
         self.max_sequence_length = max_sequence_length
-        self.initializer = tf.keras.initializers.get(initializer)
+        self.initializer = initializer
         self.transition_weight = self.add_weight(
             shape=(self.num_tags, self.num_tags),
             dtype=tf.float32,
-            initializer=self.initializer,
+            initializer=tf.keras.initializers.get(initializer),
             name="transision_weight",
         )
 
@@ -60,18 +60,18 @@ class CrfDecodeLayer(tf.keras.layers.Layer):
         self,
         num_tags: int,
         max_sequence_length: int = 120,
-        initializer: Optional[WeightInitializer] = None,
+        initializer: WeightInitializer = "Orthogonal",
         name: str = "crf",
         **kwargs
     ):
         super().__init__(name=name, **kwargs)
         self.num_tags = num_tags
         self.max_sequence_length = max_sequence_length
-        self.initializer = tf.keras.initializers.get(initializer)
+        self.initializer = initializer
         self.transition_weight = self.add_weight(
             shape=(self.num_tags, self.num_tags),
             dtype=tf.float32,
-            initializer=self.initializer,
+            initializer=tf.keras.initializers.get(initializer),
             name="transision_weight",
         )
 

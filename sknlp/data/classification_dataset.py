@@ -1,4 +1,4 @@
-from typing import Sequence, List, Union, Optional
+from typing import Sequence, List, Union, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -22,10 +22,8 @@ class ClassificationDataset(NLPDataset):
         text_segmenter: str = "char",
         text_dtype: tf.DType = tf.int32,
         label_dtype: tf.DType = tf.float32,
-        text_padding_shape: tuple = (None,),
-        label_padding_shape: tuple = (None,),
-        text_padding_value: Union[str, int, float, None] = None,
-        label_padding_value: Union[str, int, float, None] = None,
+        batch_padding_shapes: Optional[Tuple[tf.DType]] = ((None,), (None,)),
+        batch_padding_values: Optional[Tuple[tf.DType]] = (0, 0.0),
     ):
         self.vocab = vocab
         self.labels = list(labels)
@@ -37,12 +35,12 @@ class ClassificationDataset(NLPDataset):
             in_memory=in_memory,
             text_segmenter=text_segmenter,
             max_length=max_length,
+            na_value="" if is_multilabel else "NULL",
+            column_dtypes=["str", "str"],
             text_dtype=text_dtype,
             label_dtype=label_dtype,
-            text_padding_shape=text_padding_shape,
-            label_padding_shape=label_padding_shape,
-            text_padding_value=text_padding_value or vocab[vocab.pad],
-            label_padding_value=label_padding_value or 0.0,
+            batch_padding_shapes=batch_padding_shapes,
+            batch_padding_values=batch_padding_values,
         )
 
     @property
@@ -65,18 +63,18 @@ class ClassificationDataset(NLPDataset):
         return res
 
     def _label_transform(self, label: tf.Tensor) -> np.ndarray:
-        label = super()._label_transform(label)
+        _label = super()._label_transform(label)
         if self.is_multilabel:
-            labels = label.split("|")
+            labels = _label.split("|")
         else:
-            labels = [label]
+            labels = [_label]
         return self._label_binarizer(labels)
 
     def to_tfrecord(self, filename: str) -> None:
         def func(text: np.ndarray, label: np.ndarray):
             return tf.reshape(
                 serialize_example(
-                    (self.text_transform(text), self.label_transform(label)),
+                    (self._text_transform(text), self._label_transform(label)),
                     ("tensor", "tensor"),
                 ),
                 (),

@@ -18,7 +18,7 @@ def create_exponential_decay_scheduler(
 
 def default_supervised_model_callbacks(
     learning_rate_update_factor: float,
-    learning_rate_update_epochs: float,
+    learning_rate_update_epochs: int,
     use_weight_decay: bool = False,
     enable_early_stopping: bool = False,
     early_stopping_monitor: str = "val_loss",
@@ -39,18 +39,13 @@ def default_supervised_model_callbacks(
     if use_weight_decay > 0:
         callbacks.append(WeightDecayScheduler(scheduler, verbose=verbose))
 
-    monitor = "val_loss"
-    monitor_direction = "min"
     if enable_early_stopping:
-        if early_stopping_monitor == 2 and early_stopping_monitor:
-            monitor_direction = early_stopping_monitor_direction
-            monitor = early_stopping_monitor
         callbacks.append(
             tf.keras.callbacks.EarlyStopping(
-                monitor=monitor,
+                monitor=early_stopping_monitor,
                 min_delta=early_stopping_min_delta,
                 patience=early_stopping_patience or learning_rate_update_epochs,
-                mode=monitor_direction,
+                mode=early_stopping_monitor_direction,
                 restore_best_weights=early_stopping_use_best_epoch,
             )
         )

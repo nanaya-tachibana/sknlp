@@ -5,6 +5,7 @@ import logging
 
 import tensorflow as tf
 import tensorflow_addons as tfa
+import numpy as np
 import pandas as pd
 
 from sknlp.data import NLPDataset
@@ -24,7 +25,7 @@ class SupervisedNLPModel(BaseNLPModel):
     def __init__(
         self,
         classes: Sequence[str],
-        max_sequence_length: int = None,
+        max_sequence_length: Optional[int] = None,
         sequence_length: Optional[int] = None,
         segmenter: str = "jieba",
         embedding_size: int = 100,
@@ -72,11 +73,11 @@ class SupervisedNLPModel(BaseNLPModel):
         return self._text2vec
 
     @property
-    def train_dataset(self) -> tf.data.Dataset:
+    def train_dataset(self) -> NLPDataset:
         return getattr(self, "_train_dataset", None)
 
     @property
-    def valid_dataset(self) -> tf.data.Dataset:
+    def valid_dataset(self) -> NLPDataset:
         return getattr(self, "_valid_dataset", None)
 
     def class2idx(self, class_name: str) -> int:
@@ -108,24 +109,31 @@ class SupervisedNLPModel(BaseNLPModel):
     def prepare_dataset(
         self,
         X: Sequence[str],
-        y: Sequence[str],
+        y: Union[Sequence[Sequence[str]], Sequence[str], Sequence[float]],
         dataset: NLPDataset,
     ) -> NLPDataset:
         assert (X is not None and y is not None) or dataset is not None
         if dataset is not None:
             return dataset
-        if isinstance(y[0], (list, tuple)):
+        if isinstance(y[0], (list, tuple)) and isinstance(y[0][0], str):
             y = ["|".join(map(str, y_i)) for y_i in y]
-        df = pd.DataFrame(zip(X, y), columns=["text", "label"])
+        if isinstance(X[0], (list, tuple)):
+            df = pd.DataFrame(zip(*X, y))
+        else:
+            df = pd.DataFrame(zip(X, y))
         return self.create_dataset_from_df(
             df, self.text2vec.vocab, self.text2vec.segmenter, self.classes
         )
 
-    def compile_optimizer(self, **kwargs) -> None:
+    def compile_optimizer(self, optimizer_name, **kwargs) -> None:
         if not self._built:
             self.build()
         weight_decay = kwargs.pop("weight_decay", 0)
-        if weight_decay > 0:
+        if optimizer_name != "adam":
+            optimizer = tf.keras.optimizers.deserialize(
+                {"class_name": optimizer_name, "config": kwargs}
+            )
+        elif weight_decay > 0:
             optimizer = tfa.optimizers.AdamW(weight_decay, **kwargs)
         else:
             optimizer = tfa.optimizers.LazyAdam(**kwargs)
@@ -138,14 +146,16 @@ class SupervisedNLPModel(BaseNLPModel):
     def fit(
         self,
         X: Sequence[str] = None,
-        y: Union[Sequence[Sequence[str]], Sequence[str]] = None,
+        y: Union[Sequence[Sequence[str]], Sequence[str], Sequence[float]] = None,
         *,
         dataset: NLPDataset = None,
         valid_X: Sequence[str] = None,
-        valid_y: Union[Sequence[Sequence[str]], Sequence[str]] = None,
+        valid_y: Union[Sequence[Sequence[str]], Sequence[str], Sequence[float]] = None,
         valid_dataset: NLPDataset = None,
         batch_size: int = 128,
         n_epochs: int = 10,
+        optimizer: str = "adam",
+        optimizer_kwargs: Optional[Dict[str, Any]] = None,
         learning_rate: float = 1e-3,
         weight_decay: float = 0.0,
         clip: Optional[float] = 5.0,
@@ -176,13 +186,15 @@ class SupervisedNLPModel(BaseNLPModel):
         if self.valid_dataset is not None:
             valid_tf_dataset = self.valid_dataset.batchify(batch_size, shuffle=False)
 
+        optimizer_kwargs = optimizer_kwargs or dict()
         optimizer_kwargs = {
             "learning_rate": learning_rate,
             "weight_decay": weight_decay,
+            **optimizer_kwargs,
         }
         if clip is not None:
             optimizer_kwargs["clipnorm"] = clip
-        self.compile_optimizer(**optimizer_kwargs)
+        self.compile_optimizer(optimizer, **optimizer_kwargs)
 
         monitor = "val_loss"
         monitor_direction = "min"
@@ -220,7 +232,7 @@ class SupervisedNLPModel(BaseNLPModel):
         *,
         dataset: NLPDataset = None,
         batch_size: int = 128
-    ) -> tf.Tensor:
+    ) -> np.ndarray:
         assert self._built
         y = None if X is None else self.dummy_y(X)
         dataset = self.prepare_dataset(X, y, dataset)
@@ -229,7 +241,7 @@ class SupervisedNLPModel(BaseNLPModel):
     def score(
         self,
         X: Sequence[str] = None,
-        y: Union[Sequence[Sequence[str]], Sequence[str]] = None,
+        y: Union[Sequence[Sequence[str]], Sequence[str], Sequence[float]] = None,
         *,
         thresholds: Union[float, Dict[str, float]] = 0.5,
         batch_size: int = 128

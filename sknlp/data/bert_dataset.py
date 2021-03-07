@@ -9,6 +9,7 @@ from sknlp.vocab import Vocab
 
 from .classification_dataset import ClassificationDataset
 from .tagging_dataset import TaggingDataset
+from .similarity_dataset import SimilarityDataset
 
 
 class BertClassificationDataset(ClassificationDataset):
@@ -32,26 +33,13 @@ class BertClassificationDataset(ClassificationDataset):
             max_length=max_length,
             text_segmenter=None,
             text_dtype=tf.string,
-            text_padding_shape=(),
-            text_padding_value=vocab.pad,
-            label_padding_value=0.0,
+            label_dtype=tf.float32,
+            batch_padding_shapes=None,
+            batch_padding_values=None,
         )
 
     def _text_transform(self, text: tf.Tensor) -> str:
         return text.numpy().decode("utf-8")[: self.max_length]
-
-    def batchify(
-        self,
-        batch_size: int,
-        shuffle: bool = True,
-        shuffle_buffer_size: Optional[int] = None,
-    ) -> tf.data.Dataset:
-        dataset = (
-            self.shuffled_dataset(shuffle_buffer_size) if shuffle else self._dataset
-        )
-        return dataset.batch(batch_size).prefetch(
-            buffer_size=tf.data.experimental.AUTOTUNE
-        )
 
 
 class BertTaggingDataset(TaggingDataset):
@@ -75,8 +63,37 @@ class BertTaggingDataset(TaggingDataset):
             text_segmenter=None,
             max_length=max_length,
             text_dtype=tf.string,
-            text_padding_shape=(),
-            text_padding_value=vocab.pad,
+            label_dtype=tf.int32,
+            batch_padding_shapes=((), (None,)),
+            batch_padding_values=(vocab.pad, 0),
+        )
+
+    def _text_transform(self, text: tf.Tensor) -> str:
+        return text.numpy().decode("utf-8")[: self.max_length]
+
+
+class BertSimilarityDataset(SimilarityDataset):
+    def __init__(
+        self,
+        vocab: Vocab,
+        labels: Sequence[str],
+        df: Optional[pd.DataFrame] = None,
+        csv_file: Optional[str] = None,
+        in_memory: bool = True,
+        max_length: Optional[int] = None,
+    ):
+        super().__init__(
+            vocab,
+            labels,
+            df=df,
+            csv_file=csv_file,
+            in_memory=in_memory,
+            max_length=max_length,
+            text_segmenter=None,
+            text_dtype=tf.string,
+            label_dtype=tf.float32,
+            batch_padding_shapes=None,
+            batch_padding_values=None,
         )
 
     def _text_transform(self, text: tf.Tensor) -> str:

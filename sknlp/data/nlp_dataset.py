@@ -1,4 +1,5 @@
-from typing import Optional, List, Union, Tuple
+from typing import Callable, Optional, List, Union, Sequence, Tuple
+import string
 
 import pandas as pd
 import tensorflow as tf
@@ -13,30 +14,32 @@ class NLPDataset:
         in_memory: bool = True,
         text_segmenter: str = "char",
         max_length: Optional[int] = None,
+        na_value: str = "",
+        column_dtypes: List[str] = ["str", "str"],
         text_dtype: tf.DType = tf.string,
         label_dtype: tf.DType = tf.string,
-        text_padding_shape: tuple = (None,),
-        label_padding_shape: tuple = (),
-        text_padding_value: Union[int, str, float] = "<pad>",
-        label_padding_value: Union[int, str, float] = "",
+        batch_padding_shapes: Optional[Tuple[tf.DType]] = None,
+        batch_padding_values: Optional[Tuple[tf.DType]] = None,
     ):
         assert (
             df is not None or csv_file is not None
         ), "either df or csv_file may not be None"
+        self.in_memory = in_memory
+        self.na_value = na_value
+        self.column_dtypes = column_dtypes
         if df is not None:
-            self._original_dataset = self.dataframe_to_dataset(df)
+            self._original_dataset = self.dataframe_to_dataset(df, na_value)
             self.size = df.shape[0]
         elif csv_file is not None:
-            self._original_dataset, self.size = self.load_csv(csv_file, "\t", in_memory)
+            self._original_dataset, self.size = self.load_csv(
+                csv_file, "\t", in_memory, column_dtypes, na_value
+            )
         self.text_cutter = get_segmenter(text_segmenter)
         self.max_length = max_length or 99999
         self.text_dtype = text_dtype
         self.label_dtype = label_dtype
-        self.text_padding_shape = text_padding_shape
-        self.label_padding_shape = label_padding_shape
-        self.text_padding_value = text_padding_value
-        self.label_padding_value = label_padding_value
-
+        self.batch_padding_shapes = batch_padding_shapes
+        self.batch_padding_values = batch_padding_values
         self._dataset = self._transform(self._original_dataset)
 
     @property
@@ -79,35 +82,54 @@ class NLPDataset:
         batch_size: int,
         shuffle: bool = True,
         shuffle_buffer_size: Optional[int] = None,
+        before_batch: Optional[Callable] = None,
+        after_batch: Optional[Callable] = None,
     ) -> tf.data.Dataset:
         dataset = (
             self.shuffled_dataset(shuffle_buffer_size) if shuffle else self._dataset
         )
-        return dataset.padded_batch(
-            batch_size,
-            padded_shapes=(self.text_padding_shape, self.label_padding_shape),
-            padding_values=(self.text_padding_value, self.label_padding_value),
-        ).prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+        if before_batch is not None:
+            dataset = dataset.map(before_batch)
+        if self.batch_padding_shapes is None or self.batch_padding_values is None:
+            dataset = dataset.batch(batch_size)
+        else:
+            dataset = dataset.padded_batch(
+                batch_size,
+                padded_shapes=self.batch_padding_shapes,
+                padding_values=self.batch_padding_values,
+            )
+        if after_batch is not None:
+            dataset = dataset.map(after_batch)
+        return dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
-    @classmethod
-    def dataframe_to_dataset(cls, df: pd.DataFrame) -> tf.data.Dataset:
-        df.fillna("", inplace=True)
-        return tf.data.Dataset.from_tensor_slices((df.text, df.label))
+    def dataframe_to_dataset(self, df: pd.DataFrame, na_value: str) -> tf.data.Dataset:
+        df.fillna(na_value, inplace=True)
+        return tf.data.Dataset.from_tensor_slices(tuple(df[col] for col in df.columns))
 
-    @classmethod
     def load_csv(
-        cls, filename: str, sep: str, in_memory: bool
+        self,
+        filename: str,
+        sep: str,
+        in_memory: bool,
+        column_dtypes: List[str],
+        na_value: str,
     ) -> Tuple[tf.data.Dataset, Optional[int]]:
         if in_memory:
-            df = pd.read_csv(filename, sep=sep, dtype=str)
-            return cls.dataframe_to_dataset(df), df.shape[0]
+            df = pd.read_csv(filename, sep=sep)
+            for dtype, col in zip(column_dtypes, df.columns):
+                df[col] = df[col].astype(dtype)
+            return self.dataframe_to_dataset(df, na_value), df.shape[0]
+        tf_dtype_mapping = {"str": tf.string, "int": tf.int32, "float": tf.float32}
         return (
             tf.data.experimental.CsvDataset(
                 filename,
-                (tf.string, tf.string),
+                [
+                    tf_dtype_mapping.get(dtype.rstrip(string.digits), "str")
+                    for dtype in column_dtypes
+                ],
                 header=True,
                 field_delim=sep,
-                na_value="",
+                na_value=na_value,
             ),
             None,
         )

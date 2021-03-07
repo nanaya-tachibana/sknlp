@@ -8,7 +8,6 @@ from sklearn.metrics import multilabel_confusion_matrix
 from scipy.special import expit, softmax
 
 
-
 def logits2probabilities(logits: np.ndarray, is_multilabel: bool) -> np.ndarray:
     """
     计算logits的sigmoid或softmax分值.
@@ -34,8 +33,7 @@ def logits2probabilities(logits: np.ndarray, is_multilabel: bool) -> np.ndarray:
 
 
 def _validate_thresholds(
-    thresholds: Union[Sequence[float], float],
-    length: int
+    thresholds: Union[Sequence[float], float], length: int
 ) -> List[float]:
     if isinstance(thresholds, float):
         return [thresholds for _ in range(length)]
@@ -50,7 +48,7 @@ def _validate_thresholds(
 def probabilities2classes(
     probabilities: np.ndarray,
     is_multilabel: bool,
-    thresholds: Union[Sequence[float], float] = 0.5
+    thresholds: Union[Sequence[float], float] = 0.5,
 ) -> Union[List[int], List[List[int]]]:
     """
     根据给定的`threshold`, 将分类问题的`scores`解析为对应的类别.
@@ -91,7 +89,7 @@ def probabilities2classes(
 def logits2classes(
     logits: np.ndarray,
     is_multilabel: bool,
-    thresholds: Union[Sequence[float], float] = 0.5
+    thresholds: Union[Sequence[float], float] = 0.5,
 ) -> Union[List[int], List[List[int]]]:
     """
     根据给定的`threshold`, 将分类问题的`logits`解析为对应的类别.
@@ -152,16 +150,15 @@ def label_binarizer(
     return (
         binarizer.fit_transform(y),
         binarizer.transform(p),
-        binarizer.classes_.tolist()
+        binarizer.classes_.tolist(),
     )
 
 
 def classification_fscore(
-    y: Union[Sequence[Sequence[str]], Sequence[str]],
-    p: Union[Sequence[Sequence[str]], Sequence[str]],
-    is_multilabel: bool,
-    classes: Optional[Sequence[str]] = None,
-    beta: float = 1
+    y: Union[Sequence[Sequence[str]], Sequence[str], Sequence[int]],
+    p: Union[Sequence[Sequence[str]], Sequence[str], Sequence[int]],
+    classes: Optional[Union[Sequence[str], Sequence[int]]] = None,
+    beta: float = 1,
 ) -> pd.DataFrame:
     """
     计算分类结果的F值.
@@ -171,7 +168,6 @@ def classification_fscore(
     y: 标注标签
     p: 预测标签
     classes: 所有的标签集合, 如果不提供则取y
-    is_multilabel: 是否是多标签分类
     beta: 加权值, 默认为1, f = (1 + beta**2) * (P * R) / (beta**2 * P + R)
 
     Returns
@@ -179,27 +175,42 @@ def classification_fscore(
     返回一个pd.DataFrame.
 
     """
-    y_one_hot, p_one_hot, classes = label_binarizer(y, p, classes)
+    if isinstance(y[0], int):
+        confusion_matrix = zip(
+            classes, multilabel_confusion_matrix(y, p, labels=classes)
+        )
+    else:
+        y_one_hot, p_one_hot, classes = label_binarizer(y, p, classes)
+        confusion_matrix = zip(
+            classes, multilabel_confusion_matrix(y_one_hot, p_one_hot)
+        )
     records = []
-    for class_, arr in zip(
-        classes, multilabel_confusion_matrix(y_one_hot, p_one_hot)
-    ):
+    for class_, arr in confusion_matrix:
         tp, fp, fn, tn = arr[1, 1], arr[0, 1], arr[1, 0], arr[0, 0]
         precision, recall, fscore = precision_recall_fscore(tp, fp, fn, beta)
         support = tp + fn
         records.append((class_, precision, recall, fscore, support, tp, fp, fn, tn))
 
     columns = [
-        "class", "precision", "recall", "fscore", "support", "TP", "FP", "FN", "TN"
+        "class",
+        "precision",
+        "recall",
+        "fscore",
+        "support",
+        "TP",
+        "FP",
+        "FN",
+        "TN",
     ]
-    df = pd.DataFrame(
-        records,
-        columns=columns
-    ).sort_values(["support", "TP"], ascending=False)
+    df = pd.DataFrame(records, columns=columns).sort_values(
+        ["support", "TP"], ascending=False
+    )
 
     support, tp, fp, fn, tn = df[["support", "TP", "FP", "FN", "TN"]].sum(axis=0)
     precision, recall, fscore = precision_recall_fscore(tp, fp, fn, beta)
-    return df.append(pd.DataFrame(
-        [("avg", precision, recall, fscore, support, tp, fp, fn, tn)],
-        columns=columns
-    ))
+    return df.append(
+        pd.DataFrame(
+            [("avg", precision, recall, fscore, support, tp, fp, fn, tn)],
+            columns=columns,
+        )
+    )

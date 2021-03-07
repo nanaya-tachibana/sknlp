@@ -2,7 +2,6 @@ from typing import Sequence, List, Dict, Any, Optional
 
 import tensorflow as tf
 from tensorflow.keras.initializers import TruncatedNormal
-from tensorflow.keras.layers import InputSpec
 from tensorflow.keras.layers.experimental.preprocessing import TextVectorization
 
 from official.modeling import activations
@@ -106,6 +105,40 @@ class BertPreprocessingLayer(tf.keras.layers.Layer):
             "cls_token": self.cls_token,
             "sep_token": self.sep_token,
         }
+
+
+class BertPairPreprocessingLayer(BertPreprocessingLayer):
+    def call(self, inputs: List[tf.Tensor]) -> List[tf.Tensor]:
+        query, context = inputs
+        query_token_ids = self.tokenizer.tokenize(query)
+        context_token_ids = self.tokenizer.tokenize(context)
+        query_flatten_ids = query_token_ids.merge_dims(-2, -1)
+        context_flatten_ids = context_token_ids.merge_dims(-2, -1)
+        cls_ids = tf.reshape(
+            tf.tile(
+                tf.constant([self.cls_id], dtype=tf.int64), [query_token_ids.nrows()]
+            ),
+            [query_token_ids.nrows(), 1],
+        )
+        sep_ids = tf.reshape(
+            tf.tile(
+                tf.constant([self.sep_id], dtype=tf.int64), [query_token_ids.nrows()]
+            ),
+            [query_token_ids.nrows(), 1],
+        )
+        query_ids = tf.concat([cls_ids, query_flatten_ids, sep_ids], axis=1)
+        context_ids = tf.concat([context_flatten_ids, sep_ids], axis=1)
+        type_ids = tf.concat(
+            [
+                tf.zeros_like(query_ids, dtype=tf.int64),
+                tf.ones_like(context_ids, dtype=tf.int64),
+            ],
+            axis=1,
+        )
+        return (
+            tf.concat([query_ids, context_ids], axis=1, name="token_ids").to_tensor(0),
+            type_ids.to_tensor(0),
+        )
 
 
 class BertLayer(tf.keras.layers.Layer):

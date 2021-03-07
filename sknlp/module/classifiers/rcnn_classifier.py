@@ -16,6 +16,7 @@ class TextRCNNClassifier(DeepClassifier):
         sequence_length: int = None,
         segmenter: str = "jieba",
         embedding_size: int = 100,
+        use_batch_normalization: bool = True,
         num_rnn_layers: int = 1,
         rnn_hidden_size: int = 512,
         rnn_projection_size: int = 128,
@@ -26,8 +27,7 @@ class TextRCNNClassifier(DeepClassifier):
         rnn_output_dropout: float = 0.5,
         num_fc_layers: int = 2,
         fc_hidden_size: int = 128,
-        fc_activation: str = "relu",
-        fc_last_activation: str = "tanh",
+        fc_activation: str = "tanh",
         fc_momentum: float = 0.9,
         fc_epsilon: float = 1e-5,
         rnn_kernel_initializer="glorot_uniform",
@@ -52,6 +52,7 @@ class TextRCNNClassifier(DeepClassifier):
             sequence_length=sequence_length,
             segmenter=segmenter,
             embedding_size=embedding_size,
+            use_batch_normalization=use_batch_normalization,
             algorithm="rcnn",
             text2vec=text2vec,
             **kwargs
@@ -79,7 +80,6 @@ class TextRCNNClassifier(DeepClassifier):
         self.num_fc_layers = num_fc_layers
         self.fc_hidden_size = fc_hidden_size
         self.fc_activation = fc_activation
-        self.fc_last_activation = fc_last_activation
         self.fc_momentum = fc_momentum
         self.fc_epsilon = fc_epsilon
 
@@ -127,8 +127,7 @@ class TextRCNNClassifier(DeepClassifier):
             hidden_size=self.fc_hidden_size,
             output_size=self.num_classes,
             activation=self.fc_activation,
-            last_activation=self.fc_last_activation,
-            batch_normal=self.use_batch_normal,
+            batch_normalization=self.use_batch_normalization,
             momentum=self.fc_momentum,
             epsilon=self.fc_epsilon,
             name="mlp",

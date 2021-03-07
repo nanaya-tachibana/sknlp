@@ -1,4 +1,3 @@
-from logging import warning
 from typing import Sequence, List, Dict, Any, Optional
 from functools import partial
 
@@ -28,7 +27,7 @@ class DeepTagger(SupervisedNLPModel):
         sequence_length: Optional[int] = None,
         segmenter: str = "char",
         embedding_size: int = 100,
-        use_batch_normal: bool = True,
+        use_batch_normalization: bool = True,
         text2vec: Optional[Text2vec] = None,
         **kwargs,
     ):
@@ -44,7 +43,7 @@ class DeepTagger(SupervisedNLPModel):
         if self._pad_tag != classes[0]:
             classes.insert(0, self._pad_tag)
         self._use_crf = use_crf
-        self._use_batch_normal = use_batch_normal
+        self._use_batch_normalization = use_batch_normalization
         super().__init__(
             classes,
             max_sequence_length=max_sequence_length,
@@ -61,8 +60,8 @@ class DeepTagger(SupervisedNLPModel):
         return self._use_crf
 
     @property
-    def use_batch_normal(self) -> bool:
-        return self._use_batch_normal
+    def use_batch_normalization(self) -> bool:
+        return self._use_batch_normalization
 
     @property
     def start_tag(self) -> str:
@@ -97,7 +96,6 @@ class DeepTagger(SupervisedNLPModel):
     def get_monitor(cls) -> str:
         return "val_fscore"
 
-    @classmethod
     def create_dataset_from_df(
         self, df: pd.DataFrame, vocab: Vocab, segmenter: str, labels: Sequence[str]
     ) -> TaggingDataset:
@@ -148,7 +146,7 @@ class DeepTagger(SupervisedNLPModel):
         dataset: TaggingDataset = None,
         batch_size: int = 128,
     ) -> pd.DataFrame:
-        dataset = self._prepare_dataset(X, y, dataset)
+        dataset = self.prepare_dataset(X, y, dataset)
         predictions = self.predict(dataset=dataset, batch_size=batch_size)
         labels = list(set([c.split("-")[-1] for c in self.classes if "-" in c]))
         return tagging_fscore(dataset.text, dataset.label, predictions, labels)
@@ -179,7 +177,7 @@ class DeepTagger(SupervisedNLPModel):
             "start_tag": self.start_tag,
             "end_tag": self.end_tag,
             "use_crf": self.use_crf,
-            "use_batch_normal": self.use_batch_normal,
+            "use_batch_normalization": self.use_batch_normalization,
         }
 
     @classmethod
@@ -194,4 +192,5 @@ class DeepTagger(SupervisedNLPModel):
         return {
             **super().get_custom_objects(),
             "CrfDecodeLayer": CrfDecodeLayer,
+            "Orthogonal": tf.keras.initializers.Orthogonal,
         }

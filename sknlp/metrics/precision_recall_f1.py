@@ -1,10 +1,8 @@
 from typing import Sequence, Optional, Union, Any, Dict
 import functools
-from numpy.lib.function_base import average
 
 import tensorflow as tf
 from tensorflow.keras.metrics import Precision, Recall
-import tensorflow.keras.backend as K
 from tensorflow_addons.metrics import FBetaScore
 
 
@@ -27,16 +25,16 @@ class PrecisionWithLogits(Precision):
         )
         self.logits2scores = logits2scores
         if logits2scores == "sigmoid":
-            self._l2s = K.sigmoid
+            self._l2s = tf.math.sigmoid
         elif logits2scores == "softmax":
-            self._l2s = functools.partial(K.softmax, axis=-1)
+            self._l2s = functools.partial(tf.math.softmax, axis=-1)
 
     def update_state(
         self,
         y_true: tf.Tensor,
         y_logits: tf.Tensor,
         sample_weight: Optional[tf.Tensor] = None,
-    ):
+    ) -> None:
         super().update_state(y_true, self._l2s(y_logits), sample_weight=sample_weight)
 
     def get_config(self) -> Dict[str, Any]:
@@ -62,9 +60,9 @@ class RecallWithLogits(Recall):
         )
         self.logits2scores = logits2scores
         if logits2scores == "sigmoid":
-            self._l2s = K.sigmoid
+            self._l2s = tf.math.sigmoid
         elif logits2scores == "softmax":
-            self._l2s = functools.partial(K.softmax, axis=-1)
+            self._l2s = functools.partial(tf.math.softmax, axis=-1)
 
     def update_state(
         self,
@@ -99,9 +97,9 @@ class FBetaScoreWithLogits(FBetaScore):
         )
         self.logits2scores = logits2scores
         if logits2scores == "sigmoid":
-            self._l2s = K.sigmoid
+            self._l2s = tf.math.sigmoid
         elif logits2scores == "softmax":
-            self._l2s = functools.partial(K.softmax, axis=-1)
+            self._l2s = functools.partial(tf.math.softmax, axis=-1)
 
     def update_state(
         self,

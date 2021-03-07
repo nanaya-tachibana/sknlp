@@ -1,5 +1,4 @@
-from typing import Dict, Any, Optional, Callable
-from itertools import zip_longest
+from typing import Dict, Any, Callable
 
 import tensorflow as tf
 from tensorflow.keras.layers import Layer, Dense, BatchNormalization, InputSpec
@@ -19,9 +18,8 @@ class MLPLayer(Layer):
         num_layers: int,
         hidden_size: int = 256,
         output_size: int = 1,
-        activation: str = "relu",
-        last_activation: Optional[str] = None,
-        batch_normal: bool = True,
+        activation: str = "tanh",
+        batch_normalization: bool = True,
         momentum: float = 0.9,
         epsilon: float = 1e-5,
         name: str = "mlp",
@@ -32,8 +30,7 @@ class MLPLayer(Layer):
         self.hidden_size = hidden_size
         self.output_size = output_size
         self.activation = activation
-        self.last_activation = last_activation or activation
-        self.batch_normal = batch_normal
+        self.batch_normalization = batch_normalization
         self.momentum = momentum
         self.epsilon = epsilon
         self.input_spec = InputSpec(min_ndim=2)
@@ -44,17 +41,14 @@ class MLPLayer(Layer):
             if i == num_layers - 1:
                 self.dense_layers.append(Dense(output_size, name="dense-%d" % i))
             else:
-                _activation = (
-                    self.last_activation if i == num_layers - 2 else self.activation
-                )
                 self.dense_layers.append(
                     Dense(
                         hidden_size,
-                        activation=get_activation(_activation),
+                        activation=get_activation(activation),
                         name="dense-%d" % i,
                     )
                 )
-                if self.batch_normal:
+                if self.batch_normalization:
                     self.batchnorm_layers.append(
                         BatchNormalization(axis=-1, momentum=momentum, epsilon=epsilon)
                     )
@@ -66,12 +60,12 @@ class MLPLayer(Layer):
 
     def call(self, inputs: tf.Tensor) -> tf.Tensor:
         outputs = inputs
-        for dense, batchnorm in zip_longest(
-            self.dense_layers[:-1], self.batchnorm_layers
-        ):
-            outputs = dense(outputs)
-            if batchnorm is not None:
-                outputs = batchnorm(outputs)
+        if self.batch_normalization:
+            for dense, batchnorm in zip(self.dense_layers[:-1], self.batchnorm_layers):
+                outputs = batchnorm(dense(outputs))
+        else:
+            for dense in self.dense_layers[:-1]:
+                outputs = dense(outputs)
         return self.dense_layers[-1](outputs)
 
     def compute_output_shape(self, input_shape: tf.TensorShape) -> tf.TensorShape:
@@ -89,7 +83,7 @@ class MLPLayer(Layer):
             "hidden_size": self.hidden_size,
             "output_size": self.output_size,
             "activation": self.activation,
-            "last_activation": self.last_activation,
+            "batch_normalization": self.batch_normalization,
             "momentum": self.momentum,
             "epsilon": self.epsilon,
         }
