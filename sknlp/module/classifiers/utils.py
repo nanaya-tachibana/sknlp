@@ -75,6 +75,10 @@ def probabilities2classes(
             "but shape%s was given" % str(probabilities.shape)
         )
     thresholds = _validate_thresholds(thresholds, probabilities.shape[1])
+    binary: bool = probabilities.shape[1] == 1
+    if binary:
+        classes: np.ndarray = probabilities >= thresholds
+        return classes.reshape(classes.shape[0]).astype("int").tolist()
     if is_multilabel:
         return [
             np.where(probabilities[i, :] > thresholds)[0].tolist()
@@ -175,7 +179,7 @@ def classification_fscore(
     返回一个pd.DataFrame.
 
     """
-    if isinstance(y[0], int):
+    if isinstance(y[0], (float, int)):
         confusion_matrix = zip(
             classes, multilabel_confusion_matrix(y, p, labels=classes)
         )

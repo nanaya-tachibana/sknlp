@@ -54,7 +54,12 @@ class BertClassifier(DeepClassifier):
         self.inputs = tf.keras.Input(shape=(), dtype=tf.string, name="text_input")
 
     def create_dataset_from_df(
-        self, df: pd.DataFrame, vocab: Vocab, segmenter: str, labels: Sequence[str]
+        self,
+        df: pd.DataFrame,
+        vocab: Vocab,
+        segmenter: str,
+        labels: Sequence[str],
+        no_label: bool,
     ) -> BertClassificationDataset:
         return BertClassificationDataset(
             vocab,
@@ -62,6 +67,7 @@ class BertClassifier(DeepClassifier):
             df=df,
             is_multilabel=self.is_multilabel,
             max_length=self.max_sequence_length,
+            no_label=no_label,
         )
 
     def build_encode_layer(self, inputs: tf.Tensor) -> tf.Tensor:

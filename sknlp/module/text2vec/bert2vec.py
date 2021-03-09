@@ -96,13 +96,6 @@ class Bert2vec(Text2vec):
             inputs=[token_ids, type_ids], outputs=outputs, name=name
         )
 
-    def __call__(self, inputs: tf.Tensor) -> tf.Tensor:
-        return self._model(inputs)
-
-    @property
-    def embedding_size(self):
-        return self._embedding_size
-
     @classmethod
     def from_tfv1_checkpoint(
         cls,

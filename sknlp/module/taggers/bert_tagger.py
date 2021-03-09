@@ -59,13 +59,19 @@ class BertTagger(DeepTagger):
         ]
 
     def create_dataset_from_df(
-        self, df: pd.DataFrame, vocab: Vocab, segmenter: str, labels: Sequence[str]
+        self,
+        df: pd.DataFrame,
+        vocab: Vocab,
+        segmenter: str,
+        labels: Sequence[str],
+        no_label: bool,
     ) -> BertTaggingDataset:
         return BertTaggingDataset(
             vocab,
             list(labels),
             df=df,
             max_length=self.max_sequence_length,
+            no_label=no_label,
         )
 
     def build_encode_layer(self, inputs: tf.Tensor) -> tf.Tensor:

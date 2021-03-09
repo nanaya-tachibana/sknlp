@@ -15,6 +15,7 @@ from .deep_discriminator import DeepDiscriminator
 class BertDiscriminator(DeepDiscriminator):
     def __init__(
         self,
+        classes: Sequence[str] = ("相似度",),
         segmenter: Optional[str] = None,
         embedding_size: int = 100,
         use_batch_normalization: bool = True,
@@ -29,6 +30,7 @@ class BertDiscriminator(DeepDiscriminator):
         **kwargs
     ) -> None:
         super().__init__(
+            classes=classes,
             segmenter=segmenter,
             algorithm="bert",
             embedding_size=embedding_size,
@@ -49,13 +51,19 @@ class BertDiscriminator(DeepDiscriminator):
         ]
 
     def create_dataset_from_df(
-        self, df: pd.DataFrame, vocab: Vocab, segmenter: str, labels: Sequence[str]
+        self,
+        df: pd.DataFrame,
+        vocab: Vocab,
+        segmenter: str,
+        labels: Sequence[str],
+        no_label: bool,
     ) -> BertSimilarityDataset:
         return BertSimilarityDataset(
             vocab,
             list(labels),
             df=df,
             max_length=self.max_sequence_length,
+            no_label=no_label,
         )
 
     def build_encode_layer(self, inputs: tf.Tensor) -> tf.Tensor:

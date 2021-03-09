@@ -1,4 +1,4 @@
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Union
 
 import json
 import os
@@ -20,6 +20,7 @@ class Text2vec(BaseNLPModel):
         segmenter: Optional[str] = None,
         max_sequence_length: Optional[int] = None,
         sequence_length: Optional[int] = None,
+        embedding_size: int = 100,
         name: str = "text2vec",
     ) -> None:
         """
@@ -55,6 +56,15 @@ class Text2vec(BaseNLPModel):
             sequence_length=sequence_length,
             name=name,
         )
+        self._embedding_size = embedding_size
+        self._model: tf.keras.Model = None
+
+    def __call__(self, inputs: Union[tf.Tensor, List[tf.Tensor]]) -> tf.Tensor:
+        return self._model(inputs)
+
+    @property
+    def embedding_size(self):
+        return self._embedding_size
 
     @property
     def vocab(self) -> Vocab:
@@ -104,7 +114,11 @@ class Text2vec(BaseNLPModel):
         self.save_vocab(d)
 
     def get_config(self) -> Dict[str, Any]:
-        return {**super().get_config(), "segmenter": self.segmenter}
+        return {
+            **super().get_config(),
+            "segmenter": self.segmenter,
+            "embedding_size": self.embedding_size,
+        }
 
     def get_inputs(self) -> tf.Tensor:
         return self._model.input

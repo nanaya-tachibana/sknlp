@@ -20,6 +20,7 @@ class TaggingDataset(NLPDataset):
         df: Optional[pd.DataFrame] = None,
         csv_file: Optional[str] = None,
         in_memory: bool = True,
+        no_label: bool = False,
         start_tag: Optional[str] = None,
         end_tag: Optional[str] = None,
         max_length: Optional[int] = None,
@@ -37,6 +38,7 @@ class TaggingDataset(NLPDataset):
             df=df,
             csv_file=csv_file,
             in_memory=in_memory,
+            no_label=no_label,
             text_segmenter=text_segmenter,
             max_length=max_length,
             na_value="",
@@ -48,10 +50,12 @@ class TaggingDataset(NLPDataset):
         )
 
     @property
-    def label(self) -> List[List[str]]:
+    def y(self) -> List[List[str]]:
+        if self.no_label:
+            return []
         return [
-            y.decode("utf-8").split("|")
-            for _, y in self._original_dataset.as_numpy_iterator()
+            data[-1].decode("utf-8").split("|")
+            for data in self._original_dataset.as_numpy_iterator()
         ]
 
     def _text_transform(self, text: tf.Tensor) -> np.ndarray:

@@ -66,13 +66,3 @@ class Word2vec(Text2vec):
             name="embeddings",
         )
         self._model = tf.keras.Sequential(embedding, name=name)
-
-    def __call__(self, inputs: tf.Tensor) -> tf.Tensor:
-        return self._model(inputs)
-
-    @property
-    def embedding_size(self) -> int:
-        return self._embedding_size
-
-    def get_config(self) -> Dict[str, Any]:
-        return {**super().get_config(), "embedding_size": self.embedding_size}

@@ -20,6 +20,7 @@ class BertClassificationDataset(ClassificationDataset):
         df: Optional[pd.DataFrame] = None,
         csv_file: Optional[str] = None,
         in_memory: bool = True,
+        no_label: bool = False,
         is_multilabel: bool = True,
         max_length: Optional[int] = None,
     ):
@@ -29,6 +30,7 @@ class BertClassificationDataset(ClassificationDataset):
             df=df,
             csv_file=csv_file,
             in_memory=in_memory,
+            no_label=no_label,
             is_multilabel=is_multilabel,
             max_length=max_length,
             text_segmenter=None,
@@ -50,6 +52,7 @@ class BertTaggingDataset(TaggingDataset):
         df: Optional[pd.DataFrame] = None,
         csv_file: Optional[str] = None,
         in_memory: bool = True,
+        no_label: bool = False,
         max_length: Optional[int] = None,
     ):
         super().__init__(
@@ -58,6 +61,7 @@ class BertTaggingDataset(TaggingDataset):
             df=df,
             csv_file=csv_file,
             in_memory=in_memory,
+            no_label=no_label,
             start_tag="[CLS]",
             end_tag="[SEP]",
             text_segmenter=None,
@@ -80,6 +84,7 @@ class BertSimilarityDataset(SimilarityDataset):
         df: Optional[pd.DataFrame] = None,
         csv_file: Optional[str] = None,
         in_memory: bool = True,
+        no_label: bool = False,
         max_length: Optional[int] = None,
     ):
         super().__init__(
@@ -88,6 +93,7 @@ class BertSimilarityDataset(SimilarityDataset):
             df=df,
             csv_file=csv_file,
             in_memory=in_memory,
+            no_label=no_label,
             max_length=max_length,
             text_segmenter=None,
             text_dtype=tf.string,

@@ -20,6 +20,7 @@ class SimilarityDataset(NLPDataset):
         df: Optional[pd.DataFrame] = None,
         csv_file: Optional[str] = None,
         in_memory: bool = True,
+        no_label: bool = False,
         max_length: Optional[int] = None,
         text_segmenter: str = "char",
         text_dtype: tf.DType = tf.int32,
@@ -33,6 +34,7 @@ class SimilarityDataset(NLPDataset):
             df=df,
             csv_file=csv_file,
             in_memory=in_memory,
+            no_label=no_label,
             text_segmenter=text_segmenter,
             max_length=max_length,
             na_value=0.0,
@@ -44,8 +46,10 @@ class SimilarityDataset(NLPDataset):
         )
 
     @property
-    def label(self) -> List[float]:
-        return [y for _, y in self._original_dataset.as_numpy_iterator()]
+    def y(self) -> List[float]:
+        if self.no_label:
+            return []
+        return [float(data[-1]) for data in self._original_dataset.as_numpy_iterator()]
 
     def _text_transform(self, text: tf.Tensor) -> np.ndarray:
         tokens = super()._text_transform(text)
@@ -57,7 +61,8 @@ class SimilarityDataset(NLPDataset):
         return label
 
     def _transform(self, dataset: tf.data.Dataset) -> tf.data.Dataset:
-        def func(text, context, label):
+        def func(*data):
+            text, context, label = data
             return (
                 self._text_transform(text),
                 self._text_transform(context),
@@ -65,10 +70,12 @@ class SimilarityDataset(NLPDataset):
             )
 
         return dataset.map(
-            lambda t, c, l: tf.py_function(
+            lambda *data: tf.py_function(
                 func,
-                inp=[t, c, l],
-                Tout=(self.text_dtype, self.text_dtype, self.label_dtype),
+                inp=data,
+                Tout=(self.text_dtype, self.text_dtype)
+                if self.no_label
+                else (self.text_dtype, self.text_dtype, self.label_dtype),
             ),
             num_parallel_calls=tf.data.experimental.AUTOTUNE,
         )

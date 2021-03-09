@@ -22,6 +22,7 @@ from ..text2vec import Text2vec
 class DeepDiscriminator(SupervisedNLPModel):
     def __init__(
         self,
+        classes: Sequence[str] = ("相似度",),
         max_sequence_length: Optional[int] = None,
         sequence_length: Optional[int] = None,
         segmenter: Optional[str] = "jieba",
@@ -33,7 +34,7 @@ class DeepDiscriminator(SupervisedNLPModel):
         **kwargs
     ):
         super().__init__(
-            ["相似度"],
+            list(classes),
             max_sequence_length=max_sequence_length,
             sequence_length=sequence_length,
             segmenter=segmenter,
@@ -62,7 +63,7 @@ class DeepDiscriminator(SupervisedNLPModel):
 
     @classmethod
     def get_monitor(cls) -> str:
-        return "binary_accuracy"
+        return "val_binary_accuracy"
 
     def create_dataset_from_df(
         self, df: pd.DataFrame, vocab: Vocab, segmenter: str, labels: Sequence[str]
@@ -75,8 +76,9 @@ class DeepDiscriminator(SupervisedNLPModel):
             text_segmenter=segmenter,
         )
 
-    def dummy_y(self, X: Sequence[str]) -> List[str]:
-        return ["O" for _ in range(len(X))]
+    @classmethod
+    def dummy_y(self, X: Sequence[str]) -> List[float]:
+        return [0 for _ in range(len(X))]
 
     def predict_proba(
         self,
@@ -108,9 +110,8 @@ class DeepDiscriminator(SupervisedNLPModel):
     ) -> pd.DataFrame:
         dataset = self.prepare_dataset(X, y, dataset)
         probs = self.predict(dataset=dataset, batch_size=batch_size)
-        return classification_fscore(
-            dataset.label, probabilities2classes(probs, True), True, classes=[0, 1]
-        )
+        predictions = probabilities2classes(probs, True, thresholds=threshold)
+        return classification_fscore(dataset.y, predictions, classes=[0, 1])
 
     @classmethod
     def format_score(cls, score_df: pd.DataFrame, format: str = "markdown") -> str:
@@ -127,7 +128,6 @@ class DeepDiscriminator(SupervisedNLPModel):
         config = super()._filter_config(config)
         config.pop("algorithm", None)
         config.pop("task", None)
-        config.pop("classes", None)
         return config
 
     @classmethod

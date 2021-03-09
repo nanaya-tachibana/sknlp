@@ -97,20 +97,23 @@ class DeepTagger(SupervisedNLPModel):
         return "val_fscore"
 
     def create_dataset_from_df(
-        self, df: pd.DataFrame, vocab: Vocab, segmenter: str, labels: Sequence[str]
+        self,
+        df: pd.DataFrame,
+        vocab: Vocab,
+        segmenter: str,
+        labels: Sequence[str],
+        no_label: bool,
     ) -> TaggingDataset:
         return TaggingDataset(
             vocab,
             list(labels),
             df=df,
             max_length=self.max_sequence_length,
+            no_label=no_label,
             text_segmenter=segmenter,
             start_tag=self.start_tag,
             end_tag=self.end_tag,
         )
-
-    def dummy_y(self, X: Sequence[str]) -> List[List[str]]:
-        return [["O" for _ in range(len(xi))] for xi in X]
 
     def predict(
         self,
@@ -149,7 +152,7 @@ class DeepTagger(SupervisedNLPModel):
         dataset = self.prepare_dataset(X, y, dataset)
         predictions = self.predict(dataset=dataset, batch_size=batch_size)
         labels = list(set([c.split("-")[-1] for c in self.classes if "-" in c]))
-        return tagging_fscore(dataset.text, dataset.label, predictions, labels)
+        return tagging_fscore(dataset.X, dataset.y, predictions, labels)
 
     @classmethod
     def format_score(self, score_df: pd.DataFrame, format: str = "markdown") -> str:

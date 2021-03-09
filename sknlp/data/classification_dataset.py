@@ -17,6 +17,7 @@ class ClassificationDataset(NLPDataset):
         df: Optional[pd.DataFrame] = None,
         csv_file: Optional[str] = None,
         in_memory: bool = True,
+        no_label: bool = False,
         is_multilabel: bool = True,
         max_length: Optional[int] = None,
         text_segmenter: str = "char",
@@ -33,6 +34,7 @@ class ClassificationDataset(NLPDataset):
             df=df,
             csv_file=csv_file,
             in_memory=in_memory,
+            no_label=no_label,
             text_segmenter=text_segmenter,
             max_length=max_length,
             na_value="" if is_multilabel else "NULL",
@@ -44,10 +46,14 @@ class ClassificationDataset(NLPDataset):
         )
 
     @property
-    def label(self) -> Union[List[str], List[List[str]]]:
+    def y(self) -> Union[List[str], List[List[str]]]:
+        if self.no_label:
+            return []
         return [
-            y.decode("utf-8").split("|") if self.is_multilabel else y.decode("Utf-8")
-            for _, y in self._original_dataset.as_numpy_iterator()
+            data[-1].decode("utf-8").split("|")
+            if self.is_multilabel
+            else data[-1].decode("Utf-8")
+            for data in self._original_dataset.as_numpy_iterator()
         ]
 
     def _text_transform(self, text: tf.Tensor) -> np.ndarray:

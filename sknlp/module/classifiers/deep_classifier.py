@@ -88,7 +88,12 @@ class DeepClassifier(SupervisedNLPModel):
         return "val_fbeta_score"
 
     def create_dataset_from_df(
-        self, df: pd.DataFrame, vocab: Vocab, segmenter: str, labels: Sequence[str]
+        self,
+        df: pd.DataFrame,
+        vocab: Vocab,
+        segmenter: str,
+        labels: Sequence[str],
+        no_label: bool,
     ) -> ClassificationDataset:
         return ClassificationDataset(
             vocab,
@@ -96,11 +101,9 @@ class DeepClassifier(SupervisedNLPModel):
             df=df,
             is_multilabel=self.is_multilabel,
             max_length=self.max_sequence_length,
+            no_label=no_label,
             text_segmenter=segmenter,
         )
-
-    def dummy_y(self, X: Sequence[str]) -> List[str]:
-        return ["O" for _ in range(len(X))]
 
     def predict_proba(
         self,
@@ -144,7 +147,7 @@ class DeepClassifier(SupervisedNLPModel):
         predictions = self.predict(
             dataset=dataset, thresholds=thresholds, batch_size=batch_size
         )
-        return classification_fscore(dataset.label, predictions, classes=self.classes)
+        return classification_fscore(dataset.y, predictions, classes=self.classes)
 
     @classmethod
     def format_score(cls, score_df: pd.DataFrame, format: str = "markdown") -> str:

@@ -24,7 +24,7 @@ logger.addHandler(stream)
 class SupervisedNLPModel(BaseNLPModel):
     def __init__(
         self,
-        classes: Sequence[str],
+        classes: List[str],
         max_sequence_length: Optional[int] = None,
         sequence_length: Optional[int] = None,
         segmenter: str = "jieba",
@@ -102,7 +102,12 @@ class SupervisedNLPModel(BaseNLPModel):
         super().build()
 
     def create_dataset_from_df(
-        self, df: pd.DataFrame, vocab: Vocab, segmenter: str, labels: Sequence[str]
+        self,
+        df: pd.DataFrame,
+        vocab: Vocab,
+        segmenter: str,
+        labels: Sequence[str],
+        no_label: bool,
     ) -> NLPDataset:
         raise NotImplementedError()
 
@@ -112,17 +117,21 @@ class SupervisedNLPModel(BaseNLPModel):
         y: Union[Sequence[Sequence[str]], Sequence[str], Sequence[float]],
         dataset: NLPDataset,
     ) -> NLPDataset:
-        assert (X is not None and y is not None) or dataset is not None
+        assert X is not None or dataset is not None
         if dataset is not None:
             return dataset
-        if isinstance(y[0], (list, tuple)) and isinstance(y[0][0], str):
+        if (
+            y is not None
+            and isinstance(y[0], (list, tuple))
+            and isinstance(y[0][0], str)
+        ):
             y = ["|".join(map(str, y_i)) for y_i in y]
         if isinstance(X[0], (list, tuple)):
-            df = pd.DataFrame(zip(*X, y))
+            df = pd.DataFrame(zip(*X, y) if y is not None else X)
         else:
-            df = pd.DataFrame(zip(X, y))
+            df = pd.DataFrame(zip(X, y) if y is not None else X)
         return self.create_dataset_from_df(
-            df, self.text2vec.vocab, self.text2vec.segmenter, self.classes
+            df, self.text2vec.vocab, self.text2vec.segmenter, self.classes, y is None
         )
 
     def compile_optimizer(self, optimizer_name, **kwargs) -> None:
@@ -223,9 +232,6 @@ class SupervisedNLPModel(BaseNLPModel):
             verbose=verbose,
         )
 
-    def dummy_y(self, X: Sequence[str]) -> List[Any]:
-        raise NotImplementedError()
-
     def predict(
         self,
         X: Sequence[str] = None,
@@ -234,8 +240,7 @@ class SupervisedNLPModel(BaseNLPModel):
         batch_size: int = 128
     ) -> np.ndarray:
         assert self._built
-        y = None if X is None else self.dummy_y(X)
-        dataset = self.prepare_dataset(X, y, dataset)
+        dataset = self.prepare_dataset(X, None, dataset)
         return self._model.predict(dataset.batchify(batch_size, shuffle=False))
 
     def score(

@@ -7,6 +7,8 @@ import kerastuner as kt
 
 from sknlp.callbacks import default_supervised_model_callbacks
 from sknlp.data import NLPDataset
+from sknlp.layers import BertLayer
+from .text2vec import Text2vec
 from .supervised_model import SupervisedNLPModel
 
 
@@ -28,9 +30,31 @@ def create_model_builder(
     optimizer_parameters: Dict[str, Any],
     distribute_strategy: Optional[tf.distribute.Strategy] = None,
 ):
+    text2vec: Text2vec = model_kwargs.pop("text2vec", None)
+
     def model_builder(hp):
         with maybe_distribute(distribute_strategy):
-            model = model_type(*model_args, **model_kwargs)
+            clone_text2vec: Optional[Text2vec] = None
+            if text2vec is not None:
+                clone_text2vec: Text2vec = Text2vec(
+                    text2vec.vocab,
+                    segmenter=text2vec.segmenter,
+                    max_sequence_length=text2vec.max_sequence_length,
+                    sequence_length=text2vec.sequence_length,
+                    embedding_size=text2vec.embedding_size,
+                )
+                keras_model: tf.keras.Model = tf.keras.models.model_from_json(
+                    text2vec._model.to_json(),
+                    custom_objects={
+                        "TruncatedNormal": tf.keras.initializers.TruncatedNormal,
+                        "BertLayer": BertLayer,
+                    },
+                )
+                keras_model.set_weights(text2vec._model.get_weights())
+                clone_text2vec._model = keras_model
+                if not text2vec._model.layers[0].trainable:
+                    clone_text2vec.freeze()
+            model = model_type(*model_args, text2vec=clone_text2vec, **model_kwargs)
             model.compile_optimizer(optimizer, **optimizer_parameters)
             return model._model
 
