@@ -62,7 +62,14 @@ class SimilarityDataset(NLPDataset):
 
     def _transform(self, dataset: tf.data.Dataset) -> tf.data.Dataset:
         def func(*data):
-            text, context, label = data
+            text = data[0]
+            context = data[1]
+            if self.no_label:
+                return (
+                    self._text_transform(text),
+                    self._text_transform(context),
+                )
+            label = data[2]
             return (
                 self._text_transform(text),
                 self._text_transform(context),

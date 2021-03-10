@@ -72,7 +72,10 @@ class NLPDataset:
 
     def _transform(self, dataset: tf.data.Dataset) -> tf.data.Dataset:
         def func(*data):
-            text, label = data
+            text = data[0]
+            if self.no_label:
+                return self._text_transform(text)
+            label = data[1]
             return self._text_transform(text), self._label_transform(label)
 
         return dataset.map(
