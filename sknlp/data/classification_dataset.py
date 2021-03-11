@@ -23,8 +23,6 @@ class ClassificationDataset(NLPDataset):
         text_segmenter: str = "char",
         text_dtype: tf.DType = tf.int32,
         label_dtype: tf.DType = tf.float32,
-        batch_padding_shapes: Optional[Tuple[tf.DType]] = ((None,), (None,)),
-        batch_padding_values: Optional[Tuple[tf.DType]] = (0, 0.0),
     ):
         self.vocab = vocab
         self.labels = list(labels)
@@ -41,8 +39,6 @@ class ClassificationDataset(NLPDataset):
             column_dtypes=["str", "str"],
             text_dtype=text_dtype,
             label_dtype=label_dtype,
-            batch_padding_shapes=batch_padding_shapes,
-            batch_padding_values=batch_padding_values,
         )
 
     @property
@@ -55,6 +51,10 @@ class ClassificationDataset(NLPDataset):
             else data[-1].decode("Utf-8")
             for data in self._original_dataset.as_numpy_iterator()
         ]
+
+    @property
+    def batch_padding_shapes(self) -> List[Tuple]:
+        return ((None,), (None,))[: -1 if self.no_label else None]
 
     def _text_transform(self, text: tf.Tensor) -> np.ndarray:
         tokens = super()._text_transform(text)

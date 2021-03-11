@@ -19,8 +19,6 @@ class NLPDataset:
         column_dtypes: List[str] = ["str", "str"],
         text_dtype: tf.DType = tf.string,
         label_dtype: tf.DType = tf.string,
-        batch_padding_shapes: Optional[Tuple[tf.DType]] = None,
-        batch_padding_values: Optional[Tuple[tf.DType]] = None,
     ):
         assert (
             df is not None or csv_file is not None
@@ -40,8 +38,6 @@ class NLPDataset:
         self.max_length = max_length or 99999
         self.text_dtype = text_dtype
         self.label_dtype = label_dtype
-        self.batch_padding_shapes = batch_padding_shapes
-        self.batch_padding_values = batch_padding_values
         self._dataset = self._transform(self._original_dataset)
 
     @property
@@ -54,6 +50,10 @@ class NLPDataset:
             else:
                 x.append([text.decode("utf-8") for text in texts])
         return x
+
+    @property
+    def batch_padding_shapes(self) -> Optional[List[Tuple]]:
+        return None
 
     @property
     def y(self) -> List[str]:
@@ -70,21 +70,20 @@ class NLPDataset:
     def _label_transform(self, label: tf.Tensor) -> str:
         return label.numpy().decode("utf-8")
 
-    def _transform(self, dataset: tf.data.Dataset) -> tf.data.Dataset:
-        def func(*data):
-            text = data[0]
-            if self.no_label:
-                return self._text_transform(text)
-            label = data[1]
-            return self._text_transform(text), self._label_transform(label)
+    def _transform_func(self, *data) -> List[Any]:
+        text = data[0]
+        if self.no_label:
+            return self._text_transform(text)
+        label = data[1]
+        return self._text_transform(text), self._label_transform(label)
 
+    def _transform_func_out_dtype(self) -> List[tf.DType]:
+        return (self.text_dtype, self.label_dtype)[: -1 if self.no_label else None]
+
+    def _transform(self, dataset: tf.data.Dataset) -> tf.data.Dataset:
         return dataset.map(
             lambda *data: tf.py_function(
-                func,
-                inp=data,
-                Tout=(self.text_dtype,)
-                if self.no_label
-                else (self.text_dtype, self.label_dtype),
+                self._transform_func, inp=data, Tout=self._transform_func_out_dtype()
             ),
             num_parallel_calls=tf.data.experimental.AUTOTUNE,
         )
@@ -108,13 +107,11 @@ class NLPDataset:
         )
         if before_batch is not None:
             dataset = dataset.map(before_batch)
-        if self.batch_padding_shapes is None or self.batch_padding_values is None:
+        if self.batch_padding_shapes is None:
             dataset = dataset.batch(batch_size)
         else:
             dataset = dataset.padded_batch(
-                batch_size,
-                padded_shapes=self.batch_padding_shapes,
-                padding_values=self.batch_padding_values,
+                batch_size, padded_shapes=self.batch_padding_shapes
             )
         if after_batch is not None:
             dataset = dataset.map(after_batch)

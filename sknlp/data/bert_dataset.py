@@ -1,4 +1,4 @@
-from typing import Sequence, List, Optional
+from typing import Sequence, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -36,9 +36,11 @@ class BertClassificationDataset(ClassificationDataset):
             text_segmenter=None,
             text_dtype=tf.string,
             label_dtype=tf.float32,
-            batch_padding_shapes=None,
-            batch_padding_values=None,
         )
+
+    @property
+    def batch_padding_shapes(self) -> Optional[List[Tuple]]:
+        return None
 
     def _text_transform(self, text: tf.Tensor) -> str:
         return text.numpy().decode("utf-8")[: self.max_length]
@@ -68,9 +70,11 @@ class BertTaggingDataset(TaggingDataset):
             max_length=max_length,
             text_dtype=tf.string,
             label_dtype=tf.int32,
-            batch_padding_shapes=((), (None,)),
-            batch_padding_values=(vocab.pad, 0),
         )
+
+    @property
+    def batch_padding_shapes(self) -> Optional[List[Tuple]]:
+        return ((), (None,))
 
     def _text_transform(self, text: tf.Tensor) -> str:
         return text.numpy().decode("utf-8")[: self.max_length]
@@ -98,9 +102,11 @@ class BertSimilarityDataset(SimilarityDataset):
             text_segmenter=None,
             text_dtype=tf.string,
             label_dtype=tf.float32,
-            batch_padding_shapes=None,
-            batch_padding_values=None,
         )
+
+    @property
+    def batch_padding_shapes(self) -> Optional[List[Tuple]]:
+        return None
 
     def _text_transform(self, text: tf.Tensor) -> str:
         return text.numpy().decode("utf-8")[: self.max_length]

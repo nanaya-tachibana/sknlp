@@ -8,8 +8,12 @@ from sknlp.vocab import Vocab
 from .nlp_dataset import NLPDataset
 
 
-def _combine(text, context, label):
-    return (text, context), label
+def _combine_xy(text, context, label):
+    return ((text, context), label)
+
+
+def _combine_x(text, context):
+    return ((text, context),)
 
 
 class SimilarityDataset(NLPDataset):
@@ -25,8 +29,6 @@ class SimilarityDataset(NLPDataset):
         text_segmenter: str = "char",
         text_dtype: tf.DType = tf.int32,
         label_dtype: tf.DType = tf.float32,
-        batch_padding_shapes: Optional[Tuple[tf.DType]] = ((None,), (None,), (None,)),
-        batch_padding_values: Optional[Tuple[tf.DType]] = (0, 0, 0.0),
     ):
         self.vocab = vocab
         self.label2idx = dict(zip(labels, range(len(labels))))
@@ -41,8 +43,6 @@ class SimilarityDataset(NLPDataset):
             column_dtypes=["str", "str", "float32"],
             text_dtype=text_dtype,
             label_dtype=label_dtype,
-            batch_padding_shapes=batch_padding_shapes,
-            batch_padding_values=batch_padding_values,
         )
 
     @property
@@ -50,6 +50,10 @@ class SimilarityDataset(NLPDataset):
         if self.no_label:
             return []
         return [float(data[-1]) for data in self._original_dataset.as_numpy_iterator()]
+
+    @property
+    def batch_padding_shapes(self) -> List[Tuple]:
+        return ((None,), (None,), (None,))[: -1 if self.no_label else None]
 
     def _text_transform(self, text: tf.Tensor) -> np.ndarray:
         tokens = super()._text_transform(text)
@@ -97,5 +101,5 @@ class SimilarityDataset(NLPDataset):
             batch_size,
             shuffle=shuffle,
             shuffle_buffer_size=shuffle_buffer_size,
-            after_batch=_combine,
+            after_batch=_combine_xy if not self.no_label else _combine_x,
         )

@@ -1,4 +1,4 @@
-from typing import Sequence, List, Optional, Tuple
+from typing import Sequence, List, Optional, Tuple, Any
 
 import numpy as np
 import pandas as pd
@@ -27,8 +27,6 @@ class TaggingDataset(NLPDataset):
         text_segmenter: str = "char",
         text_dtype: tf.DType = tf.int32,
         label_dtype: tf.DType = tf.int32,
-        batch_padding_shapes: Optional[Tuple[tf.DType]] = ((None,), (None,)),
-        batch_padding_values: Optional[Tuple[tf.DType]] = (0, 0),
     ):
         self.vocab = vocab
         self.start_tag = start_tag
@@ -45,8 +43,6 @@ class TaggingDataset(NLPDataset):
             column_dtypes=["str", "str"],
             text_dtype=text_dtype,
             label_dtype=label_dtype,
-            batch_padding_shapes=batch_padding_shapes,
-            batch_padding_values=batch_padding_values,
         )
 
     @property
@@ -57,6 +53,10 @@ class TaggingDataset(NLPDataset):
             data[-1].decode("utf-8").split("|")
             for data in self._original_dataset.as_numpy_iterator()
         ]
+
+    @property
+    def batch_padding_shapes(self) -> List[Tuple]:
+        return ((None,), (None,))
 
     def _text_transform(self, text: tf.Tensor) -> np.ndarray:
         tokens = super()._text_transform(text)
@@ -74,6 +74,17 @@ class TaggingDataset(NLPDataset):
                 self.label2idx[self.end_tag],
             ]
         return labels
+
+    def _transform_func(self, *data) -> List[Any]:
+        text = data[0]
+        if self.no_label:
+            _text = self._text_transform(text)
+            return _text, [0 for _ in range(len(_text))]
+        label = data[1]
+        return self._text_transform(text), self._label_transform(label)
+
+    def _transform_func_out_dtype(self) -> List[tf.DType]:
+        return (self.text_dtype, self.label_dtype)
 
     def batchify(
         self,
