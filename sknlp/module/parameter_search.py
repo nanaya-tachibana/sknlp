@@ -82,9 +82,9 @@ class ParameterSearcher:
         y: Union[Sequence[Sequence[str]], Sequence[str]] = None,
         *,
         dataset: NLPDataset = None,
-        valid_X: Sequence[str] = None,
-        valid_y: Union[Sequence[Sequence[str]], Sequence[str]] = None,
-        valid_dataset: NLPDataset = None,
+        validation_X: Sequence[str] = None,
+        validation_y: Union[Sequence[Sequence[str]], Sequence[str]] = None,
+        validation_dataset: NLPDataset = None,
         batch_size: int = 128,
         n_epochs: int = 10,
         optimizer: str = "adam",
@@ -108,13 +108,15 @@ class ParameterSearcher:
         executions_per_trial: int = 3,
         search_result_directory: Optional[str] = None,
     ) -> None:
-        train_dataset = self.temp_model.prepare_dataset(X, y, dataset)
+        training_dataset = self.temp_model.prepare_dataset(X, y, dataset)
         assert (
-            valid_X is None or valid_y is None
-        ) or valid_dataset is None, "No validation set is provided."
-        valid_dataset = self.temp_model.prepare_dataset(valid_X, valid_y, valid_dataset)
-        train_tf_dataset = train_dataset.batchify(batch_size)
-        valid_tf_dataset = valid_dataset.batchify(batch_size, shuffle=False)
+            validation_X is None or validation_y is None
+        ) or validation_dataset is None, "No validation set is provided."
+        validation_dataset = self.temp_model.prepare_dataset(
+            validation_X, validation_y, validation_dataset
+        )
+        training_tf_dataset = training_dataset.batchify(batch_size)
+        validation_tf_dataset = validation_dataset.batchify(batch_size, shuffle=False)
 
         monitor = "val_loss"
         monitor_direction = "min"
@@ -172,9 +174,9 @@ class ParameterSearcher:
             overwrite=False,
         )
         self.tuner.search(
-            train_tf_dataset,
+            training_tf_dataset,
             epochs=n_epochs,
-            validation_data=valid_tf_dataset,
+            validation_data=validation_tf_dataset,
             callbacks=callbacks,
             verbose=verbose,
         )

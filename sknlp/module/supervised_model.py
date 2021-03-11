@@ -1,4 +1,4 @@
-from typing import Sequence, Union, Optional, Dict, Any, List, Tuple, Type
+from typing import Sequence, Union, Optional, Dict, Any, List
 
 import os
 import logging
@@ -73,12 +73,12 @@ class SupervisedNLPModel(BaseNLPModel):
         return self._text2vec
 
     @property
-    def train_dataset(self) -> NLPDataset:
-        return getattr(self, "_train_dataset", None)
+    def training_dataset(self) -> NLPDataset:
+        return getattr(self, "_training_dataset", None)
 
     @property
-    def valid_dataset(self) -> NLPDataset:
-        return getattr(self, "_valid_dataset", None)
+    def validation_dataset(self) -> NLPDataset:
+        return getattr(self, "_validation_dataset", None)
 
     def class2idx(self, class_name: str) -> int:
         return self._class2idx.get(class_name, None)
@@ -131,7 +131,11 @@ class SupervisedNLPModel(BaseNLPModel):
         else:
             df = pd.DataFrame(zip(X, y) if y is not None else X)
         return self.create_dataset_from_df(
-            df, self.text2vec.vocab, self.text2vec.segmenter, self.classes, y is None
+            df,
+            self.text2vec.vocab,
+            self.text2vec.segmenter,
+            self.classes,
+            y is None,
         )
 
     def compile_optimizer(self, optimizer_name, **kwargs) -> None:
@@ -158,9 +162,11 @@ class SupervisedNLPModel(BaseNLPModel):
         y: Union[Sequence[Sequence[str]], Sequence[str], Sequence[float]] = None,
         *,
         dataset: NLPDataset = None,
-        valid_X: Sequence[str] = None,
-        valid_y: Union[Sequence[Sequence[str]], Sequence[str], Sequence[float]] = None,
-        valid_dataset: NLPDataset = None,
+        validation_X: Sequence[str] = None,
+        validation_y: Union[
+            Sequence[Sequence[str]], Sequence[str], Sequence[float]
+        ] = None,
+        validation_dataset: NLPDataset = None,
         batch_size: int = 128,
         n_epochs: int = 10,
         optimizer: str = "adam",
@@ -185,15 +191,21 @@ class SupervisedNLPModel(BaseNLPModel):
             vocab = self.build_vocab(X or dataset.text, cut)
             self._text2vec = Word2vec(vocab, self.embedding_size, self.segmenter)
 
-        self._train_dataset = self.prepare_dataset(X, y, dataset)
-        if (valid_X is None or valid_y is None) and valid_dataset is None:
-            self._valid_dataset = None
+        self._training_dataset = self.prepare_dataset(X, y, dataset)
+        if (
+            validation_X is None or validation_y is None
+        ) and validation_dataset is None:
+            self._validation_dataset = None
         else:
-            self._valid_dataset = self.prepare_dataset(valid_X, valid_y, valid_dataset)
-        train_tf_dataset = self.train_dataset.batchify(batch_size)
-        valid_tf_dataset = None
-        if self.valid_dataset is not None:
-            valid_tf_dataset = self.valid_dataset.batchify(batch_size, shuffle=False)
+            self._validation_dataset = self.prepare_dataset(
+                validation_X, validation_y, validation_dataset
+            )
+        training_tf_dataset = self.training_dataset.batchify(batch_size)
+        validation_tf_dataset = None
+        if self.validation_dataset is not None:
+            validation_tf_dataset = self.validation_dataset.batchify(
+                batch_size, shuffle=False
+            )
 
         optimizer_kwargs = optimizer_kwargs or dict()
         optimizer_kwargs = {
@@ -225,9 +237,9 @@ class SupervisedNLPModel(BaseNLPModel):
         callbacks.extend(self.get_callbacks(batch_size))
 
         self._model.fit(
-            train_tf_dataset,
+            training_tf_dataset,
             epochs=n_epochs,
-            validation_data=valid_tf_dataset if self.valid_dataset else None,
+            validation_data=validation_tf_dataset if self.validation_dataset else None,
             callbacks=callbacks,
             verbose=verbose,
         )

@@ -80,10 +80,10 @@ class DeepTagger(SupervisedNLPModel):
 
     def get_callbacks(self, *args, **kwargs) -> List[tf.keras.callbacks.Callback]:
         callbacks = super().get_callbacks(*args, **kwargs)
-        if self.valid_dataset is not None:
+        if self.validation_dataset is not None:
             score_func = partial(
                 self.score,
-                dataset=self.valid_dataset,
+                dataset=self.validation_dataset,
                 batch_size=kwargs.get("batch_size", None) or 128,
             )
             callbacks.append(ModelScoreCallback(score_func))
