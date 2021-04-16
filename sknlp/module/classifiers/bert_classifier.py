@@ -10,7 +10,6 @@ from sknlp.layers import (
     BertLayer,
     BertPreprocessingLayer,
 )
-from sknlp.vocab import Vocab
 from sknlp.data import BertClassificationDataset
 from sknlp.module.text2vec import Bert2vec
 from .deep_classifier import DeepClassifier
@@ -56,15 +55,26 @@ class BertClassifier(DeepClassifier):
     def create_dataset_from_df(
         self,
         df: pd.DataFrame,
-        vocab: Vocab,
-        segmenter: str,
-        labels: Sequence[str],
-        no_label: bool,
+        no_label: bool = False,
     ) -> BertClassificationDataset:
         return BertClassificationDataset(
-            vocab,
-            list(labels),
+            self.text2vec.vocab,
+            self.classes,
             df=df,
+            is_multilabel=self.is_multilabel,
+            max_length=self.max_sequence_length,
+            no_label=no_label,
+        )
+
+    def create_dataset_from_csv(
+        self,
+        filename: str,
+        no_label: bool = False,
+    ) -> BertClassificationDataset:
+        return BertClassificationDataset(
+            self.text2vec.vocab,
+            self.classes,
+            csv_file=filename,
             is_multilabel=self.is_multilabel,
             max_length=self.max_sequence_length,
             no_label=no_label,

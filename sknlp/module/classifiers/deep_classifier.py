@@ -6,7 +6,6 @@ from tabulate import tabulate
 import tensorflow as tf
 import tensorflow_addons as tfa
 
-from sknlp.vocab import Vocab
 from sknlp.data import ClassificationDataset
 from sknlp.metrics import PrecisionWithLogits, RecallWithLogits, FBetaScoreWithLogits
 
@@ -88,21 +87,29 @@ class DeepClassifier(SupervisedNLPModel):
         return "val_fbeta_score"
 
     def create_dataset_from_df(
-        self,
-        df: pd.DataFrame,
-        vocab: Vocab,
-        segmenter: str,
-        labels: Sequence[str],
-        no_label: bool,
+        self, df: pd.DataFrame, no_label: bool = False
     ) -> ClassificationDataset:
         return ClassificationDataset(
-            vocab,
-            list(labels),
+            self.text2vec.vocab,
+            self.classes,
             df=df,
             is_multilabel=self.is_multilabel,
             max_length=self.max_sequence_length,
             no_label=no_label,
-            text_segmenter=segmenter,
+            text_segmenter=self.text2vec.segmenter,
+        )
+
+    def create_dataset_from_csv(
+        self, filename: str, no_label: bool = False
+    ) -> ClassificationDataset:
+        return ClassificationDataset(
+            self.text2vec.vocab,
+            self.classes,
+            csv_file=filename,
+            is_multilabel=self.is_multilabel,
+            max_length=self.max_sequence_length,
+            no_label=no_label,
+            text_segmenter=self.text2vec.segmenter,
         )
 
     def predict_proba(

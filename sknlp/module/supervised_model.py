@@ -102,12 +102,12 @@ class SupervisedNLPModel(BaseNLPModel):
         super().build()
 
     def create_dataset_from_df(
-        self,
-        df: pd.DataFrame,
-        vocab: Vocab,
-        segmenter: str,
-        labels: Sequence[str],
-        no_label: bool,
+        self, df: pd.DataFrame, no_label: bool = False
+    ) -> NLPDataset:
+        raise NotImplementedError()
+
+    def create_dataset_from_csv(
+        self, filename: str, no_label: bool = False
     ) -> NLPDataset:
         raise NotImplementedError()
 
@@ -130,13 +130,7 @@ class SupervisedNLPModel(BaseNLPModel):
             df = pd.DataFrame(zip(*X, y) if y is not None else X)
         else:
             df = pd.DataFrame(zip(X, y) if y is not None else X)
-        return self.create_dataset_from_df(
-            df,
-            self.text2vec.vocab,
-            self.text2vec.segmenter,
-            self.classes,
-            y is None,
-        )
+        return self.create_dataset_from_df(df, y is None)
 
     def compile_optimizer(self, optimizer_name, **kwargs) -> None:
         if not self._built:

@@ -6,7 +6,6 @@ from tabulate import tabulate
 import tensorflow as tf
 import tensorflow_addons as tfa
 
-from sknlp.vocab import Vocab
 from sknlp.data import SimilarityDataset
 from sknlp.metrics import BinaryAccuracyWithLogits
 
@@ -66,19 +65,32 @@ class DeepDiscriminator(SupervisedNLPModel):
         return "val_binary_accuracy"
 
     def create_dataset_from_df(
-        self, df: pd.DataFrame, vocab: Vocab, segmenter: str, labels: Sequence[str]
+        self,
+        df: pd.DataFrame,
+        no_label: bool = False,
     ) -> SimilarityDataset:
         return SimilarityDataset(
-            vocab,
-            list(labels),
+            self.text2vec.vocab,
+            self.classes,
             df=df,
             max_length=self.max_sequence_length,
-            text_segmenter=segmenter,
+            text_segmenter=self.text2vec.segmenter,
+            no_label=no_label,
         )
 
-    @classmethod
-    def dummy_y(self, X: Sequence[str]) -> List[float]:
-        return [0 for _ in range(len(X))]
+    def create_dataset_from_csv(
+        self,
+        filename: str,
+        no_label: bool = False,
+    ) -> SimilarityDataset:
+        return SimilarityDataset(
+            self.text2vec.vocab,
+            self.classes,
+            csv_file=filename,
+            max_length=self.max_sequence_length,
+            text_segmenter=self.text2vec.segmenter,
+            no_label=no_label,
+        )
 
     def predict_proba(
         self,

@@ -12,7 +12,6 @@ from sknlp.layers import (
     CrfLossLayer,
     CrfDecodeLayer,
 )
-from sknlp.vocab import Vocab
 from sknlp.data import BertTaggingDataset
 from sknlp.module.text2vec import Bert2vec
 from .deep_tagger import DeepTagger
@@ -61,15 +60,25 @@ class BertTagger(DeepTagger):
     def create_dataset_from_df(
         self,
         df: pd.DataFrame,
-        vocab: Vocab,
-        segmenter: str,
-        labels: Sequence[str],
-        no_label: bool,
+        no_label: bool = False,
     ) -> BertTaggingDataset:
         return BertTaggingDataset(
-            vocab,
-            list(labels),
+            self.text2vec.vocab,
+            self.classes,
             df=df,
+            max_length=self.max_sequence_length,
+            no_label=no_label,
+        )
+
+    def create_dataset_from_csv(
+        self,
+        filename: str,
+        no_label: bool = False,
+    ) -> BertTaggingDataset:
+        return BertTaggingDataset(
+            self.text2vec.vocab,
+            self.classes,
+            csv_file=filename,
             max_length=self.max_sequence_length,
             no_label=no_label,
         )

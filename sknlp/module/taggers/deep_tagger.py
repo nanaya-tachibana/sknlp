@@ -5,7 +5,6 @@ import pandas as pd
 from tabulate import tabulate
 import tensorflow as tf
 
-from sknlp.vocab import Vocab
 from sknlp.data import TaggingDataset
 from sknlp.callbacks import ModelScoreCallback
 from sknlp.layers import CrfDecodeLayer
@@ -99,18 +98,31 @@ class DeepTagger(SupervisedNLPModel):
     def create_dataset_from_df(
         self,
         df: pd.DataFrame,
-        vocab: Vocab,
-        segmenter: str,
-        labels: Sequence[str],
-        no_label: bool,
+        no_label: bool = False,
     ) -> TaggingDataset:
         return TaggingDataset(
-            vocab,
-            list(labels),
+            self.text2vec.vocab,
+            self.classes,
             df=df,
             max_length=self.max_sequence_length,
             no_label=no_label,
-            text_segmenter=segmenter,
+            text_segmenter=self.text2vec.segmenter,
+            start_tag=self.start_tag,
+            end_tag=self.end_tag,
+        )
+
+    def create_dataset_from_csv(
+        self,
+        filename: str,
+        no_label: bool = False,
+    ) -> TaggingDataset:
+        return TaggingDataset(
+            self.text2vec.vocab,
+            self.classes,
+            csv_file=filename,
+            max_length=self.max_sequence_length,
+            no_label=no_label,
+            text_segmenter=self.text2vec.segmenter,
             start_tag=self.start_tag,
             end_tag=self.end_tag,
         )

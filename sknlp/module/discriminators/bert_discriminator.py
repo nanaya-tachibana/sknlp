@@ -6,7 +6,6 @@ from tensorflow.keras.layers import Dropout
 import pandas as pd
 
 from sknlp.layers import MLPLayer, BertLayer, BertPairPreprocessingLayer
-from sknlp.vocab import Vocab
 from sknlp.data import BertSimilarityDataset
 from sknlp.module.text2vec import Bert2vec
 from .deep_discriminator import DeepDiscriminator
@@ -53,15 +52,25 @@ class BertDiscriminator(DeepDiscriminator):
     def create_dataset_from_df(
         self,
         df: pd.DataFrame,
-        vocab: Vocab,
-        segmenter: str,
-        labels: Sequence[str],
-        no_label: bool,
+        no_label: bool = False,
     ) -> BertSimilarityDataset:
         return BertSimilarityDataset(
-            vocab,
-            list(labels),
+            self.text2vec.vocab,
+            self.classes,
             df=df,
+            max_length=self.max_sequence_length,
+            no_label=no_label,
+        )
+
+    def create_dataset_from_csv(
+        self,
+        filename: str,
+        no_label: bool = False,
+    ) -> BertSimilarityDataset:
+        return BertSimilarityDataset(
+            self.text2vec.vocab,
+            self.classes,
+            csv_file=filename,
             max_length=self.max_sequence_length,
             no_label=no_label,
         )
