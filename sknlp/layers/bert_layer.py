@@ -1,11 +1,12 @@
-from typing import Sequence, List, Dict, Any, Optional
+from typing import Sequence, List, Dict, Any, Optional, Callable
 
 import tensorflow as tf
+from tensorflow.keras.activations import gelu
 from tensorflow.keras.initializers import TruncatedNormal
 from tensorflow.keras.layers.experimental.preprocessing import TextVectorization
 
 from official.modeling import activations
-from official.nlp.modeling import layers
+from official.nlp.keras_nlp import layers
 import tensorflow_text as tftext
 
 from .bert_tokenization import BertTokenizationLayer
@@ -157,7 +158,7 @@ class BertLayer(tf.keras.layers.Layer):
         max_sequence_length: int = 512,
         type_vocab_size: int = 16,
         intermediate_size: int = 3072,
-        activation: activations = activations.gelu,
+        activation: Callable = gelu,
         dropout_rate: float = 0.1,
         attention_dropout_rate: float = 0.1,
         initializer: tf.keras.initializers.Initializer = TruncatedNormal(stddev=0.02),
@@ -192,9 +193,8 @@ class BertLayer(tf.keras.layers.Layer):
         )
         # Always uses dynamic slicing for simplicity.
         self.position_embedding_layer = layers.PositionEmbedding(
+            max_sequence_length,
             initializer=initializer,
-            use_dynamic_slicing=True,
-            max_sequence_length=max_sequence_length,
             name="position_embedding",
         )
         self.type_embedding_layer = layers.OnDeviceEmbedding(
@@ -218,24 +218,24 @@ class BertLayer(tf.keras.layers.Layer):
             name="embeddings/layer_norm", axis=-1, epsilon=1e-12, dtype=tf.float32
         )
         if share_layer:
-            self.shared_layer = layers.Transformer(
-                num_attention_heads=num_attention_heads,
-                intermediate_size=intermediate_size,
-                intermediate_activation=activation,
-                dropout_rate=dropout_rate,
-                attention_dropout_rate=attention_dropout_rate,
+            self.shared_layer = layers.TransformerEncoderBlock(
+                num_attention_heads,
+                intermediate_size,
+                activation,
+                output_dropout=dropout_rate,
+                attention_dropout=attention_dropout_rate,
                 kernel_initializer=initializer,
                 name="transformer",
             )
         else:
             self.transformer_layers = []
             for i in range(num_layers):
-                layer = layers.Transformer(
-                    num_attention_heads=num_attention_heads,
-                    intermediate_size=intermediate_size,
-                    intermediate_activation=activation,
-                    dropout_rate=dropout_rate,
-                    attention_dropout_rate=attention_dropout_rate,
+                layer = layers.TransformerEncoderBlock(
+                    num_attention_heads,
+                    intermediate_size,
+                    activation,
+                    output_dropout=dropout_rate,
+                    attention_dropout=attention_dropout_rate,
                     kernel_initializer=initializer,
                     name="transformer/layer_%d" % i,
                 )
@@ -266,7 +266,7 @@ class BertLayer(tf.keras.layers.Layer):
         if self.embedding_projection is not None:
             embeddings = self.embedding_projection(embeddings)
         data = embeddings
-        attention_mask = layers.SelfAttentionMask()([data, mask])
+        attention_mask = layers.SelfAttentionMask()(data, mask)
         encoder_outputs = []
         if self.share_layer:
             for _ in range(self.num_layers):
