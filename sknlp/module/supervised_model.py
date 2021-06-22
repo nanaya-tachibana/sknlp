@@ -1,4 +1,5 @@
-from typing import Sequence, Union, Optional, Dict, Any, List
+from __future__ import annotations
+from typing import Sequence, Union, Optional, Any
 
 import os
 import logging
@@ -24,7 +25,7 @@ logger.addHandler(stream)
 class SupervisedNLPModel(BaseNLPModel):
     def __init__(
         self,
-        classes: List[str],
+        classes: list[str],
         max_sequence_length: Optional[int] = None,
         sequence_length: Optional[int] = None,
         segmenter: str = "jieba",
@@ -65,7 +66,7 @@ class SupervisedNLPModel(BaseNLPModel):
         return len(self._class2idx)
 
     @property
-    def classes(self) -> List[str]:
+    def classes(self) -> list[str]:
         return list(self._class2idx.keys())
 
     @property
@@ -164,12 +165,13 @@ class SupervisedNLPModel(BaseNLPModel):
         batch_size: int = 128,
         n_epochs: int = 10,
         optimizer: str = "adam",
-        optimizer_kwargs: Optional[Dict[str, Any]] = None,
+        optimizer_kwargs: Optional[dict[str, Any]] = None,
         learning_rate: float = 1e-3,
         weight_decay: float = 0.0,
         clip: Optional[float] = 5.0,
         learning_rate_update_factor: float = 0.5,
         learning_rate_update_epochs: int = 10,
+        learning_rate_warmup_steps: int = 0,
         enable_early_stopping: bool = False,
         early_stopping_patience: Optional[int] = None,
         early_stopping_min_delta: float = 0.0,
@@ -219,6 +221,7 @@ class SupervisedNLPModel(BaseNLPModel):
         callbacks = default_supervised_model_callbacks(
             learning_rate_update_factor=learning_rate_update_factor,
             learning_rate_update_epochs=learning_rate_update_epochs,
+            learning_rate_warmup_steps=learning_rate_warmup_steps,
             use_weight_decay=weight_decay > 0,
             enable_early_stopping=enable_early_stopping,
             early_stopping_monitor=monitor,
@@ -228,7 +231,9 @@ class SupervisedNLPModel(BaseNLPModel):
             early_stopping_use_best_epoch=early_stopping_use_best_epoch,
             log_file=log_file,
         )
-        callbacks.extend(self.get_callbacks(batch_size))
+        for callback in self.get_callbacks():
+            callback.validation_data = validation_tf_dataset
+            callbacks.append(callback)
 
         self._model.fit(
             training_tf_dataset,
@@ -243,8 +248,9 @@ class SupervisedNLPModel(BaseNLPModel):
         X: Sequence[str] = None,
         *,
         dataset: NLPDataset = None,
+        thresholds: Union[float, list[float], None] = None,
         batch_size: int = 128
-    ) -> np.ndarray:
+    ) -> Union[np.ndarray, list[str], list[list[str]], list[float]]:
         assert self._built
         dataset = self.prepare_dataset(X, None, dataset)
         return self._model.predict(dataset.batchify(batch_size, shuffle=False))
@@ -254,12 +260,13 @@ class SupervisedNLPModel(BaseNLPModel):
         X: Sequence[str] = None,
         y: Union[Sequence[Sequence[str]], Sequence[str], Sequence[float]] = None,
         *,
-        thresholds: Union[float, Dict[str, float]] = 0.5,
+        dataset: NLPDataset = None,
+        thresholds: Union[float, list[float], None] = None,
         batch_size: int = 128
     ) -> pd.DataFrame:
         raise NotImplementedError()
 
-    def get_config(self) -> Dict[str, Any]:
+    def get_config(self) -> dict[str, Any]:
         return {
             **super().get_config(),
             "classes": self.classes,
@@ -290,5 +297,5 @@ class SupervisedNLPModel(BaseNLPModel):
         self.text2vec.save_vocab(d)
 
     @classmethod
-    def get_custom_objects(cls) -> Dict[str, Any]:
+    def get_custom_objects(cls) -> dict[str, Any]:
         return {**super().get_custom_objects(), "AdamW": tfa.optimizers.AdamW}

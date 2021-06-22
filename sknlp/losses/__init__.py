@@ -1,1 +1,4 @@
-from .losses import SoftFScoreLoss
+from .losses import MultiLabelCategoricalCrossentropy
+
+
+__all__ = ["MultiLabelCategoricalCrossentropy"]

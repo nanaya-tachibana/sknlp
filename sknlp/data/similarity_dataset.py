@@ -1,4 +1,4 @@
-from typing import Sequence, List, Optional, Tuple
+from typing import Any, Sequence, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -64,32 +64,25 @@ class SimilarityDataset(NLPDataset):
     def _label_transform(self, label: tf.Tensor) -> float:
         return label
 
-    def _transform(self, dataset: tf.data.Dataset) -> tf.data.Dataset:
-        def func(*data):
-            text = data[0]
-            context = data[1]
-            if self.no_label:
-                return (
-                    self._text_transform(text),
-                    self._text_transform(context),
-                )
-            label = data[2]
+    def _transform_func(self, *data) -> List[Any]:
+        text = data[0]
+        context = data[1]
+        if self.no_label:
             return (
                 self._text_transform(text),
                 self._text_transform(context),
-                self._label_transform(label),
             )
-
-        return dataset.map(
-            lambda *data: tf.py_function(
-                func,
-                inp=data,
-                Tout=(self.text_dtype, self.text_dtype)
-                if self.no_label
-                else (self.text_dtype, self.text_dtype, self.label_dtype),
-            ),
-            num_parallel_calls=tf.data.experimental.AUTOTUNE,
+        label = data[2]
+        return (
+            self._text_transform(text),
+            self._text_transform(context),
+            self._label_transform(label),
         )
+
+    def _transform_func_out_dtype(self) -> List[tf.DType]:
+        return (self.text_dtype, self.text_dtype, self.label_dtype)[
+            : -1 if self.no_label else None
+        ]
 
     def batchify(
         self,

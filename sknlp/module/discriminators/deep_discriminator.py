@@ -8,13 +8,13 @@ import tensorflow_addons as tfa
 
 from sknlp.data import SimilarityDataset
 from sknlp.metrics import BinaryAccuracyWithLogits
-
-from ..supervised_model import SupervisedNLPModel
-from ..classifiers.utils import (
+from sknlp.utils.classification import (
     classification_fscore,
     logits2probabilities,
     probabilities2classes,
 )
+
+from ..supervised_model import SupervisedNLPModel
 from ..text2vec import Text2vec
 
 
@@ -117,12 +117,12 @@ class DeepDiscriminator(SupervisedNLPModel):
         y: Sequence[float] = None,
         *,
         dataset: SimilarityDataset = None,
-        threshold: float = 0.5,
+        thresholds: float = 0.5,
         batch_size: int = 128
     ) -> pd.DataFrame:
         dataset = self.prepare_dataset(X, y, dataset)
         probs = self.predict(dataset=dataset, batch_size=batch_size)
-        predictions = probabilities2classes(probs, True, thresholds=threshold)
+        predictions = probabilities2classes(probs, True, thresholds=thresholds)
         return classification_fscore(dataset.y, predictions, classes=[0, 1])
 
     @classmethod

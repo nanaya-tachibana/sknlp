@@ -1,4 +1,5 @@
-from typing import Optional, Dict
+from __future__ import annotations
+from typing import Optional
 
 import functools
 import tensorflow as tf
@@ -27,7 +28,7 @@ class AccuracyWithLogits(Accuracy):
     ) -> None:
         super().update_state(y_true, self._l2s(y_pred), sample_weight=sample_weight)
 
-    def get_config(self) -> Dict[str, str]:
+    def get_config(self) -> dict[str, str]:
         return {**super().get_config(), "logits2scores": self.logits2scores}
 
 

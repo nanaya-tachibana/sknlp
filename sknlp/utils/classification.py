@@ -121,8 +121,9 @@ def logits2classes(
         )
     if is_multilabel:
         thresholds = _validate_thresholds(thresholds, logits.shape[1])
+        pred = expit(logits)
         return [
-            np.where(expit(logits[i, :]) > thresholds)[0].tolist()
+            np.where(pred[i, :] > thresholds)[0].tolist()
             for i in range(logits.shape[0])
         ]
     else:

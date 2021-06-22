@@ -1,18 +1,21 @@
-from typing import Sequence, List, Dict, Any, Optional, Union, Tuple
+from typing import Sequence, List, Dict, Any, Optional, Union
 
 import numpy as np
 import pandas as pd
 from tabulate import tabulate
 import tensorflow as tf
-import tensorflow_addons as tfa
 
 from sknlp.data import ClassificationDataset
+from sknlp.losses import MultiLabelCategoricalCrossentropy
 from sknlp.metrics import PrecisionWithLogits, RecallWithLogits, FBetaScoreWithLogits
+from sknlp.utils.classification import (
+    logits2probabilities,
+    probabilities2classes,
+    classification_fscore,
+)
 
 from ..supervised_model import SupervisedNLPModel
 from ..text2vec import Text2vec
-
-from .utils import logits2probabilities, probabilities2classes, classification_fscore
 
 
 class DeepClassifier(SupervisedNLPModel):
@@ -31,7 +34,7 @@ class DeepClassifier(SupervisedNLPModel):
         **kwargs
     ):
         classes = list(classes)
-        if not is_multilabel and "NULL" != classes[0]:
+        if "NULL" != classes[0]:
             if "NULL" in classes:
                 classes.remove("NULL")
             classes.insert(0, "NULL")
@@ -60,27 +63,17 @@ class DeepClassifier(SupervisedNLPModel):
 
     def get_loss(self, *args, **kwargs):
         if self.is_multilabel:
-            if self._loss == "focal":
-                return tfa.losses.SigmoidFocalCrossEntropy(
-                    from_logits=True, **self._loss_kwargs
-                )
-            return tf.keras.losses.BinaryCrossentropy(from_logits=True)
+            return MultiLabelCategoricalCrossentropy()
         else:
             return tf.keras.losses.CategoricalCrossentropy(from_logits=True)
 
     def get_metrics(self, *args, **kwargs) -> List[tf.keras.metrics.Metric]:
-        if self.is_multilabel:
-            return [
-                PrecisionWithLogits(),
-                RecallWithLogits(),
-                FBetaScoreWithLogits(self.num_classes),
-            ]
-        else:
-            return [
-                PrecisionWithLogits(logits2scores="softmax"),
-                RecallWithLogits(logits2scores="softmax"),
-                FBetaScoreWithLogits(self.num_classes, logits2scores="softmax"),
-            ]
+        activation = "sigmoid" if self.is_multilabel else "softmax"
+        return [
+            PrecisionWithLogits(activation=activation),
+            RecallWithLogits(activation=activation),
+            FBetaScoreWithLogits(self.num_classes, activation=activation),
+        ]
 
     @classmethod
     def get_monitor(cls) -> str:
@@ -136,10 +129,13 @@ class DeepClassifier(SupervisedNLPModel):
         )
         if self.is_multilabel:
             return [
-                [self.idx2class(i) for i in prediction] for prediction in predictions
+                [self.idx2class(i) for i in prediction if self.idx2class(i) != "NULL"]
+                for prediction in predictions
             ]
         else:
-            return [self.idx2class(i) for i in predictions]
+            return [
+                self.idx2class(i) for i in predictions if self.idx2class(i) != "NULL"
+            ]
 
     def score(
         self,
@@ -154,7 +150,7 @@ class DeepClassifier(SupervisedNLPModel):
         predictions = self.predict(
             dataset=dataset, thresholds=thresholds, batch_size=batch_size
         )
-        return classification_fscore(dataset.y, predictions, classes=self.classes)
+        return classification_fscore(dataset.y, predictions, classes=self.classes[1:])
 
     @classmethod
     def format_score(cls, score_df: pd.DataFrame, format: str = "markdown") -> str:
@@ -178,6 +174,7 @@ class DeepClassifier(SupervisedNLPModel):
     def get_custom_objects(cls) -> Dict[str, Any]:
         return {
             **super().get_custom_objects(),
+            "MultiLabelCategoricalCrossentropy": MultiLabelCategoricalCrossentropy,
             "PrecisionWithLogits": PrecisionWithLogits,
             "RecallWithLogits": RecallWithLogits,
             "FBetaScoreWithLogits": FBetaScoreWithLogits,

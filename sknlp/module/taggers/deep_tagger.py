@@ -6,13 +6,12 @@ from tabulate import tabulate
 import tensorflow as tf
 
 from sknlp.data import TaggingDataset
-from sknlp.callbacks import ModelScoreCallback
+from sknlp.callbacks import TaggingFScoreMetric
 from sknlp.layers import CrfDecodeLayer
+from sknlp.utils.tagging import tagging_fscore, viterbi_decode, convert_ids_to_tags
 
 from ..supervised_model import SupervisedNLPModel
 from ..text2vec import Text2vec
-
-from .utils import tagging_fscore, viterbi_decode
 
 
 class DeepTagger(SupervisedNLPModel):
@@ -63,11 +62,11 @@ class DeepTagger(SupervisedNLPModel):
         return self._use_batch_normalization
 
     @property
-    def start_tag(self) -> str:
+    def start_tag(self) -> Optional[str]:
         return self._start_tag
 
     @property
-    def end_tag(self) -> str:
+    def end_tag(self) -> Optional[str]:
         return self._end_tag
 
     @property
@@ -79,13 +78,15 @@ class DeepTagger(SupervisedNLPModel):
 
     def get_callbacks(self, *args, **kwargs) -> List[tf.keras.callbacks.Callback]:
         callbacks = super().get_callbacks(*args, **kwargs)
-        if self.validation_dataset is not None:
-            score_func = partial(
-                self.score,
-                dataset=self.validation_dataset,
-                batch_size=kwargs.get("batch_size", None) or 128,
+        callbacks.append(
+            TaggingFScoreMetric(
+                self.idx2class,
+                list(set([c.split("-")[-1] for c in self.classes if "-" in c])),
+                self.pad_tag,
+                start_tag=self.start_tag,
+                end_tag=self.end_tag,
             )
-            callbacks.append(ModelScoreCallback(score_func))
+        )
         return callbacks
 
     def get_metrics(self) -> List[tf.keras.metrics.Metric]:
@@ -140,17 +141,17 @@ class DeepTagger(SupervisedNLPModel):
             emissions.transpose(1, 0, 2),
             mask.transpose(1, 0),
         )
-        exclude_tags = {self.pad_tag, self.start_tag, self.end_tag}
         predictions = []
         for tag_ids in tag_ids_list:
-            tags = []
-            for tag_id in tag_ids:
-                tag = self.idx2class(tag_id)
-                if tag not in exclude_tags:
-                    tags.append(tag)
-                if tag == self.pad_tag:
-                    break
-            predictions.append(tags)
+            predictions.append(
+                convert_ids_to_tags(
+                    self.idx2class,
+                    tag_ids,
+                    self.pad_tag,
+                    start_tag=self.start_tag,
+                    end_tag=self.end_tag,
+                )
+            )
         return predictions
 
     def score(
@@ -164,7 +165,7 @@ class DeepTagger(SupervisedNLPModel):
         dataset = self.prepare_dataset(X, y, dataset)
         predictions = self.predict(dataset=dataset, batch_size=batch_size)
         labels = list(set([c.split("-")[-1] for c in self.classes if "-" in c]))
-        return tagging_fscore(dataset.X, dataset.y, predictions, labels)
+        return tagging_fscore(dataset.y, predictions, labels)
 
     @classmethod
     def format_score(self, score_df: pd.DataFrame, format: str = "markdown") -> str:

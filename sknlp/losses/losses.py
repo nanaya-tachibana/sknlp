@@ -1,62 +1,28 @@
-from functools import partial
-
+from __future__ import annotations
 import tensorflow as tf
-from tensorflow.python.keras.losses import LossFunctionWrapper
-import tensorflow.keras.backend as K
-from sknlp.typing import WeightInitializer
 
 
-def soft_fscore(activation_function, y_true, y_pred, from_logits=False, label_smoothing=0):
-    if from_logits:
-        y_pred = activation_function(y_pred)
-    tp = K.sum(y_true * y_pred, axis=0)
-    fp = K.sum((1 - y_true) * y_pred, axis=0)
-    tn = K.sum((1 - y_true) * (1 - y_pred), axis=0)
-    fn = K.sum(y_true * (1 - y_pred), axis=0)
-    return (
-        1
-        - tp / (2 * tp + fn + fp + K.epsilon())
-        - tn / (2 * tn + fn + fp + K.epsilon())
-    )
-
-
-class SoftFScoreLoss(LossFunctionWrapper):
-    def __init__(self,
-                 is_multilabel=False,
-                 from_logits=False,
-                 label_smoothing=0,
-                 reduction=tf.keras.losses.Reduction.NONE,
-                 name="soft-f-score"):
-        func = K.softmax
-        if is_multilabel:
-            func = K.sigmoid
-        super().__init__(
-            partial(soft_fscore, func),
-            name=name,
-            reduction=reduction,
-            from_logits=from_logits,
-            label_smoothing=label_smoothing)
-        self.from_logits = from_logits
-
-
-from tensorflow.keras.layers import Layer
-
-
-class CrfLosts(Layer):
+class MultiLabelCategoricalCrossentropy(tf.keras.losses.Loss):
+    """
+    苏剑林. (Apr. 25, 2020). 《将“softmax+交叉熵”推广到多标签分类问题 》[Blog post]. Retrieved from https://spaces.ac.cn/archives/7359
+    """
 
     def __init__(
         self,
-        output_size: int = 1,
-        kernel_initializer: WeightInitializer = 'glorot_uniform',
-        name: str = "crf",
-        **kwargs
+        reduction: str = tf.keras.losses.Reduction.AUTO,
+        name: str = "multilabel_categorical_crossentropy",
     ) -> None:
-        super().__init__(name=name, **kwargs)
-        self.output_size = output_size
+        super().__init__(reduction=reduction, name=name)
 
-    def build(self, input_shape):
-        self.kernel = self.add_weight(
-            shape=(self.output_size, self.output_size),
-            name='kernel',
-            initializer=self.kernel_initializer,
-        )
+    def call(self, y_true: tf.Tensor, y_pred: tf.Tensor) -> tf.Tensor:
+        y_pred = tf.convert_to_tensor(y_pred)
+        y_true = tf.cast(y_true, y_pred.dtype)
+        y_pred = (1 - 2 * y_true) * y_pred
+        y_pred_neg: tf.Tensor = y_pred - y_true * 1e12
+        y_pred_pos: tf.Tensor = y_pred - (1 - y_true) * 1e12
+        zeros = tf.zeros_like(y_pred[..., :1])  # 用于生成logsum中的1
+        y_pred_neg = tf.concat([y_pred_neg, zeros], axis=-1)
+        y_pred_pos = tf.concat([y_pred_pos, zeros], axis=-1)
+        neg_loss = tf.math.reduce_logsumexp(y_pred_neg, axis=-1)
+        pos_loss = tf.math.reduce_logsumexp(y_pred_pos, axis=-1)
+        return neg_loss + pos_loss

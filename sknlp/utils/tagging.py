@@ -1,4 +1,5 @@
-from typing import Tuple, List, Sequence
+from __future__ import annotations
+from typing import Optional, Sequence, Callable
 from dataclasses import dataclass
 import itertools
 
@@ -11,13 +12,12 @@ class Tag:
     label: str
     start: int
     end: str
-    text: str
 
-    def __hash__(self):
-        return hash((self.label, self.start, self.end, self.text))
+    def __hash__(self) -> int:
+        return hash((self.label, self.start, self.end))
 
 
-def parse_tagged_text(text: str, tag_names: Sequence[str]) -> List[Tag]:
+def parse_tagged_text(tag_names: Sequence[str]) -> list[Tag]:
     current_label = None
     start = 0
     parsed_tags = list()
@@ -30,7 +30,7 @@ def parse_tagged_text(text: str, tag_names: Sequence[str]) -> List[Tag]:
             continue
 
         if i != start:
-            parsed_tags.append(Tag(current_label, start, i, text[start:i]))
+            parsed_tags.append(Tag(current_label, start, i))
 
         if tag_type == "B" or tag_type == "S":
             start = i
@@ -39,15 +39,15 @@ def parse_tagged_text(text: str, tag_names: Sequence[str]) -> List[Tag]:
             start = i + 1
             current_label = None
     if start != len(tag_names) and current_label is not None:
-        parsed_tags.append(Tag(current_label, start, len(tag_names), text[start:]))
+        parsed_tags.append(Tag(current_label, start, len(tag_names)))
     return parsed_tags
 
 
 def _compute_counts(
-    text: str, label: Sequence[str], prediction: Sequence[str], classes: Sequence[str]
-) -> List[Tuple[str, int, int, int]]:
-    truth_tags = set(parse_tagged_text(text, label))
-    prediction_tags = set(parse_tagged_text(text, prediction))
+    label: Sequence[str], prediction: Sequence[str], classes: Sequence[str]
+) -> list[tuple[str, int, int, int]]:
+    truth_tags = set(parse_tagged_text(label))
+    prediction_tags = set(parse_tagged_text(prediction))
     correct_tags = truth_tags & prediction_tags
     counts = [
         (
@@ -63,14 +63,13 @@ def _compute_counts(
 
 
 def tagging_fscore(
-    texts: Sequence[str],
     y: Sequence[Sequence[str]],
     p: Sequence[Sequence[str]],
     classes: Sequence[str],
 ) -> pd.DataFrame:
     df = pd.DataFrame(
         itertools.chain.from_iterable(
-            _compute_counts(text, yi, pi, classes) for text, yi, pi in zip(texts, y, p)
+            _compute_counts(yi, pi, classes) for yi, pi in zip(y, p)
         ),
         columns=["class", "correct", "support", "prediction"],
     )
@@ -83,9 +82,27 @@ def tagging_fscore(
     return df[["class", "precision", "recall", "fscore", "support"]]
 
 
+def convert_ids_to_tags(
+    idx2tag: Callable[[int], str],
+    tag_ids: list[int],
+    pad_tag: str,
+    start_tag: Optional[str] = None,
+    end_tag: Optional[str] = None,
+) -> list[str]:
+    exclude_tags = {pad_tag, start_tag, end_tag}
+    tags = []
+    for tag_id in tag_ids:
+        tag = idx2tag(tag_id)
+        if tag not in exclude_tags:
+            tags.append(tag)
+        if tag == pad_tag:
+            break
+    return tags
+
+
 def viterbi_decode(transitions, emissions, mask=None):
     """
-    Decode the highest scoring sequence of tags outside of mxnet.
+    Decode the highest scoring sequence of tags outside of tensorflow.
     Parameters:
     ----
     transitions: numpy array, shape(num_tags, num_tags)
