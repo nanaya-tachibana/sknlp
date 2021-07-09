@@ -3,7 +3,7 @@ from typing import List
 from tensorflow.keras.layers import Dense, Dropout
 import tensorflow as tf
 
-from sknlp.layers import MultiLSTMP, MLPLayer, LSTMP, LSTMPCell
+from sknlp.layers import MultiLSTMP, LSTMP, LSTMPCell
 from .deep_classifier import DeepClassifier
 
 
@@ -16,7 +16,6 @@ class TextRCNNClassifier(DeepClassifier):
         sequence_length: int = None,
         segmenter: str = "jieba",
         embedding_size: int = 100,
-        use_batch_normalization: bool = True,
         num_rnn_layers: int = 1,
         rnn_hidden_size: int = 512,
         rnn_projection_size: int = 128,
@@ -28,8 +27,6 @@ class TextRCNNClassifier(DeepClassifier):
         num_fc_layers: int = 2,
         fc_hidden_size: int = 128,
         fc_activation: str = "tanh",
-        fc_momentum: float = 0.9,
-        fc_epsilon: float = 1e-5,
         rnn_kernel_initializer="glorot_uniform",
         rnn_recurrent_initializer="orthogonal",
         rnn_projection_initializer="glorot_uniform",
@@ -52,7 +49,9 @@ class TextRCNNClassifier(DeepClassifier):
             sequence_length=sequence_length,
             segmenter=segmenter,
             embedding_size=embedding_size,
-            use_batch_normalization=use_batch_normalization,
+            num_fc_layers=num_fc_layers,
+            fc_hidden_size=fc_hidden_size,
+            fc_activation=fc_activation,
             algorithm="rcnn",
             text2vec=text2vec,
             **kwargs
@@ -77,11 +76,6 @@ class TextRCNNClassifier(DeepClassifier):
         self.rnn_recurrent_constraint = rnn_recurrent_constraint
         self.rnn_projection_constraint = rnn_projection_constraint
         self.rnn_bias_constraint = rnn_bias_constraint
-        self.num_fc_layers = num_fc_layers
-        self.fc_hidden_size = fc_hidden_size
-        self.fc_activation = fc_activation
-        self.fc_momentum = fc_momentum
-        self.fc_epsilon = fc_epsilon
 
     def build_encode_layer(self, inputs):
         rnn_outputs = MultiLSTMP(
@@ -121,22 +115,9 @@ class TextRCNNClassifier(DeepClassifier):
         )
         return tf.math.max(mixed_outputs, axis=1)
 
-    def build_output_layer(self, inputs):
-        return MLPLayer(
-            self.num_fc_layers,
-            hidden_size=self.fc_hidden_size,
-            output_size=self.num_classes,
-            activation=self.fc_activation,
-            batch_normalization=self.use_batch_normalization,
-            momentum=self.fc_momentum,
-            epsilon=self.fc_epsilon,
-            name="mlp",
-        )(inputs)
-
     def get_custom_objects(self):
         return {
             **super().get_custom_objects(),
-            "MLPLayer": MLPLayer,
             "LSTMPCell": LSTMPCell,
             "LSTMP": LSTMP,
             "MultiLSTMP": MultiLSTMP,

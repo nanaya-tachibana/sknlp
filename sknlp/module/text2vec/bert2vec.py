@@ -25,13 +25,6 @@ class BertFamily(Enum):
     ELECTRA = 3
 
 
-def get_activation(activation_string: str) -> Callable:
-    if activation_string == "gelu":
-        return activations.gelu
-    else:
-        return tf.keras.activations.get(activation_string)
-
-
 class Bert2vec(Text2vec):
     def __init__(
         self,
@@ -120,7 +113,7 @@ class Bert2vec(Text2vec):
         if model_type is BertFamily.ELECTRA:
             cls_pooling = False
             convert_checkpoint = convert_electra_checkpoint
-        activation = get_activation(config.hidden_act)
+        activation = tf.keras.activations.get(config.hidden_act)
         module = cls(
             vocab,
             embedding_size=config.embedding_size,

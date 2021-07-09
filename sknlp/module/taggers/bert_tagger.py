@@ -6,11 +6,8 @@ from tensorflow.keras.layers import Dropout
 import pandas as pd
 
 from sknlp.layers import (
-    MLPLayer,
     BertLayer,
     BertCharPreprocessingLayer,
-    CrfLossLayer,
-    CrfDecodeLayer,
 )
 from sknlp.data import BertTaggingDataset
 from sknlp.module.text2vec import Bert2vec
@@ -22,14 +19,13 @@ class BertTagger(DeepTagger):
         self,
         classes: Sequence[str],
         segmenter: Optional[str] = None,
+        use_crf: bool = False,
+        crf_learning_rate_multiplier: float = 1.0,
         embedding_size: int = 100,
-        use_batch_normalization: bool = True,
         max_sequence_length: int = 120,
         num_fc_layers: int = 2,
         fc_hidden_size: int = 256,
         fc_activation: str = "tanh",
-        fc_momentum: float = 0.9,
-        fc_epsilon: float = 1e-5,
         output_dropout: float = 0.5,
         text2vec: Optional[Bert2vec] = None,
         **kwargs
@@ -37,20 +33,19 @@ class BertTagger(DeepTagger):
         super().__init__(
             classes,
             segmenter=segmenter,
+            use_crf=use_crf,
+            crf_learning_rate_multiplier=crf_learning_rate_multiplier,
             algorithm="bert",
             embedding_size=embedding_size,
-            use_batch_normalization=use_batch_normalization,
+            num_fc_layers=num_fc_layers,
+            fc_hidden_size=fc_hidden_size,
+            fc_activation=fc_activation,
             max_sequence_length=max_sequence_length,
             start_tag="[CLS]",
             end_tag="[SEP]",
             text2vec=text2vec,
             **kwargs
         )
-        self.num_fc_layers = num_fc_layers
-        self.fc_hidden_size = fc_hidden_size
-        self.fc_activation = fc_activation
-        self.fc_momentum = fc_momentum
-        self.fc_epsilon = fc_epsilon
         self.output_dropout = output_dropout
         self.inputs = [
             tf.keras.Input(shape=(), dtype=tf.string, name="text_input"),
@@ -68,6 +63,7 @@ class BertTagger(DeepTagger):
             df=df,
             max_length=self.max_sequence_length,
             no_label=no_label,
+            use_crf=self.use_crf,
         )
 
     def create_dataset_from_csv(
@@ -81,6 +77,7 @@ class BertTagger(DeepTagger):
             csv_file=filename,
             max_length=self.max_sequence_length,
             no_label=no_label,
+            use_crf=self.use_crf,
         )
 
     def build_encode_layer(self, inputs: tf.Tensor) -> tf.Tensor:
@@ -101,22 +98,6 @@ class BertTagger(DeepTagger):
             )(embeddings)
         return embeddings, mask, tag_ids
 
-    def build_output_layer(self, inputs: tf.Tensor) -> tf.Tensor:
-        embeddings, mask, tag_ids = inputs
-        emissions = MLPLayer(
-            self.num_fc_layers,
-            hidden_size=self.fc_hidden_size,
-            output_size=self.num_classes,
-            activation=self.fc_activation,
-            batch_normalization=self.use_batch_normalization,
-            momentum=self.fc_momentum,
-            epsilon=self.fc_epsilon,
-            name="mlp",
-        )(embeddings)
-        return CrfLossLayer(
-            self.num_classes, max_sequence_length=self.max_sequence_length
-        )([emissions, tag_ids], mask)
-
     @classmethod
     def _filter_config(cls, config: Dict[str, Any]) -> Dict[str, Any]:
         config = super()._filter_config(config)
@@ -130,9 +111,6 @@ class BertTagger(DeepTagger):
     def get_custom_objects(self) -> Dict[str, Any]:
         return {
             **super().get_custom_objects(),
-            "MLPLayer": MLPLayer,
             "BertLayer": BertLayer,
             "BertCharPreprocessingLayer": BertCharPreprocessingLayer,
-            "CrfLossLayer": CrfLossLayer,
-            "CrfDecodeLayer": CrfDecodeLayer,
         }

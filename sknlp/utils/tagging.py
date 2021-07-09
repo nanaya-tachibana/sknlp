@@ -9,15 +9,15 @@ import pandas as pd
 
 @dataclass
 class Tag:
-    label: str
     start: int
     end: str
+    label: str
 
     def __hash__(self) -> int:
         return hash((self.label, self.start, self.end))
 
 
-def parse_tagged_text(tag_names: Sequence[str]) -> list[Tag]:
+def parse_tags(tag_names: Sequence[str]) -> list[Tag]:
     current_label = None
     start = 0
     parsed_tags = list()
@@ -30,7 +30,7 @@ def parse_tagged_text(tag_names: Sequence[str]) -> list[Tag]:
             continue
 
         if i != start:
-            parsed_tags.append(Tag(current_label, start, i))
+            parsed_tags.append(Tag(start, i - 1, current_label))
 
         if tag_type == "B" or tag_type == "S":
             start = i
@@ -39,15 +39,15 @@ def parse_tagged_text(tag_names: Sequence[str]) -> list[Tag]:
             start = i + 1
             current_label = None
     if start != len(tag_names) and current_label is not None:
-        parsed_tags.append(Tag(current_label, start, len(tag_names)))
+        parsed_tags.append(Tag(start, len(tag_names) - 1, current_label))
     return parsed_tags
 
 
 def _compute_counts(
-    label: Sequence[str], prediction: Sequence[str], classes: Sequence[str]
+    label: Sequence[Tag], prediction: Sequence[Tag], classes: Sequence[str]
 ) -> list[tuple[str, int, int, int]]:
-    truth_tags = set(parse_tagged_text(label))
-    prediction_tags = set(parse_tagged_text(prediction))
+    truth_tags = set(label)
+    prediction_tags = set(prediction)
     correct_tags = truth_tags & prediction_tags
     counts = [
         (
@@ -63,8 +63,8 @@ def _compute_counts(
 
 
 def tagging_fscore(
-    y: Sequence[Sequence[str]],
-    p: Sequence[Sequence[str]],
+    y: Sequence[Sequence[Tag]],
+    p: Sequence[Sequence[Tag]],
     classes: Sequence[str],
 ) -> pd.DataFrame:
     df = pd.DataFrame(
@@ -88,7 +88,7 @@ def convert_ids_to_tags(
     pad_tag: str,
     start_tag: Optional[str] = None,
     end_tag: Optional[str] = None,
-) -> list[str]:
+) -> list[Tag]:
     exclude_tags = {pad_tag, start_tag, end_tag}
     tags = []
     for tag_id in tag_ids:
@@ -97,7 +97,7 @@ def convert_ids_to_tags(
             tags.append(tag)
         if tag == pad_tag:
             break
-    return tags
+    return parse_tags(tags)
 
 
 def viterbi_decode(transitions, emissions, mask=None):

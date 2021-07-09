@@ -54,6 +54,11 @@ def create_model_builder(
                 clone_text2vec._model = keras_model
                 if not text2vec._model.layers[0].trainable:
                     clone_text2vec.freeze()
+            for param, value in hp.values.items():
+                if param in model_kwargs:
+                    model_kwargs[param] = value
+                if param in optimizer_parameters:
+                    optimizer_parameters[param] = value
             model = model_type(*model_args, text2vec=clone_text2vec, **model_kwargs)
             model.compile_optimizer(optimizer, **optimizer_parameters)
             return model._model
@@ -94,6 +99,7 @@ class ParameterSearcher:
         clip: Optional[float] = 5.0,
         learning_rate_update_factor: float = 0.5,
         learning_rate_update_epochs: int = 10,
+        learning_rate_warmup_steps: int = 0,
         enable_early_stopping: bool = False,
         early_stopping_patience: Optional[int] = None,
         early_stopping_min_delta: float = 0.0,
@@ -126,6 +132,7 @@ class ParameterSearcher:
         callbacks = default_supervised_model_callbacks(
             learning_rate_update_factor=learning_rate_update_factor,
             learning_rate_update_epochs=learning_rate_update_epochs,
+            learning_rate_warmup_steps=learning_rate_warmup_steps,
             use_weight_decay=weight_decay > 0,
             enable_early_stopping=enable_early_stopping,
             early_stopping_monitor=monitor,
@@ -162,12 +169,12 @@ class ParameterSearcher:
             project_name = os.path.basename(search_result_directory)
             if directory == project_name:
                 project_name = "default"
-        self.tuner = kt.RandomSearch(
+        self.tuner = kt.BayesianOptimization(
             model_builder,
             objective=objective,
             hyperparameters=self.hyper_parameters,
             max_trials=max_trials,
-            executions_per_trial=executions_per_trial,
+            # executions_per_trial=executions_per_trial,
             directory=directory,
             project_name=project_name,
             distribution_strategy=distribute_strategy,

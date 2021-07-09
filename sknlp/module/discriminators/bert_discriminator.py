@@ -17,13 +17,10 @@ class BertDiscriminator(DeepDiscriminator):
         classes: Sequence[str] = ("相似度",),
         segmenter: Optional[str] = None,
         embedding_size: int = 100,
-        use_batch_normalization: bool = True,
         max_sequence_length: int = 120,
         num_fc_layers: int = 2,
         fc_hidden_size: int = 256,
         fc_activation: str = "tanh",
-        fc_momentum: float = 0.9,
-        fc_epsilon: float = 1e-5,
         output_dropout: float = 0.5,
         text2vec: Optional[Bert2vec] = None,
         **kwargs
@@ -33,7 +30,6 @@ class BertDiscriminator(DeepDiscriminator):
             segmenter=segmenter,
             algorithm="bert",
             embedding_size=embedding_size,
-            use_batch_normalization=use_batch_normalization,
             max_sequence_length=max_sequence_length,
             text2vec=text2vec,
             **kwargs
@@ -41,8 +37,6 @@ class BertDiscriminator(DeepDiscriminator):
         self.num_fc_layers = num_fc_layers
         self.fc_hidden_size = fc_hidden_size
         self.fc_activation = fc_activation
-        self.fc_momentum = fc_momentum
-        self.fc_epsilon = fc_epsilon
         self.output_dropout = output_dropout
         self.inputs = [
             tf.keras.Input(shape=(), dtype=tf.string, name="text_input"),
@@ -91,9 +85,6 @@ class BertDiscriminator(DeepDiscriminator):
             hidden_size=self.fc_hidden_size,
             output_size=self.num_classes,
             activation=self.fc_activation,
-            batch_normalization=self.use_batch_normalization,
-            momentum=self.fc_momentum,
-            epsilon=self.fc_epsilon,
             name="mlp",
         )(inputs)
 

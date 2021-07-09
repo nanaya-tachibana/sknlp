@@ -8,6 +8,7 @@ from sknlp.typing import WeightRegularizer, WeightInitializer, WeightConstraint
 from .lstmp import LSTMP
 
 
+@tf.keras.utils.register_keras_serializable(package="sknlp")
 class MultiLSTMP(Layer):
     def __init__(
         self,

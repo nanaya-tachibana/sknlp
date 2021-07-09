@@ -27,7 +27,9 @@ class NLPDataset:
         self.na_value = na_value
         self.column_dtypes = column_dtypes
         if df is not None:
-            self._original_dataset = self.dataframe_to_dataset(df, na_value)
+            self._original_dataset = self.dataframe_to_dataset(
+                df, column_dtypes, na_value
+            )
             self.size = df.shape[0]
         elif csv_file is not None:
             self._original_dataset, self.size = self.load_csv(
@@ -72,10 +74,11 @@ class NLPDataset:
 
     def _transform_func(self, *data) -> List[Any]:
         text = data[0]
+        _text = self._text_transform(text)
         if self.no_label:
-            return self._text_transform(text)
+            return _text
         label = data[1]
-        return self._text_transform(text), self._label_transform(label)
+        return _text, self._label_transform(label)
 
     def _transform_func_out_dtype(self) -> List[tf.DType]:
         return (self.text_dtype, self.label_dtype)[: -1 if self.no_label else None]
@@ -117,7 +120,12 @@ class NLPDataset:
             dataset = dataset.map(after_batch)
         return dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
-    def dataframe_to_dataset(self, df: pd.DataFrame) -> tf.data.Dataset:
+    def dataframe_to_dataset(
+        self, df: pd.DataFrame, column_dtypes: List[str], na_value: str
+    ) -> tf.data.Dataset:
+        df.fillna(na_value, inplace=True)
+        for dtype, col in zip(column_dtypes, df.columns):
+            df[col] = df[col].astype(dtype)
         return tf.data.Dataset.from_tensor_slices(tuple(df[col] for col in df.columns))
 
     def load_csv(
@@ -130,10 +138,7 @@ class NLPDataset:
     ) -> Tuple[tf.data.Dataset, Optional[int]]:
         if in_memory:
             df = pd.read_csv(filename, sep=sep, quoting=3)
-            df.fillna(na_value, inplace=True)
-            for dtype, col in zip(column_dtypes, df.columns):
-                df[col] = df[col].astype(dtype)
-            return self.dataframe_to_dataset(df), df.shape[0]
+            return self.dataframe_to_dataset(df, column_dtypes, na_value), df.shape[0]
         tf_dtype_mapping = {"str": tf.string, "int": tf.int32, "float": tf.float32}
         return (
             tf.data.experimental.CsvDataset(

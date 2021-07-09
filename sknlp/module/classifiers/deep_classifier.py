@@ -1,3 +1,4 @@
+from __future__ import annotations
 from typing import Sequence, List, Dict, Any, Optional, Union
 
 import numpy as np
@@ -6,6 +7,7 @@ from tabulate import tabulate
 import tensorflow as tf
 
 from sknlp.data import ClassificationDataset
+from sknlp.layers import MLPLayer
 from sknlp.losses import MultiLabelCategoricalCrossentropy
 from sknlp.metrics import PrecisionWithLogits, RecallWithLogits, FBetaScoreWithLogits
 from sknlp.utils.classification import (
@@ -27,11 +29,13 @@ class DeepClassifier(SupervisedNLPModel):
         sequence_length: Optional[int] = None,
         segmenter: Optional[str] = "jieba",
         embedding_size: int = 100,
-        use_batch_normalization: bool = True,
+        num_fc_layers: int = 2,
+        fc_hidden_size: int = 256,
+        fc_activation: str = "tanh",
         text2vec: Optional[Text2vec] = None,
         loss: Optional[str] = None,
         loss_kwargs: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs,
     ):
         classes = list(classes)
         if "NULL" != classes[0]:
@@ -46,23 +50,40 @@ class DeepClassifier(SupervisedNLPModel):
             embedding_size=embedding_size,
             text2vec=text2vec,
             task="classification",
-            **kwargs
+            **kwargs,
         )
         self._is_multilabel = is_multilabel
-        self._use_batch_normalization = use_batch_normalization
         self._loss = loss
         self._loss_kwargs = loss_kwargs
+        self.num_fc_layers = num_fc_layers
+        self.fc_hidden_size = fc_hidden_size
+        self.fc_activation = fc_activation
 
     @property
-    def is_multilabel(self):
+    def is_multilabel(self) -> bool:
         return self._is_multilabel
 
     @property
-    def use_batch_normalization(self):
-        return self._use_batch_normalization
+    def thresholds(self) -> list[float]:
+        _thresholds = [0.5 for _ in range(self.num_classes)]
+        _kthresholds: Optional[dict[str, float]] = self.prediction_kwargs.get(
+            "thresholds", None
+        )
+        if _kthresholds is not None:
+            for c, t in _kthresholds.items():
+                _thresholds[self.class2idx(c)] = t
+        return _thresholds
 
-    def get_loss(self, *args, **kwargs):
+    @thresholds.setter
+    def thresholds(self, thresholds: list[float]) -> None:
+        if len(thresholds) != self.num_classes:
+            raise ValueError(f"类别数为{self.num_classes}, 但thresholds长度为{len(thresholds)}")
+        self.prediction_kwargs["thresholds"] = dict(zip(self.classes, thresholds))
+
+    def get_loss(self, *args, **kwargs) -> list[tf.keras.losses.Loss]:
         if self.is_multilabel:
+            if self._loss == "binary_crossentropy":
+                return tf.keras.losses.BinaryCrossentropy(from_logits=True)
             return MultiLabelCategoricalCrossentropy()
         else:
             return tf.keras.losses.CategoricalCrossentropy(from_logits=True)
@@ -105,12 +126,21 @@ class DeepClassifier(SupervisedNLPModel):
             text_segmenter=self.text2vec.segmenter,
         )
 
+    def build_output_layer(self, inputs: tf.Tensor) -> tf.Tensor:
+        return MLPLayer(
+            self.num_fc_layers,
+            hidden_size=self.fc_hidden_size,
+            output_size=self.num_classes,
+            activation=self.fc_activation,
+            name="mlp",
+        )(inputs)
+
     def predict_proba(
         self,
         X: Sequence[str] = None,
         *,
         dataset: ClassificationDataset = None,
-        batch_size: int = 128
+        batch_size: int = 128,
     ) -> np.ndarray:
         logits = super().predict(X=X, dataset=dataset, batch_size=batch_size)
         return logits2probabilities(logits, self.is_multilabel)
@@ -120,12 +150,12 @@ class DeepClassifier(SupervisedNLPModel):
         X: Sequence[str] = None,
         *,
         dataset: ClassificationDataset = None,
-        thresholds: Union[float, List[float]] = 0.5,
-        batch_size: int = 128
+        thresholds: Union[float, List[float], None] = None,
+        batch_size: int = 128,
     ) -> Union[List[str], List[List[str]]]:
         probabilities = self.predict_proba(X=X, dataset=dataset, batch_size=batch_size)
         predictions = probabilities2classes(
-            probabilities, self.is_multilabel, thresholds=thresholds
+            probabilities, self.is_multilabel, thresholds=thresholds or self.thresholds
         )
         if self.is_multilabel:
             return [
@@ -134,7 +164,9 @@ class DeepClassifier(SupervisedNLPModel):
             ]
         else:
             return [
-                self.idx2class(i) for i in predictions if self.idx2class(i) != "NULL"
+                self.idx2class(i) if self.idx2class(i) != "NULL" else ""
+                for i in predictions
+                if self.idx2class(i)
             ]
 
     def score(
@@ -143,8 +175,8 @@ class DeepClassifier(SupervisedNLPModel):
         y: Union[Sequence[Sequence[str]], Sequence[str]] = None,
         *,
         dataset: ClassificationDataset = None,
-        thresholds: Union[float, List[float]] = 0.5,
-        batch_size: int = 128
+        thresholds: Union[float, List[float], None] = None,
+        batch_size: int = 128,
     ) -> pd.DataFrame:
         dataset = self.prepare_dataset(X, y, dataset)
         predictions = self.predict(
@@ -160,7 +192,6 @@ class DeepClassifier(SupervisedNLPModel):
         return {
             **super().get_config(),
             "is_multilabel": self.is_multilabel,
-            "use_batch_normalization": self.use_batch_normalization,
         }
 
     @classmethod
@@ -174,6 +205,7 @@ class DeepClassifier(SupervisedNLPModel):
     def get_custom_objects(cls) -> Dict[str, Any]:
         return {
             **super().get_custom_objects(),
+            "MLPLayer": MLPLayer,
             "MultiLabelCategoricalCrossentropy": MultiLabelCategoricalCrossentropy,
             "PrecisionWithLogits": PrecisionWithLogits,
             "RecallWithLogits": RecallWithLogits,

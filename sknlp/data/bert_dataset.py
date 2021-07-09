@@ -1,6 +1,5 @@
 from typing import Sequence, List, Optional, Tuple
 
-import numpy as np
 import pandas as pd
 
 import tensorflow as tf
@@ -55,6 +54,7 @@ class BertTaggingDataset(TaggingDataset):
         csv_file: Optional[str] = None,
         in_memory: bool = True,
         no_label: bool = False,
+        use_crf: bool = False,
         max_length: Optional[int] = None,
     ):
         super().__init__(
@@ -64,6 +64,7 @@ class BertTaggingDataset(TaggingDataset):
             csv_file=csv_file,
             in_memory=in_memory,
             no_label=no_label,
+            use_crf=use_crf,
             start_tag="[CLS]",
             end_tag="[SEP]",
             text_segmenter=None,
@@ -74,7 +75,10 @@ class BertTaggingDataset(TaggingDataset):
 
     @property
     def batch_padding_shapes(self) -> Optional[List[Tuple]]:
-        return ((), (None,))
+        if self.use_crf:
+            return ((), (None,))
+        else:
+            return ((), (None, None, None))
 
     def _text_transform(self, text: tf.Tensor) -> str:
         return text.numpy().decode("utf-8")[: self.max_length]

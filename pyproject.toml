@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sknlp"
-version = "0.2.5"
+version = "0.2.7"
 description = ""
 authors = ["nanaya <nanaya100@gmail.com>"]
 license = "MIT"
@@ -20,7 +20,7 @@ keras-tuner = "^1.0.2"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.3.2"
-black = {version = "^20.8b1", allow-prereleases = true}
+black = { version = "^20.8b1", allow-prereleases = true }
 
 [[tool.poetry.source]]
 name = "aliyun"

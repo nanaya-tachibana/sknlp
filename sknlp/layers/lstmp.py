@@ -1,5 +1,6 @@
 from typing import Optional
 
+import tensorflow as tf
 from tensorflow.keras import backend as K
 from tensorflow.keras import constraints
 from tensorflow.keras import initializers
@@ -11,6 +12,7 @@ from tensorflow.python.training.tracking import data_structures
 from sknlp.typing import WeightRegularizer, WeightInitializer, WeightConstraint
 
 
+@tf.keras.utils.register_keras_serializable(package="sknlp")
 class LSTMPCell(LSTMCell):
     """
     Long-Short Term Memory Projected (LSTMP) network cell with cell clip.
@@ -195,14 +197,19 @@ class LSTMPCell(LSTMCell):
             "projection_size": self.projection_size,
             "recurrent_clip": self.recurrent_clip,
             "projection_clip": self.projection_clip,
-            "projection_initializer": self.projection_initializer,
-            "projection_regularizer": self.projection_regularizer,
-            "projection_constraint": self.projection_constraint,
+            "projection_initializer": initializers.serialize(
+                self.projection_initializer
+            ),
+            "projection_regularizer": regularizers.serialize(
+                self.projection_regularizer
+            ),
+            "projection_constraint": constraints.serialize(self.projection_constraint),
         }
         base_config = super().get_config()
         return {**base_config, **config}
 
 
+@tf.keras.utils.register_keras_serializable(package="sknlp")
 class LSTMP(LSTM):
     """
 

@@ -15,7 +15,10 @@ class MultiLabelCategoricalCrossentropy(tf.keras.losses.Loss):
         super().__init__(reduction=reduction, name=name)
 
     def call(self, y_true: tf.Tensor, y_pred: tf.Tensor) -> tf.Tensor:
-        y_pred = tf.convert_to_tensor(y_pred)
+        if isinstance(y_pred, tf.RaggedTensor):
+            y_pred = y_pred.to_tensor(0)
+        else:
+            y_pred = tf.convert_to_tensor(y_pred)
         y_true = tf.cast(y_true, y_pred.dtype)
         y_pred = (1 - 2 * y_true) * y_pred
         y_pred_neg: tf.Tensor = y_pred - y_true * 1e12

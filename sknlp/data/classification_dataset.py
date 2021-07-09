@@ -35,7 +35,7 @@ class ClassificationDataset(NLPDataset):
             no_label=no_label,
             text_segmenter=text_segmenter,
             max_length=max_length,
-            na_value="" if is_multilabel else "NULL",
+            na_value="NULL",
             column_dtypes=["str", "str"],
             text_dtype=text_dtype,
             label_dtype=label_dtype,
@@ -58,9 +58,7 @@ class ClassificationDataset(NLPDataset):
 
     def _text_transform(self, text: tf.Tensor) -> np.ndarray:
         tokens = super()._text_transform(text)
-        return np.array(
-            [self.vocab[t] for t in tokens[: self.max_length]], dtype=np.int32
-        )
+        return np.array([self.vocab[t] for t in tokens], dtype=np.int32)
 
     def _label_binarizer(self, labels: List[str]) -> np.ndarray:
         label2idx = self.label2idx

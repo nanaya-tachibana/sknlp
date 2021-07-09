@@ -6,6 +6,15 @@ from tensorflow.keras.metrics import Precision, Recall
 from tensorflow_addons.metrics import FBetaScore
 
 
+def logits2pred(logits, activation):
+    if isinstance(logits, tf.RaggedTensor):
+        fill_value = 0
+        if activation in ("sigmoid", "softmax"):
+            fill_value = -1e12
+        logits = logits.to_tensor(fill_value)
+    return tf.keras.activations.get(activation)(logits)
+
+
 class PrecisionWithLogits(Precision):
     def __init__(
         self,
@@ -31,7 +40,7 @@ class PrecisionWithLogits(Precision):
         y_logits: tf.Tensor,
         sample_weight: Optional[tf.Tensor] = None,
     ) -> None:
-        y_pred = tf.keras.activations.deserialize(self.activation)(y_logits)
+        y_pred = logits2pred(y_logits, self.activation)
         super().update_state(y_true, y_pred, sample_weight=sample_weight)
 
     def get_config(self) -> dict[str, Any]:
@@ -69,7 +78,7 @@ class RecallWithLogits(Recall):
         y_logits: tf.Tensor,
         sample_weight: Optional[tf.Tensor] = None,
     ) -> None:
-        y_pred = tf.keras.activations.deserialize(self.activation)(y_logits)
+        y_pred = logits2pred(y_logits, self.activation)
         super().update_state(y_true, y_pred, sample_weight=sample_weight)
 
     def get_config(self) -> dict[str, Any]:
@@ -109,7 +118,7 @@ class FBetaScoreWithLogits(FBetaScore):
         y_logits: tf.Tensor,
         sample_weight: Optional[tf.Tensor] = None,
     ) -> None:
-        y_pred = tf.keras.activations.deserialize(self.activation)(y_logits)
+        y_pred = logits2pred(y_logits, self.activation)
         super().update_state(y_true, y_pred, sample_weight=sample_weight)
 
     def get_config(self) -> dict[str, Any]:

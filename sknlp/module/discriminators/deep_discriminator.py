@@ -26,7 +26,6 @@ class DeepDiscriminator(SupervisedNLPModel):
         sequence_length: Optional[int] = None,
         segmenter: Optional[str] = "jieba",
         embedding_size: int = 100,
-        use_batch_normalization: bool = True,
         text2vec: Optional[Text2vec] = None,
         loss: Optional[str] = None,
         loss_kwargs: Optional[Dict[str, Any]] = None,
@@ -42,13 +41,8 @@ class DeepDiscriminator(SupervisedNLPModel):
             task="similarity",
             **kwargs
         )
-        self._use_batch_normalization = use_batch_normalization
         self._loss = loss
         self._loss_kwargs = loss_kwargs
-
-    @property
-    def use_batch_normalization(self):
-        return self._use_batch_normalization
 
     def get_loss(self, *args, **kwargs):
         if self._loss == "focal":

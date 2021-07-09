@@ -1,3 +1,4 @@
+from __future__ import annotations
 from typing import Sequence, Optional, Dict, Any, Callable, List
 
 import json
@@ -17,12 +18,16 @@ class BaseNLPModel:
         sequence_length: Optional[int] = None,
         segmenter: Optional[str] = None,
         name: Optional[str] = None,
+        prediction_kwargs: Optional[dict[str, Any]] = None,
+        custom_kwargs: Optional[dict[str, Any]] = None,
         **kwargs
     ) -> None:
         self._max_sequence_length = max_sequence_length
         self._sequence_length = sequence_length
         self._segmenter = segmenter
         self._name = name
+        self._prediction_kwargs = prediction_kwargs or dict()
+        self._custom_kwargs = custom_kwargs or dict()
         self._kwargs = kwargs
         self._model: tf.keras.Model = None
         self._built = False
@@ -38,6 +43,14 @@ class BaseNLPModel:
     @property
     def segmenter(self) -> Optional[str]:
         return self._segmenter
+
+    @property
+    def prediction_kwargs(self) -> dict[str, Any]:
+        return self._prediction_kwargs
+
+    @property
+    def custom_kwargs(self) -> dict[str, Any]:
+        return self._custom_kwargs
 
     @staticmethod
     def build_vocab(
@@ -84,7 +97,7 @@ class BaseNLPModel:
         raise NotImplementedError()
 
     @classmethod
-    def get_custom_objects(cls) -> Dict[str, Any]:
+    def get_custom_objects(cls) -> dict[str, Any]:
         return {}
 
     def freeze(self) -> None:
@@ -124,18 +137,20 @@ class BaseNLPModel:
         model.save(d, include_optimizer=False, save_format="tf")
         self.save_config(d)
 
-    def get_config(self) -> Dict[str, Any]:
+    def get_config(self) -> dict[str, Any]:
         return {
             "max_sequence_length": self.max_sequence_length,
             "sequence_length": self.sequence_length,
             "segmenter": self.segmenter,
             "name": self._name,
+            "prediction_kwargs": self.prediction_kwargs,
+            "custom_kwargs": self.custom_kwargs,
         }
 
     @classmethod
-    def _filter_config(cls, config: Dict[str, Any]) -> Dict[str, Any]:
+    def _filter_config(cls, config: dict[str, Any]) -> dict[str, Any]:
         return config
 
     @classmethod
-    def from_config(cls, config: Dict[str, Any]) -> "BaseNLPModel":
+    def from_config(cls, config: dict[str, Any]) -> "BaseNLPModel":
         return cls(**cls._filter_config(config))

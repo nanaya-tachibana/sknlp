@@ -39,6 +39,7 @@ class SupervisedNLPModel(BaseNLPModel):
             max_sequence_length=max_sequence_length,
             sequence_length=sequence_length,
             segmenter=text2vec.segmenter if text2vec else segmenter,
+            **kwargs
         )
         self._text2vec = text2vec
         if text2vec is not None:

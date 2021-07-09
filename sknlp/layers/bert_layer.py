@@ -5,7 +5,6 @@ from tensorflow.keras.activations import gelu
 from tensorflow.keras.initializers import TruncatedNormal
 from tensorflow.keras.layers.experimental.preprocessing import TextVectorization
 
-from official.modeling import activations
 from official.nlp.keras_nlp import layers
 import tensorflow_text as tftext
 

@@ -4,7 +4,6 @@ import logging
 import tensorflow as tf
 
 from sknlp.utils.tagging import (
-    viterbi_decode,
     convert_ids_to_tags,
     tagging_fscore,
 )
@@ -36,18 +35,13 @@ class TaggingFScoreMetric(tf.keras.callbacks.Callback):
         if self.validation_data is None:
             return
 
-        emissions, mask = self.model.predict(self.validation_data)
-        tag_ids_list = viterbi_decode(
-            self.model.get_layer("crf").get_weights()[0],
-            emissions.transpose(1, 0, 2),
-            mask.transpose(1, 0),
-        )
+        tag_ids_list = self.model.predict(self.validation_data)
         predictions = []
         for tag_ids in tag_ids_list:
             predictions.append(
                 convert_ids_to_tags(
                     self.idx2tag,
-                    tag_ids,
+                    tag_ids.numpy().tolist(),
                     self.pad_tag,
                     start_tag=self.start_tag,
                     end_tag=self.end_tag,
