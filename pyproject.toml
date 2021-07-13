@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sknlp"
-version = "0.2.7"
+version = "0.3.0"
 description = ""
 authors = ["nanaya <nanaya100@gmail.com>"]
 license = "MIT"

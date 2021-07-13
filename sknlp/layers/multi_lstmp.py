@@ -35,43 +35,65 @@ class MultiLSTMP(Layer):
         last_connection: str = "last",
         **kwargs
     ):
+        super().__init__(**kwargs)
         self.num_layers = num_layers
         self.last_connection = last_connection
         self.output_dropout = output_dropout
+        self.units = units
+        self.projection_size = projection_size
+        self.kernel_initializer = kernel_initializer
+        self.recurrent_initializer = recurrent_initializer
+        self.projection_initializer = projection_initializer
+        self.bias_initializer = bias_initializer
+        self.kernel_regularizer = kernel_regularizer
+        self.recurrent_regularizer = recurrent_regularizer
+        self.projection_regularizer = projection_regularizer
+        self.bias_regularizer = bias_regularizer
+        self.kernel_constraint = kernel_constraint
+        self.recurrent_constraint = recurrent_constraint
+        self.projection_constraint = projection_constraint
+        self.bias_constraint = bias_constraint
+        self.input_dropout = input_dropout
+        self.recurrent_dropout = recurrent_dropout
+        self.recurrent_clip = recurrent_clip
+        self.projection_clip = projection_clip
 
+    def build(self, input_shape: tf.TensorShape) -> None:
         self.layers = []
-        for i in range(num_layers):
-            return_sequences = i != num_layers - 1 or last_connection != "last"
+        for i in range(self.num_layers):
+            return_sequences = (
+                i != self.num_layers - 1 or self.last_connection != "last"
+            )
             self.layers.append(
                 Bidirectional(
                     LSTMP(
-                        units,
-                        projection_size,
-                        kernel_initializer=kernel_initializer,
-                        recurrent_initializer=recurrent_initializer,
-                        projection_initializer=projection_initializer,
-                        bias_initializer=bias_initializer,
-                        kernel_regularizer=kernel_regularizer,
-                        recurrent_regularizer=recurrent_regularizer,
-                        projection_regularizer=projection_regularizer,
-                        bias_regularizer=bias_regularizer,
-                        kernel_constraint=kernel_constraint,
-                        recurrent_constraint=recurrent_constraint,
-                        projection_constraint=projection_constraint,
-                        bias_constraint=bias_constraint,
-                        dropout=input_dropout,
-                        recurrent_dropout=recurrent_dropout,
-                        recurrent_clip=recurrent_clip,
-                        projection_clip=projection_clip,
+                        self.units,
+                        self.projection_size,
+                        kernel_initializer=self.kernel_initializer,
+                        recurrent_initializer=self.recurrent_initializer,
+                        projection_initializer=self.projection_initializer,
+                        bias_initializer=self.bias_initializer,
+                        kernel_regularizer=self.kernel_regularizer,
+                        recurrent_regularizer=self.recurrent_regularizer,
+                        projection_regularizer=self.projection_regularizer,
+                        bias_regularizer=self.bias_regularizer,
+                        kernel_constraint=self.kernel_constraint,
+                        recurrent_constraint=self.recurrent_constraint,
+                        projection_constraint=self.projection_constraint,
+                        bias_constraint=self.bias_constraint,
+                        dropout=self.input_dropout,
+                        recurrent_dropout=self.recurrent_dropout,
+                        recurrent_clip=self.recurrent_clip,
+                        projection_clip=self.projection_clip,
                         return_sequences=return_sequences,
                     )
                 )
             )
-        super().__init__(**kwargs)
+        super().build(input_shape)
 
-    def call(self, inputs: tf.Tensor) -> tf.Tensor:
+    def call(self, inputs: tf.Tensor, mask: Optional[tf.Tensor] = None) -> tf.Tensor:
         for layer in self.layers:
-            inputs = layer(inputs)
+            inputs = layer(inputs, mask=mask)
         if self.output_dropout:
             noise_shape = (None, 1, self.layers[0].forward_layer.projection_size * 2)
             if self.last_connection == "last":

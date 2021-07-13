@@ -3,7 +3,7 @@ from .lstmp import LSTMPCell, LSTMP
 from .multi_lstmp import MultiLSTMP
 from .bert_tokenization import BertTokenizationLayer
 from .bert_layer import (
-    BertLayer,
+    BertEncodeLayer,
     BertPreprocessingLayer,
     BertCharPreprocessingLayer,
     BertPairPreprocessingLayer,
@@ -17,7 +17,7 @@ __all__ = [
     "LSTMP",
     "MultiLSTMP",
     "BertTokenizationLayer",
-    "BertLayer",
+    "BertEncodeLayer",
     "BertPreprocessingLayer",
     "BertCharPreprocessingLayer",
     "BertPairPreprocessingLayer",

@@ -1,9 +1,8 @@
 from __future__ import annotations
-from typing import Optional, Sequence, Callable
+from typing import Sequence, Callable
 from dataclasses import dataclass
 import itertools
 
-import numpy as np
 import pandas as pd
 
 
@@ -17,29 +16,35 @@ class Tag:
         return hash((self.label, self.start, self.end))
 
 
-def parse_tags(tag_names: Sequence[str]) -> list[Tag]:
-    current_label = None
-    start = 0
+def convert_ids_to_tags(
+    tag_ids: Sequence[int],
+    idx2class: Callable[[int], str],
+    add_start_end_tag: bool = False,
+) -> list[Tag]:
+    if add_start_end_tag:
+        tag_ids = tag_ids[1:]
+    current_begin_tag = -1
+    begin = 0
     parsed_tags = list()
-    for i, tag_name in enumerate(tag_names):
-        if tag_name == "O":
-            tag_type, tag_label = "O", None
-        else:
-            tag_type, tag_label = tag_name.split("-")
-        if (tag_type == "I" or tag_type == "E") and tag_label == current_label:
+    for i, tag_id in enumerate(tag_ids):
+        if tag_id != 0 and tag_id % 2 == 0 and tag_id - 1 == current_begin_tag:
             continue
 
-        if i != start:
-            parsed_tags.append(Tag(start, i - 1, current_label))
+        if i != begin:
+            parsed_tags.append(
+                Tag(begin, i - 1, idx2class((current_begin_tag + 1) // 2))
+            )
 
-        if tag_type == "B" or tag_type == "S":
-            start = i
-            current_label = tag_label
+        if tag_id % 2 == 1:
+            begin = i
+            current_begin_tag = tag_id
         else:
-            start = i + 1
-            current_label = None
-    if start != len(tag_names) and current_label is not None:
-        parsed_tags.append(Tag(start, len(tag_names) - 1, current_label))
+            begin = i + 1
+            current_begin_tag = -1
+    if begin != len(tag_ids) and current_begin_tag != -1:
+        parsed_tags.append(
+            Tag(begin, len(tag_ids) - 1, idx2class((current_begin_tag + 1) // 2))
+        )
     return parsed_tags
 
 
@@ -80,71 +85,3 @@ def tagging_fscore(
     df.fillna(0, inplace=True)
     df.reset_index(inplace=True)
     return df[["class", "precision", "recall", "fscore", "support"]]
-
-
-def convert_ids_to_tags(
-    idx2tag: Callable[[int], str],
-    tag_ids: list[int],
-    pad_tag: str,
-    start_tag: Optional[str] = None,
-    end_tag: Optional[str] = None,
-) -> list[Tag]:
-    exclude_tags = {pad_tag, start_tag, end_tag}
-    tags = []
-    for tag_id in tag_ids:
-        tag = idx2tag(tag_id)
-        if tag not in exclude_tags:
-            tags.append(tag)
-        if tag == pad_tag:
-            break
-    return parse_tags(tags)
-
-
-def viterbi_decode(transitions, emissions, mask=None):
-    """
-    Decode the highest scoring sequence of tags outside of tensorflow.
-    Parameters:
-    ----
-    transitions: numpy array, shape(num_tags, num_tags)
-    emissions: numpy array, shape(seq_length, batch_size, num_tags)
-    mask: numpy array, shape(seq_length, batch_size)
-    Returns:
-    ----
-    best_tags_list: list of list
-      Each list in best_tags_list is the best path of each sequence.
-    """
-    seq_legnth, batch_size, num_tags = emissions.shape
-    if mask is None:
-        mask = np.ones((seq_legnth, batch_size))
-    assert mask[0].all()
-
-    sequence_lengths = mask.sum(axis=0).astype(np.int64)
-    # list to store the decode paths
-    best_tags_list = []
-    # (seq_length, batch_size, num_tags)
-    viterbi_scores = np.zeros_like(emissions, dtype=np.float32)
-    viterbi_scores[0] = emissions[0]
-    # (seq_length, batch_size, num_tags)
-    viterbi_paths = np.zeros_like(emissions, dtype=np.int64)
-
-    # use dynamic programing to compute the viterbi score
-    for i, emission in enumerate(emissions[1:]):
-        # (batch_size, num_tags, 1)
-        broadcast_log_prob = viterbi_scores[i].reshape((-1, num_tags, 1))
-        # (batch_size, num_tags, num_tags)
-        score = broadcast_log_prob + transitions
-        viterbi_paths[i] = score.argmax(axis=1)
-        viterbi_scores[i + 1] = emission + score.max(axis=1)
-    # search best path for each batch according to the viterbi score
-    # get the best tag for the last emission
-    for idx in range(batch_size):
-        seq_end_idx = sequence_lengths[idx] - 1
-        best_last_tag = viterbi_scores[seq_end_idx, idx].argmax()
-        best_tags = [best_last_tag]
-        # trace back all best tags based on the last best tag and viterbi path
-        for path in np.flip(viterbi_paths[: sequence_lengths[idx] - 1], 0):
-            best_last_tag = path[idx][best_tags[-1]]
-            best_tags.append(best_last_tag)
-        best_tags.reverse()
-        best_tags_list.append(best_tags)
-    return best_tags_list

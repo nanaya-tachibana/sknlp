@@ -1,37 +1,37 @@
 from __future__ import annotations
 from typing import Optional
 
-import functools
 import tensorflow as tf
 from tensorflow.keras.metrics import Accuracy, BinaryAccuracy
 
+from .utils import logits2pred
 
+
+@tf.keras.utils.register_keras_serializable(package="sknlp")
 class AccuracyWithLogits(Accuracy):
     def __init__(
         self,
         name: str = "accuracy",
         dtype: Optional[tf.DType] = None,
-        logits2scores: str = "sigmoid",
+        activation: str = "linear",
     ) -> None:
         super().__init__(name=name, dtype=dtype)
-        self.logits2scores = logits2scores
-        if logits2scores == "sigmoid":
-            self._l2s = tf.math.sigmoid
-        elif logits2scores == "softmax":
-            self._l2s = functools.partial(tf.math.softmax, axis=-1)
+        self.activation = activation
 
     def update_state(
         self,
         y_true: tf.Tensor,
-        y_pred: tf.Tensor,
+        y_logits: tf.Tensor,
         sample_weight: Optional[tf.Tensor] = None,
     ) -> None:
-        super().update_state(y_true, self._l2s(y_pred), sample_weight=sample_weight)
+        y_pred = logits2pred(y_logits, self.activation)
+        super().update_state(y_true, y_pred, sample_weight=sample_weight)
 
     def get_config(self) -> dict[str, str]:
-        return {**super().get_config(), "logits2scores": self.logits2scores}
+        return {**super().get_config(), "activation": self.activation}
 
 
+@tf.keras.utils.register_keras_serializable(package="sknlp")
 class BinaryAccuracyWithLogits(BinaryAccuracy):
     def update_state(
         self,

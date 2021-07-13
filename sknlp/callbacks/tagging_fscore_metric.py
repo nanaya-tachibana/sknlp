@@ -16,54 +16,32 @@ logger.addHandler(stream)
 
 
 class TaggingFScoreMetric(tf.keras.callbacks.Callback):
-    def __init__(
-        self,
-        idx2tag: Callable[[int], str],
-        labels: list[str],
-        pad_tag: str,
-        start_tag: Optional[str] = None,
-        end_tag: Optional[str] = None,
-    ) -> None:
+    def __init__(self, classes: list[str]) -> None:
         super().__init__()
-        self.idx2tag = idx2tag
-        self.labels = labels
-        self.pad_tag = pad_tag
-        self.start_tag = start_tag
-        self.end_tag = end_tag
+        self.classes = classes
 
     def on_epoch_end(self, epoch: int, logs: Optional[dict[str, Any]] = None) -> None:
         if self.validation_data is None:
             return
 
+        idx2class = dict(zip(range(len(self.classes)), self.classes))
         tag_ids_list = self.model.predict(self.validation_data)
         predictions = []
         for tag_ids in tag_ids_list:
             predictions.append(
-                convert_ids_to_tags(
-                    self.idx2tag,
-                    tag_ids.numpy().tolist(),
-                    self.pad_tag,
-                    start_tag=self.start_tag,
-                    end_tag=self.end_tag,
-                )
+                convert_ids_to_tags(tag_ids.numpy().tolist(), lambda x: idx2class[x])
             )
 
         y = []
         for _, tag_ids_array in self.validation_data.as_numpy_iterator():
             y.extend(
                 [
-                    convert_ids_to_tags(
-                        self.idx2tag,
-                        tag_ids,
-                        self.pad_tag,
-                        start_tag=self.start_tag,
-                        end_tag=self.end_tag,
-                    )
+                    convert_ids_to_tags(tag_ids, lambda x: idx2class[x])
                     for tag_ids in tag_ids_array.tolist()
                 ]
             )
 
-        score_df = tagging_fscore(y, predictions, self.labels)
+        score_df = tagging_fscore(y, predictions, self.classes[1:])
         logger.info(score_df)
         row = score_df[score_df["class"] == "avg"]
         for col in score_df.columns:

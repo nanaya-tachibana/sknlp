@@ -1,78 +1,102 @@
-from typing import Callable, Optional, List, Union, Sequence, Tuple, Any
+from __future__ import annotations
+from typing import Callable, Optional, Any, Sequence
 import string
 
 import pandas as pd
+import numpy as np
 import tensorflow as tf
-from .text_segmenter import get_segmenter
 
 
 class NLPDataset:
     def __init__(
         self,
-        df: Optional[pd.DataFrame] = None,
+        tokenizer: Callable[[str], list[int]],
+        X: Optional[Sequence[Any]] = None,
+        y: Optional[Sequence[Any]] = None,
         csv_file: Optional[str] = None,
         in_memory: bool = True,
         no_label: bool = False,
-        text_segmenter: str = "char",
         max_length: Optional[int] = None,
         na_value: str = "",
-        column_dtypes: List[str] = ["str", "str"],
+        column_dtypes: list[str] = ["str", "str"],
         text_dtype: tf.DType = tf.string,
         label_dtype: tf.DType = tf.string,
     ):
         assert (
-            df is not None or csv_file is not None
-        ), "either df or csv_file may not be None"
+            X is not None
+        ) or csv_file is not None, "either X or csv_file may not be None"
         self.in_memory = in_memory
         self.na_value = na_value
         self.column_dtypes = column_dtypes
-        if df is not None:
+        if csv_file is not None:
+            self._original_dataset, self.size = self.load_csv(
+                csv_file, "\t", in_memory, column_dtypes, na_value
+            )
+        else:
+            no_label = no_label and y is None
+            df = self.Xy_to_dataframe(X, y=y)
             self._original_dataset = self.dataframe_to_dataset(
                 df, column_dtypes, na_value
             )
             self.size = df.shape[0]
-        elif csv_file is not None:
-            self._original_dataset, self.size = self.load_csv(
-                csv_file, "\t", in_memory, column_dtypes, na_value
-            )
+
         self.no_label = no_label
-        self.text_cutter = get_segmenter(text_segmenter)
+        self.tokenizer = tokenizer
         self.max_length = max_length or 99999
         self.text_dtype = text_dtype
         self.label_dtype = label_dtype
         self._dataset = self._transform(self._original_dataset)
 
     @property
-    def X(self) -> List[Any]:
+    def X(self) -> list[Any]:
         x = []
         for data in self._original_dataset.as_numpy_iterator():
-            texts = data[:-1]
+            texts = data[: None if self.no_label else -1]
             if len(texts) == 1:
-                x.append(texts[0].decode("utf-8"))
+                x.append(texts[0].decode("UTF-8"))
             else:
-                x.append([text.decode("utf-8") for text in texts])
+                x.append([text.decode("UTF-8") for text in texts])
         return x
 
     @property
-    def batch_padding_shapes(self) -> Optional[List[Tuple]]:
-        return None
-
-    @property
-    def y(self) -> List[str]:
+    def y(self) -> list[str]:
         if self.no_label:
             return []
         return [
-            data[-1].decode("utf-8")
+            data[-1].decode("UTF-8")
             for data in self._original_dataset.as_numpy_iterator()
         ]
 
-    def _text_transform(self, text: tf.Tensor) -> Union[List[str], str]:
-        return self.text_cutter(text.numpy().decode("utf-8"))[: self.max_length]
+    @property
+    def batch_padding_shapes(self) -> Optional[list[tuple]]:
+        return None
+
+    def _normalize_X(self, X: Sequence[Any]) -> Sequence[Any]:
+        return X
+
+    def _normalize_y(self, y: Sequence[Any]) -> Sequence[Any]:
+        return y
+
+    def Xy_to_dataframe(
+        self, X: Sequence[Any], y: Optional[Sequence[Any]] = None
+    ) -> pd.DataFrame:
+        X = self._normalize_X(X)
+        if y is not None:
+            y = self._normalize_y(y)
+        if isinstance(X[0], (list, tuple)):
+            df = pd.DataFrame(zip(*X, y) if y is not None else X)
+        else:
+            df = pd.DataFrame(zip(X, y) if y is not None else X)
+        return df
+
+    def _text_transform(self, text: tf.Tensor) -> np.array:
+        token_ids = self.tokenizer(text.numpy().decode("UTF-8"))
+        return np.array(token_ids[: self.max_length], dtype=np.int32)
 
     def _label_transform(self, label: tf.Tensor) -> str:
-        return label.numpy().decode("utf-8")
+        return label.numpy().decode("UTF-8")
 
-    def _transform_func(self, *data) -> List[Any]:
+    def _transform_func(self, *data) -> list[Any]:
         text = data[0]
         _text = self._text_transform(text)
         if self.no_label:
@@ -80,7 +104,7 @@ class NLPDataset:
         label = data[1]
         return _text, self._label_transform(label)
 
-    def _transform_func_out_dtype(self) -> List[tf.DType]:
+    def _transform_func_out_dtype(self) -> list[tf.DType]:
         return (self.text_dtype, self.label_dtype)[: -1 if self.no_label else None]
 
     def _transform(self, dataset: tf.data.Dataset) -> tf.data.Dataset:
@@ -121,7 +145,7 @@ class NLPDataset:
         return dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
     def dataframe_to_dataset(
-        self, df: pd.DataFrame, column_dtypes: List[str], na_value: str
+        self, df: pd.DataFrame, column_dtypes: list[str], na_value: str
     ) -> tf.data.Dataset:
         df.fillna(na_value, inplace=True)
         for dtype, col in zip(column_dtypes, df.columns):
@@ -133,9 +157,9 @@ class NLPDataset:
         filename: str,
         sep: str,
         in_memory: bool,
-        column_dtypes: List[str],
+        column_dtypes: list[str],
         na_value: str,
-    ) -> Tuple[tf.data.Dataset, Optional[int]]:
+    ) -> tuple[tf.data.Dataset, Optional[int]]:
         if in_memory:
             df = pd.read_csv(filename, sep=sep, quoting=3)
             return self.dataframe_to_dataset(df, column_dtypes, na_value), df.shape[0]

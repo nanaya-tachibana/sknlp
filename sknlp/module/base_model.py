@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Sequence, Optional, Dict, Any, Callable, List
+from typing import Sequence, Optional, Any, Callable
 
 import json
 import os
@@ -33,6 +33,10 @@ class BaseNLPModel:
         self._built = False
 
     @property
+    def name(self) -> str:
+        return self._name
+
+    @property
     def max_sequence_length(self) -> Optional[int]:
         return self._max_sequence_length
 
@@ -41,7 +45,7 @@ class BaseNLPModel:
         return self._sequence_length
 
     @property
-    def segmenter(self) -> Optional[str]:
+    def segmenter(self):
         return self._segmenter
 
     @property
@@ -86,26 +90,22 @@ class BaseNLPModel:
     def get_loss(self, *args, **kwargs) -> tf.keras.losses.Loss:
         raise NotImplementedError()
 
-    def get_metrics(self, *args, **kwargs) -> List[tf.keras.metrics.Metric]:
+    def get_metrics(self, *args, **kwargs) -> list[tf.keras.metrics.Metric]:
         return []
 
-    def get_callbacks(self, *args, **kwargs) -> List[tf.keras.callbacks.Callback]:
+    def get_callbacks(self, *args, **kwargs) -> list[tf.keras.callbacks.Callback]:
         return []
 
     @classmethod
     def get_monitor(cls) -> str:
         raise NotImplementedError()
 
-    @classmethod
-    def get_custom_objects(cls) -> dict[str, Any]:
-        return {}
-
     def freeze(self) -> None:
         for layer in self._model.layers:
             layer.trainable = False
 
     def save_config(self, directory: str, filename: str = "meta.json") -> None:
-        with open(os.path.join(directory, filename), "w") as f:
+        with open(os.path.join(directory, filename), "w", encoding="UTF-8") as f:
             f.write(json.dumps(self.get_config(), ensure_ascii=False))
 
     def save(self, directory: str) -> None:
@@ -114,12 +114,10 @@ class BaseNLPModel:
 
     @classmethod
     def load(cls, directory: str) -> "BaseNLPModel":
-        with open(os.path.join(directory, "meta.json")) as f:
+        with open(os.path.join(directory, "meta.json"), encoding="UTF-8") as f:
             meta = json.loads(f.read())
         module = cls.from_config(meta)
-        module._model = tf.keras.models.load_model(
-            os.path.join(directory, "model"), custom_objects=module.get_custom_objects()
-        )
+        module._model = tf.keras.models.load_model(os.path.join(directory, "model"))
         module._built = True
         return module
 
@@ -129,8 +127,10 @@ class BaseNLPModel:
         model: tf.keras.Model = tf.keras.models.model_from_json(
             self._model.to_json(),
             custom_objects={
-                **self.get_custom_objects(),
                 "TruncatedNormal": tf.keras.initializers.TruncatedNormal,
+                "GlorotUniform": tf.keras.initializers.GlorotUniform,
+                "Orthogonal": tf.keras.initializers.Orthogonal,
+                "Zeros": tf.keras.initializers.Zeros,
             },
         )
         model.set_weights(self._model.get_weights())
@@ -142,15 +142,11 @@ class BaseNLPModel:
             "max_sequence_length": self.max_sequence_length,
             "sequence_length": self.sequence_length,
             "segmenter": self.segmenter,
-            "name": self._name,
+            "name": self.name,
             "prediction_kwargs": self.prediction_kwargs,
             "custom_kwargs": self.custom_kwargs,
         }
 
     @classmethod
-    def _filter_config(cls, config: dict[str, Any]) -> dict[str, Any]:
-        return config
-
-    @classmethod
     def from_config(cls, config: dict[str, Any]) -> "BaseNLPModel":
-        return cls(**cls._filter_config(config))
+        return cls(**config)

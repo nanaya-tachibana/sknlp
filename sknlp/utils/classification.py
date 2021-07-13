@@ -162,7 +162,7 @@ def label_binarizer(
 def classification_fscore(
     y: Union[Sequence[Sequence[str]], Sequence[str], Sequence[int]],
     p: Union[Sequence[Sequence[str]], Sequence[str], Sequence[int]],
-    classes: Optional[Union[Sequence[str], Sequence[int]]] = None,
+    classes: Union[Sequence[str], Sequence[int]],
     beta: float = 1,
 ) -> pd.DataFrame:
     """
@@ -186,8 +186,8 @@ def classification_fscore(
         )
     else:
         y_one_hot, p_one_hot, classes = label_binarizer(y, p, classes)
-        confusion_matrix = zip(
-            classes, multilabel_confusion_matrix(y_one_hot, p_one_hot)
+        confusion_matrix = list(
+            zip(classes, multilabel_confusion_matrix(y_one_hot, p_one_hot))
         )
     records = []
     for class_, arr in confusion_matrix:

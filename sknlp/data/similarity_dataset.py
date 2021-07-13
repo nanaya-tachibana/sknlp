@@ -1,10 +1,9 @@
-from typing import Any, Sequence, List, Optional, Tuple
+from __future__ import annotations
+from typing import Any, Sequence, List, Optional, Tuple, Callable
 
-import numpy as np
 import pandas as pd
 import tensorflow as tf
 
-from sknlp.vocab import Vocab
 from .nlp_dataset import NLPDataset
 
 
@@ -19,25 +18,25 @@ def _combine_x(text, context):
 class SimilarityDataset(NLPDataset):
     def __init__(
         self,
-        vocab: Vocab,
+        tokenizer: Callable[[str], list[int]],
         labels: Sequence[str],
-        df: Optional[pd.DataFrame] = None,
+        X: Optional[Sequence[Any]] = None,
+        y: Optional[Sequence[Any]] = None,
         csv_file: Optional[str] = None,
         in_memory: bool = True,
         no_label: bool = False,
         max_length: Optional[int] = None,
-        text_segmenter: str = "char",
         text_dtype: tf.DType = tf.int32,
         label_dtype: tf.DType = tf.float32,
     ):
-        self.vocab = vocab
         self.label2idx = dict(zip(labels, range(len(labels))))
         super().__init__(
-            df=df,
+            tokenizer,
+            X=X,
+            y=y,
             csv_file=csv_file,
             in_memory=in_memory,
             no_label=no_label,
-            text_segmenter=text_segmenter,
             max_length=max_length,
             na_value=0.0,
             column_dtypes=["str", "str", "float32"],
@@ -54,12 +53,6 @@ class SimilarityDataset(NLPDataset):
     @property
     def batch_padding_shapes(self) -> List[Tuple]:
         return ((None,), (None,), (None,))[: -1 if self.no_label else None]
-
-    def _text_transform(self, text: tf.Tensor) -> np.ndarray:
-        tokens = super()._text_transform(text)
-        return np.array(
-            [self.vocab[t] for t in tokens[: self.max_length]], dtype=np.int32
-        )
 
     def _label_transform(self, label: tf.Tensor) -> float:
         return label

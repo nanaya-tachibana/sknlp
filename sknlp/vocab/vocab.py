@@ -16,12 +16,12 @@ class Vocab:
         self._unk_token = unk_token
         self._pad_token = pad_token
 
-        self._token2idx = defaultdict(lambda: 1)
+        self._token2idx = dict()
         self._token2idx[pad_token] = 0
         self._token2idx[unk_token] = 1
         self._reversed_tokens = {unk_token, pad_token}
 
-        self._token_frequency = defaultdict(lambda: 0)
+        self._token_frequency = dict()
         if counter is not None:
             for _, (token, frequency) in enumerate(counter.most_common()):
                 if token not in self._reversed_tokens and frequency >= min_frequency:
@@ -36,7 +36,7 @@ class Vocab:
             raise ValueError("padding token should have index 0")
         if token2idx.get(unk_token, None) != 1:
             raise ValueError("unknown token should have index 1")
-        self._token2idx = defaultdict(lambda: 1)
+        self._token2idx = dict()
         self._token2idx.update(**token2idx)
         self._idx2token = dict(zip(self._token2idx.values(), self._token2idx.keys()))
 
@@ -63,8 +63,6 @@ class Vocab:
         elif isinstance(indices, (list, tuple)):
             res = []
             for idx in indices:
-                if idx not in self._idx2token:
-                    raise KeyError("index %d is out of vacab" % idx)
                 res.append(self.idx2token(idx))
             return res
         else:
@@ -75,7 +73,7 @@ class Vocab:
 
     def token2idx(self, tokens: Union[str, List[str]]) -> Union[int, List[int]]:
         if isinstance(tokens, str):
-            return self._token2idx[tokens]
+            return self._token2idx.get(tokens, 1)
         elif isinstance(tokens, (list, tuple)):
             return [self.token2idx(token) for token in tokens]
         else:

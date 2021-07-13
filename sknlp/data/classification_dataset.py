@@ -1,10 +1,10 @@
-from typing import Sequence, List, Union, Optional, Tuple
+from __future__ import annotations
+from typing import Sequence, Union, Optional, Callable, Any
 
 import numpy as np
 import pandas as pd
 import tensorflow as tf
 
-from sknlp.vocab import Vocab
 from .nlp_dataset import NLPDataset
 from .utils import serialize_example
 
@@ -12,28 +12,28 @@ from .utils import serialize_example
 class ClassificationDataset(NLPDataset):
     def __init__(
         self,
-        vocab: Vocab,
+        tokenizer: Callable[[str], list[int]],
         labels: Sequence[str],
-        df: Optional[pd.DataFrame] = None,
+        X: Optional[Sequence[Any]] = None,
+        y: Optional[Sequence[Any]] = None,
         csv_file: Optional[str] = None,
         in_memory: bool = True,
         no_label: bool = False,
         is_multilabel: bool = True,
         max_length: Optional[int] = None,
-        text_segmenter: str = "char",
         text_dtype: tf.DType = tf.int32,
         label_dtype: tf.DType = tf.float32,
     ):
-        self.vocab = vocab
         self.labels = list(labels)
         self.is_multilabel = is_multilabel
         self.label2idx = dict(zip(labels, range(len(labels))))
         super().__init__(
-            df=df,
+            tokenizer,
+            X=X,
+            y=y,
             csv_file=csv_file,
             in_memory=in_memory,
             no_label=no_label,
-            text_segmenter=text_segmenter,
             max_length=max_length,
             na_value="NULL",
             column_dtypes=["str", "str"],
@@ -42,25 +42,26 @@ class ClassificationDataset(NLPDataset):
         )
 
     @property
-    def y(self) -> Union[List[str], List[List[str]]]:
+    def y(self) -> Union[list[str], list[list[str]]]:
         if self.no_label:
             return []
         return [
-            data[-1].decode("utf-8").split("|")
+            data[-1].decode("UTF-8").split("|")
             if self.is_multilabel
-            else data[-1].decode("Utf-8")
+            else data[-1].decode("UTF-8")
             for data in self._original_dataset.as_numpy_iterator()
         ]
 
     @property
-    def batch_padding_shapes(self) -> List[Tuple]:
+    def batch_padding_shapes(self) -> list[tuple]:
         return ((None,), (None,))[: -1 if self.no_label else None]
 
-    def _text_transform(self, text: tf.Tensor) -> np.ndarray:
-        tokens = super()._text_transform(text)
-        return np.array([self.vocab[t] for t in tokens], dtype=np.int32)
+    def _normalize_y(self, y: Sequence[Any]) -> Sequence[Any]:
+        if isinstance(y[0], (list, tuple)):
+            return ["|".join(map(str, yi)) for yi in y]
+        return y
 
-    def _label_binarizer(self, labels: List[str]) -> np.ndarray:
+    def _label_binarizer(self, labels: list[str]) -> np.ndarray:
         label2idx = self.label2idx
         res = np.zeros(len(label2idx), dtype=np.float32)
         res[[label2idx[label] for label in labels if label in label2idx]] = 1

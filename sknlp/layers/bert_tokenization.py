@@ -1,6 +1,7 @@
 import tensorflow as tf
 
 
+@tf.keras.utils.register_keras_serializable(package="sknlp")
 class BertTokenizationLayer(tf.keras.layers.Layer):
     """
     The convention in BERT is:
@@ -26,11 +27,14 @@ class BertTokenizationLayer(tf.keras.layers.Layer):
     tokens are attended to.
     See more details in https://github.com/tensorflow/models/blob/ad423d065701785587d13d0fe7b566191e7378c6/official/nlp/data/classifier_data_lib.py#L668
     """
-    def __init__(self,
-                 cls_token: str = "[CLS]",
-                 sep_token: str = "[SEP]",
-                 name: str = "bert_tokenization",
-                 **kwargs) -> None:
+
+    def __init__(
+        self,
+        cls_token: str = "[CLS]",
+        sep_token: str = "[SEP]",
+        name: str = "bert_tokenization",
+        **kwargs
+    ) -> None:
         self.cls_token = cls_token
         self.sep_token = sep_token
         super().__init__(name=name, **kwargs)
@@ -39,11 +43,11 @@ class BertTokenizationLayer(tf.keras.layers.Layer):
         tokens = tf.strings.unicode_split(inputs, "UTF-8")
         cls_tokens = tf.reshape(
             tf.tile(tf.constant([self.cls_token], dtype=tf.string), [tokens.nrows()]),
-            [tokens.nrows(), 1]
+            [tokens.nrows(), 1],
         )
         sep_tokens = tf.reshape(
             tf.tile(tf.constant([self.sep_token], dtype=tf.string), [tokens.nrows()]),
-            [tokens.nrows(), 1]
+            [tokens.nrows(), 1],
         )
         return tf.concat([cls_tokens, tokens, sep_tokens], axis=1)
 
@@ -51,5 +55,5 @@ class BertTokenizationLayer(tf.keras.layers.Layer):
         return {
             **super().get_config(),
             "sep_token": self.sep_token,
-            "cls_token": self.cls_token
+            "cls_token": self.cls_token,
         }

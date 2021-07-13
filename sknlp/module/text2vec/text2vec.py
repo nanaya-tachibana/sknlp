@@ -1,4 +1,5 @@
-from typing import Optional, Dict, Any, List, Union
+from __future__ import annotations
+from typing import Optional, Any, Union
 
 import json
 import os
@@ -11,6 +12,7 @@ from sknlp.vocab import Vocab
 from sknlp.utils import make_tarball
 
 from sknlp.module.base_model import BaseNLPModel
+from .tokenizer import get_tokenizer
 
 
 class Text2vec(BaseNLPModel):
@@ -22,6 +24,7 @@ class Text2vec(BaseNLPModel):
         sequence_length: Optional[int] = None,
         embedding_size: int = 100,
         name: str = "text2vec",
+        **kwargs,
     ) -> None:
         """
         基础符号->向量模块.
@@ -49,22 +52,30 @@ class Text2vec(BaseNLPModel):
         ----------
         3D tensor with shape: `(batch_size, input_length, embed_size)`.
         """
-        self._vocab = vocab
-        self._segmenter = segmenter
         super().__init__(
+            segmenter=segmenter,
             max_sequence_length=max_sequence_length,
             sequence_length=sequence_length,
             name=name,
+            **kwargs,
         )
-        self._embedding_size = embedding_size
+        self.embedding_size = embedding_size
+        self._vocab = vocab
         self._model: tf.keras.Model = None
+        self._tokenizer = get_tokenizer(segmenter, self.vocab)
 
-    def __call__(self, inputs: Union[tf.Tensor, List[tf.Tensor]]) -> tf.Tensor:
+    def __call__(
+        self, inputs: Union[tf.Tensor, list[tf.Tensor]]
+    ) -> Union[tf.Tensor, list[tf.Tensor]]:
         return self._model(inputs)
 
-    @property
-    def embedding_size(self):
-        return self._embedding_size
+    def compute_mask(
+        self, inputs: tf.Tensor, mask: Optional[tf.Tensor] = None
+    ) -> tf.Tensor:
+        raise NotImplementedError()
+
+    def update_dropout(self, dropout: float) -> None:
+        pass
 
     @property
     def vocab(self) -> Vocab:
@@ -74,8 +85,19 @@ class Text2vec(BaseNLPModel):
     def segmenter(self) -> str:
         return self._segmenter
 
+    def tokenize(self, text: str) -> list[int]:
+        return self._tokenizer.tokenize(text)
+
+    @property
+    def weights(self) -> list[tf.Tensor]:
+        return self._model.get_weights()
+
+    @weights.setter
+    def weights(self, weights: list[tf.Tensor]) -> None:
+        self._model.set_weights(weights)
+
     def save_vocab(self, directory: str, filename: str = "vocab.json") -> None:
-        with open(os.path.join(directory, filename), "w") as f:
+        with open(os.path.join(directory, filename), "w", encoding="UTF-8") as f:
             f.write(self.vocab.to_json())
 
     def save(self, directory: str) -> None:
@@ -84,14 +106,12 @@ class Text2vec(BaseNLPModel):
 
     @classmethod
     def load(cls, directory: str) -> "Text2vec":
-        with open(os.path.join(directory, "meta.json")) as f:
+        with open(os.path.join(directory, "meta.json"), encoding="UTF-8") as f:
             meta = json.loads(f.read())
-        with open(os.path.join(directory, "vocab.json")) as f:
+        with open(os.path.join(directory, "vocab.json"), encoding="UTF-8") as f:
             vocab = Vocab.from_json(f.read())
         module = cls.from_config({"vocab": vocab, **meta})
-        module._model = tf.keras.models.load_model(
-            os.path.join(directory, "model"), custom_objects=module.get_custom_objects()
-        )
+        module._model = tf.keras.models.load_model(os.path.join(directory, "model"))
         module._built = True
         return module
 
@@ -113,10 +133,9 @@ class Text2vec(BaseNLPModel):
         d = os.path.join(directory, name, version)
         self.save_vocab(d)
 
-    def get_config(self) -> Dict[str, Any]:
+    def get_config(self) -> dict[str, Any]:
         return {
             **super().get_config(),
-            "segmenter": self.segmenter,
             "embedding_size": self.embedding_size,
         }
 
@@ -125,10 +144,3 @@ class Text2vec(BaseNLPModel):
 
     def get_outputs(self) -> tf.Tensor:
         return self._model.output
-
-    @property
-    def weights(self) -> List[tf.Tensor]:
-        return self._model.get_weights()
-
-    def set_weights(self, weights: List[tf.Tensor]) -> None:
-        self._model.set_weights(weights)

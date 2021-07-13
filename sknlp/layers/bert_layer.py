@@ -1,16 +1,19 @@
-from typing import Sequence, List, Dict, Any, Optional, Callable
+from __future__ import annotations
+from typing import Sequence, Any, Optional, Callable
 
 import tensorflow as tf
-from tensorflow.keras.activations import gelu
 from tensorflow.keras.initializers import TruncatedNormal
 from tensorflow.keras.layers.experimental.preprocessing import TextVectorization
 
 from official.nlp.keras_nlp import layers
 import tensorflow_text as tftext
 
+from sknlp.activations import gelu
+
 from .bert_tokenization import BertTokenizationLayer
 
 
+@tf.keras.utils.register_keras_serializable(package="sknlp")
 class BertCharPreprocessingLayer(tf.keras.layers.Layer):
     def __init__(
         self,
@@ -19,7 +22,7 @@ class BertCharPreprocessingLayer(tf.keras.layers.Layer):
         sep_token: str = "[SEP]",
         **kwargs
     ) -> None:
-        vocab: List = list(vocab)
+        vocab: list = list(vocab)
         self.cls_token = cls_token
         self.sep_token = sep_token
         if cls_token not in vocab:
@@ -41,7 +44,7 @@ class BertCharPreprocessingLayer(tf.keras.layers.Layer):
     def call(self, inputs: tf.Tensor) -> tf.Tensor:
         return self.tokenizer(inputs)
 
-    def get_config(self) -> Dict[str, Any]:
+    def get_config(self) -> dict[str, Any]:
         return {
             **super().get_config(),
             "vocab": self.vocab,
@@ -50,6 +53,7 @@ class BertCharPreprocessingLayer(tf.keras.layers.Layer):
         }
 
 
+@tf.keras.utils.register_keras_serializable(package="sknlp")
 class BertPreprocessingLayer(tf.keras.layers.Layer):
     def __init__(
         self,
@@ -58,7 +62,7 @@ class BertPreprocessingLayer(tf.keras.layers.Layer):
         sep_token: str = "[SEP]",
         **kwargs
     ) -> None:
-        vocab: List = list(vocab)
+        vocab: list = list(vocab)
         self.cls_token = cls_token
         self.sep_token = sep_token
         if cls_token not in vocab:
@@ -66,23 +70,26 @@ class BertPreprocessingLayer(tf.keras.layers.Layer):
         if sep_token not in vocab:
             vocab.append(sep_token)
         self.vocab = vocab
-        self.tokenizer = tftext.BertTokenizer(
-            tf.lookup.StaticVocabularyTable(
-                tf.lookup.KeyValueTensorInitializer(
-                    vocab,
-                    list(range(len(vocab))),
-                    key_dtype=tf.string,
-                    value_dtype=tf.int64,
-                ),
-                1,
-            )
-        )
         for i, token in enumerate(vocab):
             if token == cls_token:
                 self.cls_id = i
             if token == sep_token:
                 self.sep_id = i
         super().__init__(**kwargs)
+
+    def build(self, input_shape: tf.TensorShape) -> None:
+        self.tokenizer = tftext.BertTokenizer(
+            tf.lookup.StaticVocabularyTable(
+                tf.lookup.KeyValueTensorInitializer(
+                    self.vocab,
+                    list(range(len(self.vocab))),
+                    key_dtype=tf.string,
+                    value_dtype=tf.int64,
+                ),
+                1,
+            )
+        )
+        super().build(input_shape)
 
     def call(self, inputs: tf.Tensor) -> tf.Tensor:
         token_ids = self.tokenizer.tokenize(inputs)
@@ -98,7 +105,7 @@ class BertPreprocessingLayer(tf.keras.layers.Layer):
         ids = tf.concat([cls_ids, flatten_ids, sep_ids], axis=1)
         return ids.to_tensor(0)
 
-    def get_config(self) -> Dict[str, Any]:
+    def get_config(self) -> dict[str, Any]:
         return {
             **super().get_config(),
             "vocab": self.vocab,
@@ -107,8 +114,9 @@ class BertPreprocessingLayer(tf.keras.layers.Layer):
         }
 
 
+@tf.keras.utils.register_keras_serializable(package="sknlp")
 class BertPairPreprocessingLayer(BertPreprocessingLayer):
-    def call(self, inputs: List[tf.Tensor]) -> List[tf.Tensor]:
+    def call(self, inputs: list[tf.Tensor]) -> list[tf.Tensor]:
         query, context = inputs
         query_token_ids = self.tokenizer.tokenize(query)
         context_token_ids = self.tokenizer.tokenize(context)
@@ -141,7 +149,8 @@ class BertPairPreprocessingLayer(BertPreprocessingLayer):
         )
 
 
-class BertLayer(tf.keras.layers.Layer):
+@tf.keras.utils.register_keras_serializable(package="sknlp")
+class BertEncodeLayer(tf.keras.layers.Layer):
     """
     copy from https://github.com/tensorflow/models/blob/v2.2.0/official/nlp/modeling/networks/transformer_encoder.py.
     """
@@ -149,7 +158,7 @@ class BertLayer(tf.keras.layers.Layer):
     def __init__(
         self,
         vocab_size: int = 100,
-        embedding_size: int = 768,
+        embedding_size: Optional[int] = 768,
         hidden_size: int = 768,
         num_layers: int = 12,
         num_attention_heads: int = 12,
@@ -161,10 +170,9 @@ class BertLayer(tf.keras.layers.Layer):
         dropout_rate: float = 0.1,
         attention_dropout_rate: float = 0.1,
         initializer: tf.keras.initializers.Initializer = TruncatedNormal(stddev=0.02),
-        return_all_encoder_outputs: bool = False,
         share_layer: bool = False,
         cls_pooling: bool = True,
-        name: str = "bert_layer",
+        name: str = "bert_encode_layer",
         **kwargs
     ) -> None:
         if embedding_size is None:
@@ -183,32 +191,38 @@ class BertLayer(tf.keras.layers.Layer):
         self.dropout_rate = dropout_rate
         self.attention_dropout_rate = attention_dropout_rate
         self.initializer = initializer
-        self.return_all_encoder_outputs = return_all_encoder_outputs
         self.share_layer = share_layer
         self.cls_pooling = cls_pooling
+        self.supports_masking = True
+        super().__init__(name=name, **kwargs)
 
+    def build(self, input_shape: tf.TensorShape) -> None:
+        input_shape = input_shape[0]
         self.embedding_layer = layers.OnDeviceEmbedding(
-            vocab_size, embedding_size, initializer=initializer, name="word_embeddings"
+            self.vocab_size,
+            self.embedding_size,
+            initializer=self.initializer,
+            name="word_embeddings",
         )
         # Always uses dynamic slicing for simplicity.
         self.position_embedding_layer = layers.PositionEmbedding(
-            max_sequence_length,
-            initializer=initializer,
+            self.max_sequence_length,
+            initializer=self.initializer,
             name="position_embedding",
         )
         self.type_embedding_layer = layers.OnDeviceEmbedding(
-            type_vocab_size,
-            embedding_size,
-            initializer=initializer,
+            self.type_vocab_size,
+            self.embedding_size,
+            initializer=self.initializer,
             use_one_hot=True,
             name="type_embeddings",
         )
-        if embedding_size != hidden_size:
+        if self.embedding_size != self.hidden_size:
             self.embedding_projection = tf.keras.layers.experimental.EinsumDense(
                 "...x,xy->...y",
-                output_shape=hidden_size,
+                output_shape=self.hidden_size,
                 bias_axes="y",
-                kernel_initializer=initializer,
+                kernel_initializer=self.initializer,
                 name="embedding_projection",
             )
         else:
@@ -216,44 +230,45 @@ class BertLayer(tf.keras.layers.Layer):
         self.normalize_layer = tf.keras.layers.LayerNormalization(
             name="embeddings/layer_norm", axis=-1, epsilon=1e-12, dtype=tf.float32
         )
-        if share_layer:
+        self.embedding_dropout_layer = tf.keras.layers.Dropout(
+            rate=self.dropout_rate, name="embeddings/dropout"
+        )
+        if self.share_layer:
             self.shared_layer = layers.TransformerEncoderBlock(
-                num_attention_heads,
-                intermediate_size,
-                activation,
-                output_dropout=dropout_rate,
-                attention_dropout=attention_dropout_rate,
-                kernel_initializer=initializer,
+                self.num_attention_heads,
+                self.intermediate_size,
+                self.activation,
+                output_dropout=self.dropout_rate,
+                attention_dropout=self.attention_dropout_rate,
+                kernel_initializer=self.initializer,
                 name="transformer",
             )
         else:
             self.transformer_layers = []
-            for i in range(num_layers):
+            for i in range(self.num_layers):
                 layer = layers.TransformerEncoderBlock(
-                    num_attention_heads,
-                    intermediate_size,
-                    activation,
-                    output_dropout=dropout_rate,
-                    attention_dropout=attention_dropout_rate,
-                    kernel_initializer=initializer,
+                    self.num_attention_heads,
+                    self.intermediate_size,
+                    self.activation,
+                    output_dropout=self.dropout_rate,
+                    attention_dropout=self.attention_dropout_rate,
+                    kernel_initializer=self.initializer,
                     name="transformer/layer_%d" % i,
                 )
                 self.transformer_layers.append(layer)
 
-        if cls_pooling:
+        if self.cls_pooling:
             self.cls_output_layer = tf.keras.layers.Dense(
-                units=hidden_size,
+                units=self.hidden_size,
                 activation="tanh",
-                kernel_initializer=initializer,
+                kernel_initializer=self.initializer,
                 name="pooler_transform",
             )
-        super().__init__(name=name, **kwargs)
+        super().build(input_shape)
 
-    def call(
-        self, inputs: List[tf.Tensor], mask: Optional[tf.Tensor] = None
-    ) -> tf.Tensor:
+    def call(self, inputs: list[tf.Tensor]) -> list[tf.Tensor]:
         token_ids, type_ids = inputs
-        mask = self.compute_mask(inputs, mask=mask)
+        mask = self.compute_mask(inputs, mask=None)[0]
         word_embeddings = self.embedding_layer(token_ids)
         position_embeddings = self.position_embedding_layer(word_embeddings)
         type_embeddings = self.type_embedding_layer(type_ids)
@@ -261,7 +276,7 @@ class BertLayer(tf.keras.layers.Layer):
             [word_embeddings, position_embeddings, type_embeddings]
         )
         embeddings = self.normalize_layer(embeddings)
-        embeddings = tf.keras.layers.Dropout(rate=self.dropout_rate)(embeddings)
+        embeddings = self.embedding_dropout_layer(embeddings)
         if self.embedding_projection is not None:
             embeddings = self.embedding_projection(embeddings)
         data = embeddings
@@ -282,17 +297,14 @@ class BertLayer(tf.keras.layers.Layer):
         cls_output = first_token_tensor
         if self.cls_pooling:
             cls_output = self.cls_output_layer(cls_output)
-        if self.return_all_encoder_outputs:
-            return [encoder_outputs, mask, cls_output]
-        else:
-            return [encoder_outputs[-1], mask, cls_output]
+        return [encoder_outputs, cls_output]
 
     def compute_mask(
-        self, inputs: List[tf.Tensor], mask: Optional[tf.Tensor] = None
+        self, inputs: list[tf.Tensor], mask: Optional[tf.Tensor] = None
     ) -> tf.Tensor:
         if mask is not None:
-            return mask
-        return tf.math.not_equal(inputs[0], 0)
+            return [mask for _ in range(self.num_layers)]
+        return [tf.math.not_equal(inputs[0], 0) for _ in range(self.num_layers)]
 
     def get_config(self):
         return {
@@ -310,7 +322,6 @@ class BertLayer(tf.keras.layers.Layer):
             "dropout_rate": self.dropout_rate,
             "attention_dropout_rate": self.attention_dropout_rate,
             "initializer": self.initializer,
-            "return_all_encoder_outputs": self.return_all_encoder_outputs,
             "share_layer": self.share_layer,
             "cls_pooling": self.cls_pooling,
         }

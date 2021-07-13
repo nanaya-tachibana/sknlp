@@ -5,16 +5,10 @@ import tensorflow as tf
 from tensorflow.keras.metrics import Precision, Recall
 from tensorflow_addons.metrics import FBetaScore
 
-
-def logits2pred(logits, activation):
-    if isinstance(logits, tf.RaggedTensor):
-        fill_value = 0
-        if activation in ("sigmoid", "softmax"):
-            fill_value = -1e12
-        logits = logits.to_tensor(fill_value)
-    return tf.keras.activations.get(activation)(logits)
+from .utils import logits2pred
 
 
+@tf.keras.utils.register_keras_serializable(package="sknlp")
 class PrecisionWithLogits(Precision):
     def __init__(
         self,
@@ -53,6 +47,7 @@ class PrecisionWithLogits(Precision):
         }
 
 
+@tf.keras.utils.register_keras_serializable(package="sknlp")
 class RecallWithLogits(Recall):
     def __init__(
         self,
@@ -91,12 +86,14 @@ class RecallWithLogits(Recall):
         }
 
 
+@tf.keras.utils.register_keras_serializable(package="sknlp")
 class FBetaScoreWithLogits(FBetaScore):
     def __init__(
         self,
         num_classes: int,
         average: str = "micro",
         beta: float = 1.0,
+        class_id: Optional[int] = None,
         threshold: float = 0.5,
         name: str = "fbeta_score",
         dtype: Optional[tf.DType] = None,
@@ -110,6 +107,7 @@ class FBetaScoreWithLogits(FBetaScore):
             name=name,
             dtype=dtype,
         )
+        self.class_id = class_id
         self.activation = activation
 
     def update_state(
@@ -119,10 +117,14 @@ class FBetaScoreWithLogits(FBetaScore):
         sample_weight: Optional[tf.Tensor] = None,
     ) -> None:
         y_pred = logits2pred(y_logits, self.activation)
+        if self.class_id is not None:
+            y_true = y_true[..., self.class_id]
+            y_pred = y_pred[..., self.class_id]
         super().update_state(y_true, y_pred, sample_weight=sample_weight)
 
     def get_config(self) -> dict[str, Any]:
         return {
             **super().get_config(),
             "activation": self.activation,
+            "class_id": self.class_id,
         }

@@ -8,12 +8,12 @@ import tensorflow as tf
 import tensorflow_addons as tfa
 import numpy as np
 import pandas as pd
+from tabulate import tabulate
 
 from sknlp.data import NLPDataset
-from sknlp.data.text_segmenter import get_segmenter
 from sknlp.vocab import Vocab
 from sknlp.callbacks import default_supervised_model_callbacks
-from .text2vec import Word2vec, Text2vec
+from .text2vec import Text2vec
 from .base_model import BaseNLPModel
 
 logger = logging.getLogger(__name__)
@@ -23,44 +23,35 @@ logger.addHandler(stream)
 
 
 class SupervisedNLPModel(BaseNLPModel):
+    dataset_class = NLPDataset
+    dataset_args = []
+
     def __init__(
         self,
         classes: list[str],
         max_sequence_length: Optional[int] = None,
-        sequence_length: Optional[int] = None,
-        segmenter: str = "jieba",
-        embedding_size: int = 100,
         text2vec: Optional[Text2vec] = None,
         task: Optional[str] = None,
         algorithm: Optional[str] = None,
         **kwargs
     ) -> None:
-        super().__init__(
-            max_sequence_length=max_sequence_length,
-            sequence_length=sequence_length,
-            segmenter=text2vec.segmenter if text2vec else segmenter,
-            **kwargs
-        )
-        self._text2vec = text2vec
+        super().__init__(max_sequence_length=max_sequence_length, **kwargs)
         if text2vec is not None:
-            self._embedding_size = text2vec.embedding_size
-            self._max_sequence_length = (
-                max_sequence_length or text2vec.max_sequence_length
-            )
-            self._sequence_length = text2vec.sequence_length
-        else:
-            self._embedding_size = embedding_size
-            self._max_sequence_length = max_sequence_length
-            self._sequence_length = sequence_length
+            self.text2vec = text2vec
 
         self._task = task
         self._algorithm = algorithm
-        self._class2idx = dict(zip(list(classes), range(len(classes))))
-        self._idx2class = dict(zip(range(len(classes)), list(classes)))
+        self._class2idx = dict(zip(classes, range(len(classes))))
+        self._idx2class = dict(zip(range(len(classes)), classes))
 
     @property
-    def embedding_size(self) -> int:
-        return self._embedding_size
+    def dataset_kwargs(self) -> dict[str, Any]:
+        kwargs = dict()
+        for field in self.dataset_args:
+            instance_field = getattr(self, field, None)
+            if instance_field is not None:
+                kwargs[field] = instance_field
+        return kwargs
 
     @property
     def num_classes(self) -> int:
@@ -74,6 +65,20 @@ class SupervisedNLPModel(BaseNLPModel):
     def text2vec(self) -> Text2vec:
         return self._text2vec
 
+    @text2vec.setter
+    def text2vec(self, tv: Text2vec) -> None:
+        if self.max_sequence_length is not None and tv.max_sequence_length is not None:
+            self._max_sequence_length = min(
+                self.max_sequence_length, tv.max_sequence_length
+            )
+        else:
+            self._max_sequence_length = (
+                self.max_sequence_length or tv.max_sequence_length
+            )
+        self._sequence_length = tv.sequence_length
+        self._segmenter = tv.segmenter
+        self._text2vec = tv
+
     @property
     def training_dataset(self) -> NLPDataset:
         return getattr(self, "_training_dataset", None)
@@ -82,10 +87,10 @@ class SupervisedNLPModel(BaseNLPModel):
     def validation_dataset(self) -> NLPDataset:
         return getattr(self, "_validation_dataset", None)
 
-    def class2idx(self, class_name: str) -> int:
+    def class2idx(self, class_name: str) -> Optional[int]:
         return self._class2idx.get(class_name, None)
 
-    def idx2class(self, class_idx: int) -> str:
+    def idx2class(self, class_idx: int) -> Optional[str]:
         return self._idx2class.get(class_idx, None)
 
     def get_inputs(self) -> tf.Tensor:
@@ -103,15 +108,17 @@ class SupervisedNLPModel(BaseNLPModel):
         assert self._text2vec is not None
         super().build()
 
-    def create_dataset_from_df(
-        self, df: pd.DataFrame, no_label: bool = False
-    ) -> NLPDataset:
-        raise NotImplementedError()
-
     def create_dataset_from_csv(
         self, filename: str, no_label: bool = False
     ) -> NLPDataset:
-        raise NotImplementedError()
+        return self.dataset_class(
+            self.text2vec.tokenize,
+            self.classes,
+            csv_file=filename,
+            max_length=self.max_sequence_length,
+            no_label=no_label,
+            **self.dataset_kwargs
+        )
 
     def prepare_dataset(
         self,
@@ -122,17 +129,15 @@ class SupervisedNLPModel(BaseNLPModel):
         assert X is not None or dataset is not None
         if dataset is not None:
             return dataset
-        if (
-            y is not None
-            and isinstance(y[0], (list, tuple))
-            and isinstance(y[0][0], str)
-        ):
-            y = ["|".join(map(str, y_i)) for y_i in y]
-        if isinstance(X[0], (list, tuple)):
-            df = pd.DataFrame(zip(*X, y) if y is not None else X)
-        else:
-            df = pd.DataFrame(zip(X, y) if y is not None else X)
-        return self.create_dataset_from_df(df, y is None)
+        return self.dataset_class(
+            self.text2vec.tokenize,
+            self.classes,
+            X=X,
+            y=y,
+            max_length=self.max_sequence_length,
+            no_label=y is None,
+            **self.dataset_kwargs
+        )
 
     def compile_optimizer(self, optimizer_name, **kwargs) -> None:
         if not self._built:
@@ -142,10 +147,8 @@ class SupervisedNLPModel(BaseNLPModel):
             optimizer = tf.keras.optimizers.deserialize(
                 {"class_name": optimizer_name, "config": kwargs}
             )
-        elif weight_decay > 0:
-            optimizer = tfa.optimizers.AdamW(weight_decay, **kwargs)
         else:
-            optimizer = tfa.optimizers.LazyAdam(**kwargs)
+            optimizer = tfa.optimizers.AdamW(weight_decay, **kwargs)
         self._model.compile(
             optimizer=optimizer,
             loss=self.get_loss(),
@@ -183,10 +186,8 @@ class SupervisedNLPModel(BaseNLPModel):
         log_file: Optional[str] = None,
         verbose: int = 2
     ) -> None:
-        if self._text2vec is None:
-            cut = get_segmenter(self.segmenter)
-            vocab = self.build_vocab(X or dataset.text, cut)
-            self._text2vec = Word2vec(vocab, self.embedding_size, self.segmenter)
+        if self.text2vec is None:
+            raise ValueError("训练前必须先设置Text2vec")
 
         self._training_dataset = self.prepare_dataset(X, y, dataset)
         if (
@@ -267,6 +268,10 @@ class SupervisedNLPModel(BaseNLPModel):
     ) -> pd.DataFrame:
         raise NotImplementedError()
 
+    @classmethod
+    def format_score(self, score_df: pd.DataFrame, format: str = "markdown") -> str:
+        return tabulate(score_df, headers="keys", tablefmt="github", showindex=False)
+
     def get_config(self) -> dict[str, Any]:
         return {
             **super().get_config(),
@@ -284,7 +289,7 @@ class SupervisedNLPModel(BaseNLPModel):
         module = super().load(directory)
         with open(os.path.join(directory, "vocab.json")) as f:
             vocab = Vocab.from_json(f.read())
-        module._text2vec = Text2vec(
+        module.text2vec = Text2vec(
             vocab,
             segmenter=module.segmenter,
             max_sequence_length=module.max_sequence_length,
@@ -296,7 +301,3 @@ class SupervisedNLPModel(BaseNLPModel):
         super().export(directory, name, version)
         d = os.path.join(directory, name, version)
         self.text2vec.save_vocab(d)
-
-    @classmethod
-    def get_custom_objects(cls) -> dict[str, Any]:
-        return {**super().get_custom_objects(), "AdamW": tfa.optimizers.AdamW}

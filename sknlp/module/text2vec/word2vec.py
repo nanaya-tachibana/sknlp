@@ -1,4 +1,5 @@
-from typing import Optional, Dict, Any
+from __future__ import annotations
+from typing import Optional
 
 import tensorflow as tf
 from tensorflow.keras.layers import Embedding
@@ -21,6 +22,7 @@ class Word2vec(Text2vec):
         embeddings_regularizer: Optional[WeightRegularizer] = None,
         embeddings_constraint: Optional[WeightConstraint] = None,
         name: str = "word2vec",
+        **kwargs,
     ) -> None:
         """
         基础符号->向量模块.
@@ -53,10 +55,11 @@ class Word2vec(Text2vec):
             segmenter=segmenter,
             max_sequence_length=max_sequence_length,
             sequence_length=sequence_length,
+            embedding_size=embedding_size,
             name=name,
+            **kwargs,
         )
-        self._embedding_size = embedding_size
-        embedding = Embedding(
+        self.embedding = Embedding(
             len(vocab),
             embedding_size,
             embeddings_initializer=embeddings_initializer,
@@ -65,4 +68,9 @@ class Word2vec(Text2vec):
             mask_zero=True,
             name="embeddings",
         )
-        self._model = tf.keras.Sequential(embedding, name=name)
+        self._model = tf.keras.Sequential(self.embedding, name=name)
+
+    def compute_mask(
+        self, inputs: tf.Tensor, mask: Optional[tf.Tensor] = None
+    ) -> tf.Tensor:
+        return self._model.get_layer("embeddings").compute_mask(inputs, mask=mask)

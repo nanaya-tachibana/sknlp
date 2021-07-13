@@ -19,7 +19,7 @@ class WeightDecayScheduler(Callback):
         if new_wd == wd:
             return
         K.set_value(self.model.optimizer.weight_decay, K.get_value(new_wd))
-        if self.verbose > 0:
+        if self.verbose > 1:
             print(
                 "\nEpoch %05d: WeightDecayScheduler reducing weight decay "
                 "to %s." % (epoch + 1, new_wd)
@@ -34,7 +34,7 @@ class WeightDecayScheduler(Callback):
         if new_wd == wd:
             return
         K.set_value(self.model.optimizer.weight_decay, K.get_value(new_wd))
-        if self.verbose > 0:
+        if self.verbose > 1:
             print(
                 "\nStep %05d: WeightDecayScheduler increasing weight decay "
                 "to %s." % (step + 1, new_wd)

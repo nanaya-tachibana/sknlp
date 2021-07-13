@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Any
+from typing import Any, Optional
 
 import tensorflow as tf
 from tensorflow_addons.text import crf_log_likelihood, crf_decode
@@ -8,6 +8,7 @@ import tensorflow.keras.backend as K
 from sknlp.typing import WeightInitializer
 
 
+@tf.keras.utils.register_keras_serializable(package="sknlp")
 class CrfLossLayer(tf.keras.layers.Layer):
     def __init__(
         self,
@@ -37,7 +38,7 @@ class CrfLossLayer(tf.keras.layers.Layer):
             K.get_value(self.transition_weight) / self.learning_rate_multiplier,
         )
 
-    def call(self, inputs: list[tf.Tensor], mask: tf.Tensor) -> list[tf.Tensor]:
+    def call(self, inputs: list[tf.Tensor], mask: tf.Tensor) -> tf.RaggedTensor:
         emissions, tag_ids = inputs
         mask = tf.cast(mask, tf.int32)
         sequence_lengths = tf.math.reduce_sum(mask, axis=1)
@@ -71,6 +72,7 @@ class CrfLossLayer(tf.keras.layers.Layer):
         }
 
 
+@tf.keras.utils.register_keras_serializable(package="sknlp")
 class CrfDecodeLayer(tf.keras.layers.Layer):
     def __init__(
         self,
@@ -86,6 +88,9 @@ class CrfDecodeLayer(tf.keras.layers.Layer):
         self.learning_rate_multiplier = learning_rate_multiplier
         self.max_sequence_length = max_sequence_length
         self.initializer = initializer
+
+    def build(self, input_shape: tf.TensorShape) -> None:
+        super().build(input_shape)
         self.transition_weight = self.add_weight(
             shape=(self.num_tags, self.num_tags),
             dtype=tf.float32,
@@ -94,9 +99,12 @@ class CrfDecodeLayer(tf.keras.layers.Layer):
         )
 
     def call(self, emissions: tf.Tensor, mask: tf.Tensor) -> tf.Tensor:
+        mask = tf.cast(mask, tf.int32)
         sequence_lengths = tf.math.reduce_sum(mask, axis=1)
         decoded_tag_ids, _ = crf_decode(
-            emissions, self.transition_weight, sequence_lengths
+            emissions,
+            self.transition_weight * self.learning_rate_multiplier,
+            sequence_lengths,
         )
         return decoded_tag_ids * mask
 

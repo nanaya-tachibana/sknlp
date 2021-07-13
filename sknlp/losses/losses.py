@@ -2,6 +2,7 @@ from __future__ import annotations
 import tensorflow as tf
 
 
+@tf.keras.utils.register_keras_serializable(package="sknlp")
 class MultiLabelCategoricalCrossentropy(tf.keras.losses.Loss):
     """
     苏剑林. (Apr. 25, 2020). 《将“softmax+交叉熵”推广到多标签分类问题 》[Blog post]. Retrieved from https://spaces.ac.cn/archives/7359

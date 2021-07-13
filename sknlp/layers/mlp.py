@@ -1,9 +1,11 @@
-from typing import Dict, Any
+from __future__ import annotations
+from typing import Any
 
 import tensorflow as tf
 from tensorflow.keras.layers import Layer, Dense, InputSpec
 
 
+@tf.keras.utils.register_keras_serializable(package="sknlp")
 class MLPLayer(Layer):
     def __init__(
         self,
@@ -19,23 +21,21 @@ class MLPLayer(Layer):
         self.hidden_size = hidden_size
         self.output_size = output_size
         self.activation = activation
-        self.input_spec = InputSpec(min_ndim=2)
+        self.supports_masking = True
 
+    def build(self, input_shape: tf.TensorShape) -> None:
         self.dense_layers = []
-        self.batchnorm_layers = []
-        for i in range(num_layers):
-            if i == num_layers - 1:
-                self.dense_layers.append(Dense(output_size, name="dense-%d" % i))
+        for i in range(self.num_layers):
+            if i == self.num_layers - 1:
+                self.dense_layers.append(Dense(self.output_size, name="dense-%d" % i))
             else:
                 self.dense_layers.append(
                     Dense(
-                        hidden_size,
-                        activation=tf.keras.activations.get(activation),
+                        self.hidden_size,
+                        activation=tf.keras.activations.get(self.activation),
                         name="dense-%d" % i,
                     )
                 )
-
-    def build(self, input_shape: tf.TensorShape) -> None:
         last_dim = input_shape[-1]
         self.input_spec = InputSpec(min_ndim=2, axes={-1: last_dim})
         super().build(input_shape)
@@ -55,12 +55,11 @@ class MLPLayer(Layer):
             )
         return input_shape[:-1].concatenate(self.output_size)
 
-    def get_config(self) -> Dict[str, Any]:
-        config = {
+    def get_config(self) -> dict[str, Any]:
+        return {
+            **super().get_config(),
             "num_layers": self.num_layers,
             "hidden_size": self.hidden_size,
             "output_size": self.output_size,
             "activation": self.activation,
         }
-        base_config = super().get_config()
-        return dict(**base_config, **config)

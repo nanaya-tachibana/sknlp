@@ -366,6 +366,7 @@ class LSTMP(LSTM):
             **kwargs
         )
         self.activity_regularizer = regularizers.get(activity_regularizer)
+        self.supports_masking = True
         self.input_spec = [InputSpec(ndim=3)]
 
     @property
@@ -391,6 +392,14 @@ class LSTMP(LSTM):
     @property
     def projection_clip(self):
         return self.cell.projection_clip
+
+    def compute_mask(self, inputs, mask):
+        output_mask = mask
+        if self.return_state:
+            state_mask = [None for _ in self.states]
+            return [output_mask] + state_mask
+        else:
+            return output_mask
 
     def get_config(self):
         base_config = super().get_config()
