@@ -7,7 +7,7 @@ import kerastuner as kt
 
 from sknlp.callbacks import default_supervised_model_callbacks
 from sknlp.data import NLPDataset
-from sknlp.layers import BertLayer
+from sknlp.layers import BertEncodeLayer
 from .text2vec import Text2vec
 from .supervised_model import SupervisedNLPModel
 
@@ -47,7 +47,7 @@ def create_model_builder(
                     text2vec._model.to_json(),
                     custom_objects={
                         "TruncatedNormal": tf.keras.initializers.TruncatedNormal,
-                        "BertLayer": BertLayer,
+                        "BertLayer": BertEncodeLayer,
                     },
                 )
                 keras_model.set_weights(text2vec._model.get_weights())
