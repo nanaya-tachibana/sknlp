@@ -106,7 +106,6 @@ class ParameterSearcher:
         early_stopping_use_best_epoch: bool = False,
         early_stopping_monitor: int = 2,  # 1 for loss, 2 for metric
         checkpoint: Optional[str] = None,
-        save_frequency: int = 1,
         log_file: Optional[str] = None,
         verbose: int = 2,
         distribute_strategy: Optional[tf.distribute.Strategy] = None,
@@ -129,17 +128,30 @@ class ParameterSearcher:
         if early_stopping_monitor == 2 and self.temp_model.get_monitor():
             monitor = self.temp_model.get_monitor()
             monitor_direction = "max"
+
+        has_validation_dataset = validation_tf_dataset is not None
+        if checkpoint is not None:
+            if has_validation_dataset:
+                checkpoint = os.path.join(
+                    checkpoint, self.model_type._get_model_filename(epoch=0)
+                )
+            else:
+                checkpoint = os.path.join(
+                    checkpoint, self.model_type._get_model_filename_template()
+                )
         callbacks = default_supervised_model_callbacks(
             learning_rate_update_factor=learning_rate_update_factor,
             learning_rate_update_epochs=learning_rate_update_epochs,
             learning_rate_warmup_steps=learning_rate_warmup_steps,
             use_weight_decay=weight_decay > 0,
+            has_validation_dataset=has_validation_dataset,
             enable_early_stopping=enable_early_stopping,
             early_stopping_monitor=monitor,
             early_stopping_monitor_direction=monitor_direction,
             early_stopping_patience=early_stopping_patience,
             early_stopping_min_delta=early_stopping_min_delta,
             early_stopping_use_best_epoch=early_stopping_use_best_epoch,
+            checkpoint=checkpoint,
             log_file=log_file,
         )
 
