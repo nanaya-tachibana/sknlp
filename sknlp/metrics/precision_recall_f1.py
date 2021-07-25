@@ -122,6 +122,9 @@ class FBetaScoreWithLogits(FBetaScore):
             y_pred = y_pred[..., self.class_id]
         super().update_state(y_true, y_pred, sample_weight=sample_weight)
 
+    def reset_state(self):
+        return super().reset_states()
+
     def get_config(self) -> dict[str, Any]:
         return {
             **super().get_config(),

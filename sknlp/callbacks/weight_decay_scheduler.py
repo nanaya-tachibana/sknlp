@@ -8,6 +8,7 @@ class WeightDecayScheduler(Callback):
         self.warmup_schedule = warmup_schedule
         self.decay_schedule = decay_schedule
         self.epoch = 0
+        self.warmup_ended = False
         self.verbose = verbose
 
     def on_epoch_begin(self, epoch, logs=None):
@@ -28,15 +29,20 @@ class WeightDecayScheduler(Callback):
     def on_train_batch_begin(self, batch, logs=None):
         if not hasattr(self.model.optimizer, "weight_decay"):
             raise ValueError('Optimizer must have a "weight_decay" attribute.')
+        if self.warmup_ended:
+            return
+
         wd = float(K.get_value(self.model.optimizer.weight_decay))
         step = self.epoch * self.params["steps"] + batch
         new_wd = self.warmup_schedule(step, wd)
         if new_wd == wd:
+            self.warmup_ended = True
             return
+
         K.set_value(self.model.optimizer.weight_decay, K.get_value(new_wd))
-        if self.verbose > 1:
+        if self.verbose == 1:
             print(
-                "\nStep %05d: WeightDecayScheduler increasing weight decay "
+                "\nStep %07d: WeightDecayScheduler increasing weight decay "
                 "to %s." % (step + 1, new_wd)
             )
 

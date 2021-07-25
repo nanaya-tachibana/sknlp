@@ -122,8 +122,8 @@ class SupervisedNLPModel(BaseNLPModel):
 
     def prepare_dataset(
         self,
-        X: Sequence[str],
-        y: Union[Sequence[Sequence[str]], Sequence[str], Sequence[float]],
+        X: Sequence[Any],
+        y: Sequence[Any],
         dataset: NLPDataset,
     ) -> NLPDataset:
         assert X is not None or dataset is not None
@@ -157,14 +157,12 @@ class SupervisedNLPModel(BaseNLPModel):
 
     def fit(
         self,
-        X: Sequence[str] = None,
-        y: Union[Sequence[Sequence[str]], Sequence[str], Sequence[float]] = None,
+        X: Sequence[Any] = None,
+        y: Sequence[Any] = None,
         *,
         dataset: NLPDataset = None,
-        validation_X: Sequence[str] = None,
-        validation_y: Union[
-            Sequence[Sequence[str]], Sequence[str], Sequence[float]
-        ] = None,
+        validation_X: Optional[Sequence[Any]] = None,
+        validation_y: Optional[Sequence[Any]] = None,
         validation_dataset: NLPDataset = None,
         batch_size: int = 128,
         n_epochs: int = 10,
@@ -182,7 +180,6 @@ class SupervisedNLPModel(BaseNLPModel):
         early_stopping_use_best_epoch: bool = False,
         early_stopping_monitor: int = 2,  # 1 for loss, 2 for metric
         checkpoint: Optional[str] = None,
-        save_frequency: int = 1,
         log_file: Optional[str] = None,
         verbose: int = 2
     ) -> None:
@@ -220,17 +217,28 @@ class SupervisedNLPModel(BaseNLPModel):
         if early_stopping_monitor == 2 and self.get_monitor():
             monitor = self.get_monitor()
             monitor_direction = "max"
+
+        has_validation_dataset = validation_tf_dataset is not None
+        if checkpoint is not None:
+            if has_validation_dataset:
+                checkpoint = os.path.join(checkpoint, self._get_model_filename(epoch=0))
+            else:
+                checkpoint = os.path.join(
+                    checkpoint, self._get_model_filename_template()
+                )
         callbacks = default_supervised_model_callbacks(
             learning_rate_update_factor=learning_rate_update_factor,
             learning_rate_update_epochs=learning_rate_update_epochs,
             learning_rate_warmup_steps=learning_rate_warmup_steps,
             use_weight_decay=weight_decay > 0,
+            has_validation_dataset=has_validation_dataset,
             enable_early_stopping=enable_early_stopping,
             early_stopping_monitor=monitor,
             early_stopping_monitor_direction=monitor_direction,
             early_stopping_patience=early_stopping_patience,
             early_stopping_min_delta=early_stopping_min_delta,
             early_stopping_use_best_epoch=early_stopping_use_best_epoch,
+            checkpoint=checkpoint,
             log_file=log_file,
         )
         for callback in self.get_callbacks():
@@ -247,20 +255,20 @@ class SupervisedNLPModel(BaseNLPModel):
 
     def predict(
         self,
-        X: Sequence[str] = None,
+        X: Sequence[Any] = None,
         *,
         dataset: NLPDataset = None,
         thresholds: Union[float, list[float], None] = None,
         batch_size: int = 128
-    ) -> Union[np.ndarray, list[str], list[list[str]], list[float]]:
+    ) -> Union[np.ndarray, Sequence[Any]]:
         assert self._built
         dataset = self.prepare_dataset(X, None, dataset)
         return self._model.predict(dataset.batchify(batch_size, shuffle=False))
 
     def score(
         self,
-        X: Sequence[str] = None,
-        y: Union[Sequence[Sequence[str]], Sequence[str], Sequence[float]] = None,
+        X: Sequence[Any] = None,
+        y: Sequence[Any] = None,
         *,
         dataset: NLPDataset = None,
         thresholds: Union[float, list[float], None] = None,
@@ -285,8 +293,8 @@ class SupervisedNLPModel(BaseNLPModel):
         self.text2vec.save_vocab(directory)
 
     @classmethod
-    def load(cls, directory: str) -> "SupervisedNLPModel":
-        module = super().load(directory)
+    def load(cls, directory: str, epoch: Optional[int] = None) -> "SupervisedNLPModel":
+        module = super().load(directory, epoch=epoch)
         with open(os.path.join(directory, "vocab.json")) as f:
             vocab = Vocab.from_json(f.read())
         module.text2vec = Text2vec(

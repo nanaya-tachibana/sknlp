@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Callable, Optional, Any
+from typing import Optional, Any
 import logging
 import tensorflow as tf
 
@@ -16,9 +16,10 @@ logger.addHandler(stream)
 
 
 class TaggingFScoreMetric(tf.keras.callbacks.Callback):
-    def __init__(self, classes: list[str]) -> None:
+    def __init__(self, classes: list[str], add_start_end_tag: bool) -> None:
         super().__init__()
         self.classes = classes
+        self.add_start_end_tag = add_start_end_tag
 
     def on_epoch_end(self, epoch: int, logs: Optional[dict[str, Any]] = None) -> None:
         if self.validation_data is None:
@@ -29,14 +30,22 @@ class TaggingFScoreMetric(tf.keras.callbacks.Callback):
         predictions = []
         for tag_ids in tag_ids_list:
             predictions.append(
-                convert_ids_to_tags(tag_ids.numpy().tolist(), lambda x: idx2class[x])
+                convert_ids_to_tags(
+                    tag_ids.numpy().tolist(),
+                    lambda x: idx2class[x],
+                    add_start_end_tag=self.add_start_end_tag,
+                )
             )
 
         y = []
         for _, tag_ids_array in self.validation_data.as_numpy_iterator():
             y.extend(
                 [
-                    convert_ids_to_tags(tag_ids, lambda x: idx2class[x])
+                    convert_ids_to_tags(
+                        tag_ids,
+                        lambda x: idx2class[x],
+                        add_start_end_tag=self.add_start_end_tag,
+                    )
                     for tag_ids in tag_ids_array.tolist()
                 ]
             )

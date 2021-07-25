@@ -97,7 +97,6 @@ class DeepClassifier(SupervisedNLPModel):
             ),
         ]
 
-    @classmethod
     def get_monitor(cls) -> str:
         return "val_fbeta_score"
 

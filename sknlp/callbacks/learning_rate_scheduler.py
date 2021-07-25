@@ -8,6 +8,7 @@ class LearningRateScheduler(Callback):
         self.warmup_schedule = warmup_schedule
         self.decay_schedule = decay_schedule
         self.epoch = 0
+        self.warmup_ended = False
         self.verbose = verbose
 
     def on_epoch_begin(self, epoch, logs):
@@ -19,7 +20,7 @@ class LearningRateScheduler(Callback):
         if new_lr == lr:
             return
         K.set_value(self.model.optimizer.lr, K.get_value(new_lr))
-        if self.verbose > 0:
+        if self.verbose > 1:
             print(
                 "\nEpoch %05d: LearningRateScheduler decreasing learning rate "
                 "to %s." % (epoch + 1, new_lr)
@@ -28,13 +29,20 @@ class LearningRateScheduler(Callback):
     def on_train_batch_begin(self, batch, logs):
         if not hasattr(self.model.optimizer, "lr"):
             raise ValueError('Optimizer must have a "lr" attribute.')
+
+        if self.warmup_ended:
+            return
+
         lr = float(K.get_value(self.model.optimizer.lr))
         step = self.epoch * self.params["steps"] + batch
         new_lr = self.warmup_schedule(step, lr)
         if new_lr == lr:
+            self.warmup_ended = True
+            print("\nStep %07d: learning rate warmup ended." % step)
             return
+
         K.set_value(self.model.optimizer.lr, K.get_value(new_lr))
-        if self.verbose > 0:
+        if self.verbose == 1:
             print(
                 "\nStep %07d: LearningRateScheduler increasing learning rate "
                 "to %s." % (step + 1, new_lr)

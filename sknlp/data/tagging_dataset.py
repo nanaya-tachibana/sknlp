@@ -3,7 +3,6 @@ from typing import Sequence, Optional, Tuple, Any, Callable
 import json
 
 import numpy as np
-import pandas as pd
 import tensorflow as tf
 
 from .nlp_dataset import NLPDataset
@@ -11,11 +10,6 @@ from .nlp_dataset import NLPDataset
 
 def _combine_xy(x, y):
     return (x, y), y
-
-
-def _flatten_y(x, y):
-    y_shape = tf.shape(y)
-    return x, tf.reshape(y, [y_shape[0], y_shape[1], -1])
 
 
 class TaggingDataset(NLPDataset):
@@ -29,13 +23,13 @@ class TaggingDataset(NLPDataset):
         in_memory: bool = True,
         no_label: bool = False,
         add_start_end_tag: bool = False,
-        use_crf: bool = False,
+        output_format: str = "global_pointer",
         max_length: Optional[int] = None,
         text_dtype: tf.DType = tf.int32,
         label_dtype: tf.DType = tf.int32,
     ):
         self.add_start_end_tag = add_start_end_tag
-        self.use_crf = use_crf
+        self.output_format = output_format
         self.label2idx = dict(zip(labels, range(len(labels))))
         super().__init__(
             tokenizer,
@@ -62,7 +56,7 @@ class TaggingDataset(NLPDataset):
 
     @property
     def batch_padding_shapes(self) -> list[Tuple]:
-        if self.use_crf:
+        if self.output_format == "bio":
             return ((None,), (None,))
         else:
             return ((None,), (None, None, None))
@@ -76,7 +70,7 @@ class TaggingDataset(NLPDataset):
         label = super()._label_transform(label)
         chunks = json.loads(label)
         length += 2 * self.add_start_end_tag
-        if self.use_crf:
+        if self.output_format == "bio":
             labels = np.zeros(length, dtype=np.int32)
             for chunk_start, chunk_end, chunk_label in chunks:
                 if chunk_end >= self.max_length:
@@ -92,6 +86,9 @@ class TaggingDataset(NLPDataset):
             for chunk_start, chunk_end, chunk_label in chunks:
                 if chunk_end > self.max_length:
                     continue
+
+                chunk_start += self.add_start_end_tag
+                chunk_end += self.add_start_end_tag
                 labels[self.label2idx[chunk_label], chunk_start, chunk_end] = 1
         return labels
 
@@ -100,7 +97,7 @@ class TaggingDataset(NLPDataset):
 
         _text = self._text_transform(text)
         if self.no_label:
-            if self.use_crf:
+            if self.output_format == "bio":
                 return _text, [0 for _ in range(len(_text))]
             else:
                 return _text
@@ -120,5 +117,5 @@ class TaggingDataset(NLPDataset):
             batch_size,
             shuffle=shuffle,
             shuffle_buffer_size=shuffle_buffer_size,
-            after_batch=_combine_xy if self.use_crf else _flatten_y,
+            after_batch=_combine_xy if self.output_format == "bio" else None,
         )

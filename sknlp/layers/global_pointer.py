@@ -1,10 +1,14 @@
 from __future__ import annotations
-from typing import Optional, Any
+from typing import Any
+import sys
+
 import tensorflow as tf
+from tensorflow.python.ops.array_ops import boolean_mask
 
 from .embedding_layer import SinusoidalPositionEmbedding
 
 
+@tf.keras.utils.register_keras_serializable(package="sknlp")
 class GlobalPointerLayer(tf.keras.layers.Layer):
     """
     苏剑林. (May. 01, 2021). 《GlobalPointer：用统一的方式处理嵌套和非嵌套NER 》[Blog post]. Retrieved from https://spaces.ac.cn/archives/8373
@@ -62,17 +66,16 @@ class GlobalPointerLayer(tf.keras.layers.Layer):
         kw = kw * cos_position + kw2 * sin_position
 
         logits = tf.einsum("bmhs,bnhs->bhmn", qw, kw)
-        mask_axis_2 = tf.expand_dims(tf.expand_dims(mask, 1), 3)
-        logits = logits * mask_axis_2 + (1 - mask_axis_2) * -1e12
-        mask_axis_3 = tf.expand_dims(tf.expand_dims(mask, 1), 1)
-        logits = logits * mask_axis_3 + (1 - mask_axis_3) * -1e12
+        mask = tf.cast(mask, logits.dtype)
+        mask = tf.expand_dims(tf.expand_dims(mask, 1), 3) * tf.expand_dims(
+            tf.expand_dims(mask, 1), 1
+        )
+        logits = logits * mask + logits.dtype.min * (1 - mask)
+        boolean_mask = tf.repeat(tf.cast(mask, tf.bool), self.heads, axis=1)
         # 排除下三角
         mask = tf.linalg.band_part(tf.ones_like(logits), 0, -1)
-        logits = logits - (1 - mask) * 1e12
-        flatten_logits = tf.reshape(
-            logits / self.head_size ** 0.5, [input_shape[0], self.heads, -1]
-        )
-        return tf.RaggedTensor.from_tensor(flatten_logits)
+        logits = logits * mask + logits.dtype.min * (1 - mask)
+        return tf.ragged.boolean_mask(logits / self.head_size ** 0.5, boolean_mask)
 
     def compute_output_shape(self, input_shape: tf.TensorShape) -> tf.TensorShape:
         return tf.TensorShape([input_shape[0], self.heads, input_shape[1] ** 2])

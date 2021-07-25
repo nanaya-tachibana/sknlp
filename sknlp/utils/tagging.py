@@ -1,9 +1,13 @@
 from __future__ import annotations
-from typing import Sequence, Callable
+from typing import Sequence, Callable, Union
 from dataclasses import dataclass
 import itertools
 
 import pandas as pd
+import numpy as np
+from scipy.special import expit
+
+from .classification import _validate_thresholds
 
 
 @dataclass
@@ -22,17 +26,27 @@ def convert_ids_to_tags(
     add_start_end_tag: bool = False,
 ) -> list[Tag]:
     if add_start_end_tag:
-        tag_ids = tag_ids[1:]
+        tag_ids = tag_ids[1:-1]
+    num_tag_ids = len(tag_ids)
     current_begin_tag = -1
     begin = 0
     parsed_tags = list()
     for i, tag_id in enumerate(tag_ids):
-        if tag_id != 0 and tag_id % 2 == 0 and tag_id - 1 == current_begin_tag:
+        if (
+            i < num_tag_ids - 1
+            and tag_id != 0
+            and tag_id % 2 == 0
+            and tag_id - 1 == current_begin_tag
+        ):
             continue
 
         if i != begin:
             parsed_tags.append(
-                Tag(begin, i - 1, idx2class((current_begin_tag + 1) // 2))
+                Tag(
+                    begin,
+                    i - (i < num_tag_ids - 1),
+                    idx2class((current_begin_tag + 1) // 2),
+                )
             )
 
         if tag_id % 2 == 1:
@@ -41,11 +55,24 @@ def convert_ids_to_tags(
         else:
             begin = i + 1
             current_begin_tag = -1
-    if begin != len(tag_ids) and current_begin_tag != -1:
-        parsed_tags.append(
-            Tag(begin, len(tag_ids) - 1, idx2class((current_begin_tag + 1) // 2))
-        )
     return parsed_tags
+
+
+def convert_global_pointer_to_tags(
+    pointer: np.array,
+    thresholds: Union[float, list[float]],
+    idx2class: Callable[[int], str],
+    add_start_end_tag: bool = False,
+) -> list[Tag]:
+    thresholds = _validate_thresholds(thresholds, pointer.shape[0])
+    tags: list[Tag] = []
+    for i, score_matrix in enumerate(pointer):
+        label = idx2class(i)
+        for start, end in zip(*np.where(expit(score_matrix) >= thresholds[i])):
+            start -= add_start_end_tag
+            end -= add_start_end_tag
+            tags.append(Tag(start, end, label))
+    return tags
 
 
 def _compute_counts(

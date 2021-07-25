@@ -96,9 +96,20 @@ class BaseNLPModel:
     def get_callbacks(self, *args, **kwargs) -> list[tf.keras.callbacks.Callback]:
         return []
 
-    @classmethod
-    def get_monitor(cls) -> str:
+    def get_monitor(self) -> str:
         raise NotImplementedError()
+
+    @classmethod
+    def _get_model_filename_template(cls) -> str:
+        return "model_{epoch:04d}"
+
+    @classmethod
+    def _get_model_filename(cls, epoch: Optional[int] = None) -> str:
+        if epoch is not None:
+            if epoch < 1:
+                epoch = 0
+            return cls._get_model_filename_template().format(epoch=epoch)
+        return "model"
 
     def freeze(self) -> None:
         for layer in self._model.layers:
@@ -109,15 +120,19 @@ class BaseNLPModel:
             f.write(json.dumps(self.get_config(), ensure_ascii=False))
 
     def save(self, directory: str) -> None:
-        self._model.save(os.path.join(directory, "model"), save_format="tf")
+        self._model.save(
+            os.path.join(directory, self._get_model_filename()), save_format="tf"
+        )
         self.save_config(directory)
 
     @classmethod
-    def load(cls, directory: str) -> "BaseNLPModel":
+    def load(cls, directory: str, epoch: Optional[int] = None) -> "BaseNLPModel":
         with open(os.path.join(directory, "meta.json"), encoding="UTF-8") as f:
             meta = json.loads(f.read())
         module = cls.from_config(meta)
-        module._model = tf.keras.models.load_model(os.path.join(directory, "model"))
+        module._model = tf.keras.models.load_model(
+            os.path.join(directory, cls._get_model_filename(epoch=epoch))
+        )
         module._built = True
         return module
 

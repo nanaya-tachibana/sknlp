@@ -56,7 +56,7 @@ class BertTaggingDataset(TaggingDataset):
         in_memory: bool = True,
         no_label: bool = False,
         add_start_end_tag: bool = True,
-        use_crf: bool = False,
+        output_format: str = "global_pointer",
         max_length: Optional[int] = None,
     ):
         super().__init__(
@@ -67,7 +67,7 @@ class BertTaggingDataset(TaggingDataset):
             csv_file=csv_file,
             in_memory=in_memory,
             no_label=no_label,
-            use_crf=use_crf,
+            output_format=output_format,
             add_start_end_tag=add_start_end_tag,
             max_length=max_length,
             text_dtype=tf.string,
@@ -76,7 +76,7 @@ class BertTaggingDataset(TaggingDataset):
 
     @property
     def batch_padding_shapes(self) -> Optional[list[Tuple]]:
-        if self.use_crf:
+        if self.output_format == "bio":
             return ((), (None,))
         else:
             return ((), (None, None, None))

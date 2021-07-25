@@ -105,13 +105,15 @@ class Text2vec(BaseNLPModel):
         self.save_vocab(directory)
 
     @classmethod
-    def load(cls, directory: str) -> "Text2vec":
+    def load(cls, directory: str, epoch: Optional[int] = None) -> "Text2vec":
         with open(os.path.join(directory, "meta.json"), encoding="UTF-8") as f:
             meta = json.loads(f.read())
         with open(os.path.join(directory, "vocab.json"), encoding="UTF-8") as f:
             vocab = Vocab.from_json(f.read())
         module = cls.from_config({"vocab": vocab, **meta})
-        module._model = tf.keras.models.load_model(os.path.join(directory, "model"))
+        module._model = tf.keras.models.load_model(
+            os.path.join(directory, cls._get_model_filename(epoch=epoch))
+        )
         module._built = True
         return module
 

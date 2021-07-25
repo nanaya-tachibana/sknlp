@@ -9,6 +9,7 @@ from .bert_layer import (
     BertPairPreprocessingLayer,
 )
 from .crf_layer import CrfLossLayer, CrfDecodeLayer
+from .global_pointer import GlobalPointerLayer
 
 
 __all__ = [
@@ -23,4 +24,5 @@ __all__ = [
     "BertPairPreprocessingLayer",
     "CrfLossLayer",
     "CrfDecodeLayer",
+    "GlobalPointerLayer",
 ]

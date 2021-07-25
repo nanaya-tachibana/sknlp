@@ -6,8 +6,15 @@ import tensorflow as tf
 
 from sknlp.data import TaggingDataset
 from sknlp.callbacks import TaggingFScoreMetric
-from sknlp.layers import CrfDecodeLayer, CrfLossLayer, MLPLayer
-from sknlp.utils.tagging import tagging_fscore, convert_ids_to_tags, Tag
+from sknlp.metrics import PrecisionWithLogits, RecallWithLogits, FBetaScoreWithLogits
+from sknlp.layers import CrfDecodeLayer, CrfLossLayer, MLPLayer, GlobalPointerLayer
+from sknlp.losses import MultiLabelCategoricalCrossentropy
+from sknlp.utils.tagging import (
+    Tag,
+    tagging_fscore,
+    convert_ids_to_tags,
+    convert_global_pointer_to_tags,
+)
 
 from ..supervised_model import SupervisedNLPModel
 from ..text2vec import Text2vec
@@ -15,13 +22,13 @@ from ..text2vec import Text2vec
 
 class DeepTagger(SupervisedNLPModel):
     dataset_class = TaggingDataset
-    dataset_args = ["use_crf", "add_start_end_tag"]
+    dataset_args = ["output_format", "add_start_end_tag"]
 
     def __init__(
         self,
         classes: Sequence[str],
         add_start_end_tag: bool = False,
-        use_crf: bool = False,
+        output_format: str = "global_pointer",
         crf_learning_rate_multiplier: float = 1.0,
         max_sequence_length: Optional[int] = None,
         num_fc_layers: int = 2,
@@ -31,10 +38,14 @@ class DeepTagger(SupervisedNLPModel):
         **kwargs,
     ):
         self._add_start_end_tag = add_start_end_tag
-        self._use_crf = use_crf
+        if output_format not in {"bio", "global_pointer"}:
+            raise ValueError(
+                f"output_format必须为'bio'或者'global_pointer', 目前为{output_format}"
+            )
+        self._output_format = output_format
         self._crf_learning_rate_multiplier = crf_learning_rate_multiplier
         classes = list(classes)
-        if use_crf and classes[0] != "O":
+        if output_format == "bio" and classes[0] != "O":
             classes.insert(0, "O")
         super().__init__(
             classes,
@@ -52,42 +63,60 @@ class DeepTagger(SupervisedNLPModel):
         return self._add_start_end_tag
 
     @property
-    def use_crf(self) -> bool:
-        return self._use_crf
+    def output_format(self) -> str:
+        return self._output_format
 
     @property
     def crf_learning_rate_multiplier(self) -> float:
         return self._crf_learning_rate_multiplier
 
     def get_loss(self) -> None:
-        return None
+        if self.output_format == "bio":
+            return None
+        else:
+            return MultiLabelCategoricalCrossentropy(flatten_axis=2)
 
     def get_callbacks(self, *args, **kwargs) -> list[tf.keras.callbacks.Callback]:
         callbacks = super().get_callbacks(*args, **kwargs)
-        callbacks.append(TaggingFScoreMetric(self.classes))
+        if self.output_format == "bio":
+            callbacks.append(TaggingFScoreMetric(self.classes, self.add_start_end_tag))
         return callbacks
 
     def get_metrics(self) -> list[tf.keras.metrics.Metric]:
-        return []
+        if self.output_format == "bio":
+            return []
+        return [
+            PrecisionWithLogits(activation="sigmoid"),
+            RecallWithLogits(activation="sigmoid"),
+            FBetaScoreWithLogits(self.num_classes, activation="sigmoid"),
+        ]
 
-    @classmethod
-    def get_monitor(cls) -> str:
-        return "val_tag_accuracy"
+    def get_monitor(self) -> str:
+        if self.output_format == "bio":
+            return "val_tag_accuracy"
+        else:
+            return "val_fbeta_score"
 
     def build_output_layer(self, inputs: list[tf.Tensor]) -> list[tf.Tensor]:
-        embeddings, mask, tag_ids = inputs
-        emissions = MLPLayer(
-            self.num_fc_layers,
-            hidden_size=self.fc_hidden_size,
-            output_size=self.num_classes * 2 + 1,
-            activation=self.fc_activation,
-            name="mlp",
-        )(embeddings)
-        return CrfLossLayer(
-            self.num_classes * 2 + 1,
-            max_sequence_length=self.max_sequence_length,
-            learning_rate_multiplier=self.crf_learning_rate_multiplier,
-        )([emissions, tag_ids], mask)
+        if self.output_format == "bio":
+            embeddings, mask, tag_ids = inputs
+            emissions = MLPLayer(
+                self.num_fc_layers,
+                hidden_size=self.fc_hidden_size,
+                output_size=self.num_classes * 2 + 1,
+                activation=self.fc_activation,
+                name="mlp",
+            )(embeddings)
+            return CrfLossLayer(
+                self.num_classes * 2 + 1,
+                max_sequence_length=self.max_sequence_length,
+                learning_rate_multiplier=self.crf_learning_rate_multiplier,
+            )([emissions, tag_ids], mask)
+        else:
+            embeddings, mask = inputs
+            return GlobalPointerLayer(self.num_classes, 64, self.max_sequence_length)(
+                embeddings, mask
+            )
 
     def predict(
         self,
@@ -97,14 +126,25 @@ class DeepTagger(SupervisedNLPModel):
         thresholds: float = 0.5,
         batch_size: int = 128,
     ) -> list[list[Tag]]:
-        tag_ids_list = super().predict(X, dataset=dataset, batch_size=batch_size)
-        predictions = []
-        for tag_ids in tag_ids_list:
-            predictions.append(
-                convert_ids_to_tags(
-                    tag_ids.numpy().tolist(), self.idx2class, self.add_start_end_tag
+        raw_predictions = super().predict(X, dataset=dataset, batch_size=batch_size)
+        predictions: list[list[Tag]] = []
+        if self.output_format == "bio":
+            for tag_ids in raw_predictions:
+                predictions.append(
+                    convert_ids_to_tags(
+                        tag_ids.numpy().tolist(), self.idx2class, self.add_start_end_tag
+                    )
                 )
-            )
+        else:
+            for pointer in raw_predictions:
+                predictions.append(
+                    convert_global_pointer_to_tags(
+                        pointer.to_tensor(-1e20).numpy(),
+                        thresholds,
+                        self.idx2class,
+                        self.add_start_end_tag,
+                    )
+                )
         return predictions
 
     def score(
@@ -117,13 +157,18 @@ class DeepTagger(SupervisedNLPModel):
         batch_size: int = 128,
     ) -> pd.DataFrame:
         dataset = self.prepare_dataset(X, y, dataset)
-        predictions = self.predict(dataset=dataset, batch_size=batch_size)
+        predictions = self.predict(
+            dataset=dataset, batch_size=batch_size, thresholds=thresholds
+        )
+        classes = self.classes
+        if self.output_format == "bio":
+            classes = classes[1:]
         return tagging_fscore(
-            [[Tag(*l) for l in yi] for yi in dataset.y], predictions, self.classes[1:]
+            [[Tag(*l) for l in yi] for yi in dataset.y], predictions, classes
         )
 
     def export(self, directory: str, name: str, version: str = "0") -> None:
-        if self.use_crf:
+        if self.output_format == "bio":
             mask = self._model.get_layer("mask_layer").output
             emissions = self._model.get_layer("mlp").output
             crf = CrfDecodeLayer(
@@ -135,21 +180,26 @@ class DeepTagger(SupervisedNLPModel):
                 [tf.TensorShape([None, None, None]), tf.TensorShape([None, None])]
             )
             crf.set_weights(self._model.get_layer("crf").get_weights())
-            model = tf.keras.Model(
+            original_model = self._model
+            self._model = tf.keras.Model(
                 inputs=self._model.inputs[0], outputs=crf(emissions, mask)
             )
-            original_model = self._model
-            self._model = model
             super().export(directory, name, version=version)
             self._model = original_model
         else:
+            original_model = self._model
+            self._model = tf.keras.Model(
+                inputs=self._model.inputs,
+                outputs=self._model.outputs[0].to_tensor(tf.float32.min),
+            )
             super().export(directory, name, version=version)
+            self._model = original_model
 
     def get_config(self) -> dict[str, Any]:
         return {
             **super().get_config(),
             "add_start_end_tag": self.add_start_end_tag,
-            "use_crf": self.use_crf,
+            "output_format": self.output_format,
             "crf_learning_rate_multiplier": self._crf_learning_rate_multiplier,
         }
 

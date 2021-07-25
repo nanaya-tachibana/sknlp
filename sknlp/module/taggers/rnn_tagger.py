@@ -12,7 +12,7 @@ class TextRNNTagger(DeepTagger):
         self,
         classes: list[str],
         max_sequence_length: int = 100,
-        use_crf: bool = False,
+        output_format: str = "global_pointer",
         crf_learning_rate_multiplier: float = 1.0,
         num_rnn_layers: int = 1,
         rnn_hidden_size: int = 512,
@@ -41,7 +41,7 @@ class TextRNNTagger(DeepTagger):
         super().__init__(
             classes,
             add_start_end_tag=False,
-            use_crf=use_crf,
+            output_format=output_format,
             crf_learning_rate_multiplier=crf_learning_rate_multiplier,
             max_sequence_length=max_sequence_length,
             num_fc_layers=num_fc_layers,
@@ -69,13 +69,19 @@ class TextRNNTagger(DeepTagger):
         self.rnn_recurrent_constraint = rnn_recurrent_constraint
         self.rnn_projection_constraint = rnn_projection_constraint
         self.rnn_bias_constraint = rnn_bias_constraint
-        self.inputs = [
-            tf.keras.Input(shape=(None,), dtype=tf.int32, name="token_id"),
-            tf.keras.Input(shape=(None,), dtype=tf.int32, name="tag_id"),
-        ]
+        if self.output_format == "bio":
+            self.inputs = [
+                tf.keras.Input(shape=(None,), dtype=tf.int32, name="token_id"),
+                tf.keras.Input(shape=(None,), dtype=tf.int32, name="tag_id"),
+            ]
+        else:
+            self.inputs = tf.keras.Input(shape=(None,), dtype=tf.int32, name="token_id")
 
     def build_encode_layer(self, inputs):
-        token_ids, tag_ids = inputs
+        if self.output_format == "bio":
+            token_ids = inputs[0]
+        else:
+            token_ids = inputs
         mask = tf.keras.layers.Lambda(
             lambda x: tf.cast(x != 0, tf.int32), name="mask_layer"
         )(token_ids)
@@ -109,7 +115,10 @@ class TextRNNTagger(DeepTagger):
             outputs = tf.keras.layers.Dropout(
                 self.dropout, noise_shape=noise_shape, name="encoder_dropout"
             )(outputs)
-        return outputs, mask, tag_ids
+        if self.output_format == "bio":
+            return outputs, mask, inputs[1]
+        else:
+            return outputs, mask
 
     def get_config(self) -> dict[str, Any]:
         return {**super().get_config(), "dropout": self.dropout}

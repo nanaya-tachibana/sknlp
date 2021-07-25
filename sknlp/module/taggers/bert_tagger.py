@@ -17,7 +17,7 @@ class BertTagger(DeepTagger):
     def __init__(
         self,
         classes: Sequence[str],
-        use_crf: bool = False,
+        output_format: str = "global_pointer",
         crf_learning_rate_multiplier: float = 1.0,
         max_sequence_length: int = 120,
         num_fc_layers: int = 2,
@@ -30,7 +30,7 @@ class BertTagger(DeepTagger):
         super().__init__(
             classes,
             add_start_end_tag=True,
-            use_crf=use_crf,
+            output_format=output_format,
             crf_learning_rate_multiplier=crf_learning_rate_multiplier,
             algorithm="bert",
             num_fc_layers=num_fc_layers,
@@ -41,14 +41,21 @@ class BertTagger(DeepTagger):
             **kwargs
         )
         self.dropout = dropout
-        self.inputs = [
-            tf.keras.Input(shape=(), dtype=tf.string, name="text_input"),
-            tf.keras.Input(shape=(None,), dtype=tf.int32, name="tag_id"),
-        ]
+        if self.output_format == "bio":
+            self.inputs = [
+                tf.keras.Input(shape=(), dtype=tf.string, name="text_input"),
+                tf.keras.Input(shape=(None,), dtype=tf.int32, name="tag_id"),
+            ]
+        else:
+            self.inputs = tf.keras.Input(shape=(), dtype=tf.string, name="text_input")
 
     def build_encode_layer(self, inputs: tf.Tensor) -> tf.Tensor:
-        texts, tag_ids = inputs
+        if self.output_format == "bio":
+            texts = inputs[0]
+        else:
+            texts = inputs
         token_ids = BertCharPreprocessingLayer(self.text2vec.vocab.sorted_tokens)(texts)
+
         mask = tf.keras.layers.Lambda(
             lambda x: tf.cast(x != 0, tf.int32), name="mask_layer"
         )(token_ids)
@@ -64,7 +71,11 @@ class BertTagger(DeepTagger):
                 noise_shape=noise_shape,
                 name="encoder_dropout",
             )(embeddings)
-        return embeddings, mask, tag_ids
+
+        if self.output_format == "bio":
+            return embeddings, mask, inputs[1]
+        else:
+            return embeddings, mask
 
     def get_config(self) -> dict[str, Any]:
         return {**super().get_config(), "dropout": self.dropout}

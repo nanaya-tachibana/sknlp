@@ -54,7 +54,6 @@ class DeepDiscriminator(SupervisedNLPModel):
     def get_metrics(self, *args, **kwargs) -> List[tf.keras.metrics.Metric]:
         return [BinaryAccuracyWithLogits()]
 
-    @classmethod
     def get_monitor(cls) -> str:
         return "val_binary_accuracy"
 

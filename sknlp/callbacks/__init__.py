@@ -3,7 +3,6 @@ from typing import Optional, Callable
 
 import tensorflow as tf
 
-from .save import ModelSave
 from .weight_decay_scheduler import WeightDecayScheduler
 from .learning_rate_scheduler import LearningRateScheduler
 
@@ -36,12 +35,14 @@ def default_supervised_model_callbacks(
     learning_rate_update_epochs: int,
     learning_rate_warmup_steps: int,
     use_weight_decay: bool = False,
+    has_validation_dataset: bool = False,
     enable_early_stopping: bool = False,
     early_stopping_monitor: str = "val_loss",
     early_stopping_monitor_direction: str = "min",
     early_stopping_patience: Optional[int] = None,
     early_stopping_min_delta: float = 0.0,
     early_stopping_use_best_epoch: bool = False,
+    checkpoint: Optional[str] = None,
     log_file: str = None,
     verbose: int = 2,
 ) -> list[tf.keras.callbacks.Callback]:
@@ -59,7 +60,7 @@ def default_supervised_model_callbacks(
             WeightDecayScheduler(warmup_scheduler, decay_scheduler, verbose=verbose)
         )
 
-    if enable_early_stopping:
+    if enable_early_stopping and has_validation_dataset:
         callbacks.append(
             tf.keras.callbacks.EarlyStopping(
                 monitor=early_stopping_monitor,
@@ -67,6 +68,16 @@ def default_supervised_model_callbacks(
                 patience=early_stopping_patience or learning_rate_update_epochs,
                 mode=early_stopping_monitor_direction,
                 restore_best_weights=early_stopping_use_best_epoch,
+            )
+        )
+    if checkpoint is not None:
+        callbacks.append(
+            tf.keras.callbacks.ModelCheckpoint(
+                checkpoint,
+                monitor=early_stopping_monitor,
+                mode=early_stopping_monitor_direction,
+                save_best_only=has_validation_dataset,
+                verbose=verbose,
             )
         )
     if log_file is not None:
@@ -78,6 +89,5 @@ __all__ = [
     "WeightDecayScheduler",
     "LearningRateSchduler",
     "TaggingFScoreMetric",
-    "ModelSave",
     "default_supervised_model_callbacks",
 ]

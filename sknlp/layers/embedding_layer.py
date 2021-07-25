@@ -4,6 +4,7 @@ import tensorflow as tf
 import numpy as np
 
 
+@tf.keras.utils.register_keras_serializable(package="sknlp")
 class SinusoidalPositionEmbedding(tf.keras.layers.Layer):
     def __init__(
         self,
