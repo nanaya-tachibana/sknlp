@@ -30,9 +30,10 @@ class DeepTagger(SupervisedNLPModel):
         add_start_end_tag: bool = False,
         output_format: str = "global_pointer",
         crf_learning_rate_multiplier: float = 1.0,
+        global_pointer_head_size: int = 64,
         max_sequence_length: Optional[int] = None,
         num_fc_layers: int = 2,
-        fc_hidden_size: int = 128,
+        fc_hidden_size: int = 256,
         fc_activation: str = "tanh",
         text2vec: Optional[Text2vec] = None,
         **kwargs,
@@ -57,6 +58,7 @@ class DeepTagger(SupervisedNLPModel):
         self.num_fc_layers = num_fc_layers
         self.fc_hidden_size = fc_hidden_size
         self.fc_activation = fc_activation
+        self.global_pointer_head_size = global_pointer_head_size
 
     @property
     def add_start_end_tag(self) -> bool:
@@ -114,9 +116,11 @@ class DeepTagger(SupervisedNLPModel):
             )([emissions, tag_ids], mask)
         else:
             embeddings, mask = inputs
-            return GlobalPointerLayer(self.num_classes, 64, self.max_sequence_length)(
-                embeddings, mask
-            )
+            return GlobalPointerLayer(
+                self.num_classes,
+                self.global_pointer_head_size,
+                self.max_sequence_length,
+            )(embeddings, mask)
 
     def predict(
         self,

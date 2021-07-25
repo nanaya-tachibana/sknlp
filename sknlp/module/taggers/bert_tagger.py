@@ -2,7 +2,6 @@ from __future__ import annotations
 from typing import Any, Sequence, Optional
 
 import tensorflow as tf
-import tensorflow.keras.backend as K
 from tensorflow.keras.layers import Dropout
 
 from sknlp.layers import BertCharPreprocessingLayer
@@ -62,7 +61,7 @@ class BertTagger(DeepTagger):
         if self.dropout:
             self.text2vec.update_dropout(dropout=self.dropout)
         embeddings, _ = self.text2vec(
-            [token_ids, K.zeros_like(token_ids, dtype=tf.int64)]
+            [token_ids, tf.zeros_like(token_ids, dtype=tf.int64)]
         )
         if self.dropout:
             noise_shape = (None, 1, self.text2vec.embedding_size)
