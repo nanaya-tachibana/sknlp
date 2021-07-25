@@ -111,4 +111,7 @@ def tagging_fscore(
     df["fscore"] = 2 * df.precision * df.recall / (df.precision + df.recall)
     df.fillna(0, inplace=True)
     df.reset_index(inplace=True)
+    df["order"] = range(df.shape[0])
+    df.loc[df["class"] == "avg", "order"] = df.shape[0] + 1
+    df.sort_values("order").drop("order", axis=1)
     return df[["class", "precision", "recall", "fscore", "support"]]
