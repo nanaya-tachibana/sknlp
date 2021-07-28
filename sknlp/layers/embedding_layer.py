@@ -38,7 +38,7 @@ class SinusoidalPositionEmbedding(tf.keras.layers.Layer):
         self.trainable = False
         super().build(input_shape)
 
-    def call(self, inputs: tf.Tensor, *args, **kwargs) -> None:
+    def call(self, inputs: tf.Tensor, *args, **kwargs) -> tf.Tensor:
         return self.embedding(inputs)
 
     def compute_output_shape(self, input_shape: tf.TensorShape) -> tf.TensorShape:

@@ -1,9 +1,7 @@
 from __future__ import annotations
 from typing import Any
-import sys
 
 import tensorflow as tf
-from tensorflow.python.ops.array_ops import boolean_mask
 
 from .embedding_layer import SinusoidalPositionEmbedding
 
