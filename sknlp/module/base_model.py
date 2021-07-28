@@ -7,6 +7,7 @@ import itertools
 from collections import Counter
 
 import tensorflow as tf
+from tensorflow.python.keras.utils.generic_utils import DisableSharedObjectScope
 
 from sknlp.vocab import Vocab
 
@@ -130,10 +131,11 @@ class BaseNLPModel:
         with open(os.path.join(directory, "meta.json"), encoding="UTF-8") as f:
             meta = json.loads(f.read())
         module = cls.from_config(meta)
-        module._model = tf.keras.models.load_model(
-            os.path.join(directory, cls._get_model_filename(epoch=epoch))
-        )
-        module._built = True
+        with DisableSharedObjectScope():
+            module._model = tf.keras.models.load_model(
+                os.path.join(directory, cls._get_model_filename(epoch=epoch))
+            )
+            module._built = True
         return module
 
     def export(self, directory: str, name: str, version: str = "0") -> None:
