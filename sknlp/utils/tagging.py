@@ -71,7 +71,7 @@ def convert_global_pointer_to_tags(
         for start, end in zip(*np.where(expit(score_matrix) >= thresholds[i])):
             start -= add_start_end_tag
             end -= add_start_end_tag
-            tags.append(Tag(start, end, label))
+            tags.append(Tag(int(start), int(end), label))
     return tags
 
 
@@ -109,9 +109,12 @@ def tagging_fscore(
     df["precision"] = df.correct / df.prediction
     df["recall"] = df.correct / df.support
     df["fscore"] = 2 * df.precision * df.recall / (df.precision + df.recall)
+    df["TP"] = df.correct
+    df["FP"] = df.prediction - df.correct
+    df["FN"] = df.support - df.correct
     df.fillna(0, inplace=True)
     df.reset_index(inplace=True)
     df["order"] = range(df.shape[0])
     df.loc[df["class"] == "avg", "order"] = df.shape[0] + 1
     df = df.sort_values("order").drop("order", axis=1)
-    return df[["class", "precision", "recall", "fscore", "support"]]
+    return df[["class", "precision", "recall", "fscore", "support", "TP", "FP", "FN"]]
