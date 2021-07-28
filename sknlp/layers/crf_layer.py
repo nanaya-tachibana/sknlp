@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Any, Optional
+from typing import Any
 
 import tensorflow as tf
 from tensorflow_addons.text import crf_log_likelihood, crf_decode
@@ -14,7 +14,6 @@ class CrfLossLayer(tf.keras.layers.Layer):
         self,
         num_tags: int,
         learning_rate_multiplier: float = 1.0,
-        max_sequence_length: int = 120,
         initializer: WeightInitializer = "Orthogonal",
         name: str = "crf",
         **kwargs
@@ -22,7 +21,6 @@ class CrfLossLayer(tf.keras.layers.Layer):
         super().__init__(name=name, **kwargs)
         self.num_tags = num_tags
         self.learning_rate_multiplier = learning_rate_multiplier
-        self.max_sequence_length = max_sequence_length
         self.initializer = initializer
 
     def build(self, input_shape: tf.TensorShape) -> None:
@@ -67,7 +65,6 @@ class CrfLossLayer(tf.keras.layers.Layer):
             **super().get_config(),
             "num_tags": self.num_tags,
             "learning_rate_multiplier": self.learning_rate_multiplier,
-            "max_sequence_length": self.max_sequence_length,
             "initializer": self.initializer,
         }
 
@@ -78,7 +75,6 @@ class CrfDecodeLayer(tf.keras.layers.Layer):
         self,
         num_tags: int,
         learning_rate_multiplier: float = 1.0,
-        max_sequence_length: int = 120,
         initializer: WeightInitializer = "Orthogonal",
         name: str = "crf",
         **kwargs
@@ -86,7 +82,6 @@ class CrfDecodeLayer(tf.keras.layers.Layer):
         super().__init__(name=name, **kwargs)
         self.num_tags = num_tags
         self.learning_rate_multiplier = learning_rate_multiplier
-        self.max_sequence_length = max_sequence_length
         self.initializer = initializer
 
     def build(self, input_shape: tf.TensorShape) -> None:
@@ -113,6 +108,5 @@ class CrfDecodeLayer(tf.keras.layers.Layer):
             **super().get_config(),
             "num_tags": self.num_tags,
             "learning_rate_multiplier": self.learning_rate_multiplier,
-            "max_sequence_length": self.max_sequence_length,
             "initializer": self.initializer,
         }
