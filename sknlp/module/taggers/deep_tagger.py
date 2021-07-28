@@ -111,7 +111,6 @@ class DeepTagger(SupervisedNLPModel):
             )(embeddings)
             return CrfLossLayer(
                 self.num_classes * 2 + 1,
-                max_sequence_length=self.max_sequence_length,
                 learning_rate_multiplier=self.crf_learning_rate_multiplier,
             )([emissions, tag_ids], mask)
         else:
@@ -119,7 +118,7 @@ class DeepTagger(SupervisedNLPModel):
             return GlobalPointerLayer(
                 self.num_classes,
                 self.global_pointer_head_size,
-                self.max_sequence_length,
+                self.max_sequence_length + 2 * self.add_start_end_tag,
             )(embeddings, mask)
 
     def predict(
@@ -143,7 +142,7 @@ class DeepTagger(SupervisedNLPModel):
             for pointer in raw_predictions:
                 predictions.append(
                     convert_global_pointer_to_tags(
-                        pointer.to_tensor(-1e20).numpy(),
+                        pointer.to_tensor(tf.float32.min).numpy(),
                         thresholds,
                         self.idx2class,
                         self.add_start_end_tag,
@@ -178,7 +177,6 @@ class DeepTagger(SupervisedNLPModel):
             crf = CrfDecodeLayer(
                 self.num_classes * 2 + 1,
                 learning_rate_multiplier=self.crf_learning_rate_multiplier,
-                max_sequence_length=self.max_sequence_length,
             )
             crf.build(
                 [tf.TensorShape([None, None, None]), tf.TensorShape([None, None])]
