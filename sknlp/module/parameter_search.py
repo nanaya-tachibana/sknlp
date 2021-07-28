@@ -3,7 +3,7 @@ import os
 import contextlib
 
 import tensorflow as tf
-import kerastuner as kt
+import keras_tuner as kt
 
 from sknlp.callbacks import default_supervised_model_callbacks
 from sknlp.data import NLPDataset
