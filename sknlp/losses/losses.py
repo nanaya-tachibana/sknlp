@@ -21,8 +21,6 @@ class MultiLabelCategoricalCrossentropy(tf.keras.losses.Loss):
     def call(self, y_true: tf.Tensor, y_pred: tf.Tensor) -> tf.Tensor:
         if isinstance(y_pred, tf.RaggedTensor):
             y_pred = y_pred.to_tensor(y_pred.dtype.min)
-        else:
-            y_pred = tf.convert_to_tensor(y_pred)
         y_true = tf.cast(y_true, y_pred.dtype)
 
         sample_size = tf.reduce_prod(tf.shape(y_true)[: self.flatten_axis])
