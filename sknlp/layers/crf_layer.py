@@ -3,7 +3,6 @@ from typing import Any
 
 import tensorflow as tf
 from tensorflow_addons.text import crf_log_likelihood, crf_decode
-import tensorflow.keras.backend as K
 
 from sknlp.typing import WeightInitializer
 
@@ -13,14 +12,12 @@ class CrfLossLayer(tf.keras.layers.Layer):
     def __init__(
         self,
         num_tags: int,
-        learning_rate_multiplier: float = 1.0,
         initializer: WeightInitializer = "Orthogonal",
         name: str = "crf",
         **kwargs
     ) -> None:
         super().__init__(name=name, **kwargs)
         self.num_tags = num_tags
-        self.learning_rate_multiplier = learning_rate_multiplier
         self.initializer = initializer
 
     def build(self, input_shape: tf.TensorShape) -> None:
@@ -31,10 +28,6 @@ class CrfLossLayer(tf.keras.layers.Layer):
             initializer=tf.keras.initializers.get(self.initializer),
             name="transision_weight",
         )
-        K.set_value(
-            self.transition_weight,
-            K.get_value(self.transition_weight) / self.learning_rate_multiplier,
-        )
 
     def call(self, inputs: list[tf.Tensor], mask: tf.Tensor) -> tf.RaggedTensor:
         emissions, tag_ids = inputs
@@ -44,14 +37,14 @@ class CrfLossLayer(tf.keras.layers.Layer):
             emissions,
             tag_ids,
             sequence_lengths,
-            self.transition_weight * self.learning_rate_multiplier,
+            self.transition_weight,
         )
         loss = tf.math.negative(tf.math.reduce_mean(likelihoods))
         self.add_loss(loss)
 
         decoded_tag_ids, _ = crf_decode(
             emissions,
-            self.transition_weight * self.learning_rate_multiplier,
+            self.transition_weight,
             sequence_lengths,
         )
         is_equal = tf.cast(tf.equal(tag_ids, decoded_tag_ids), tf.int32)
@@ -64,7 +57,6 @@ class CrfLossLayer(tf.keras.layers.Layer):
         return {
             **super().get_config(),
             "num_tags": self.num_tags,
-            "learning_rate_multiplier": self.learning_rate_multiplier,
             "initializer": self.initializer,
         }
 
@@ -74,14 +66,12 @@ class CrfDecodeLayer(tf.keras.layers.Layer):
     def __init__(
         self,
         num_tags: int,
-        learning_rate_multiplier: float = 1.0,
         initializer: WeightInitializer = "Orthogonal",
         name: str = "crf",
         **kwargs
     ) -> None:
         super().__init__(name=name, **kwargs)
         self.num_tags = num_tags
-        self.learning_rate_multiplier = learning_rate_multiplier
         self.initializer = initializer
 
     def build(self, input_shape: tf.TensorShape) -> None:
@@ -98,7 +88,7 @@ class CrfDecodeLayer(tf.keras.layers.Layer):
         sequence_lengths = tf.math.reduce_sum(mask, axis=1)
         decoded_tag_ids, _ = crf_decode(
             emissions,
-            self.transition_weight * self.learning_rate_multiplier,
+            self.transition_weight,
             sequence_lengths,
         )
         return decoded_tag_ids * mask
@@ -107,6 +97,5 @@ class CrfDecodeLayer(tf.keras.layers.Layer):
         return {
             **super().get_config(),
             "num_tags": self.num_tags,
-            "learning_rate_multiplier": self.learning_rate_multiplier,
             "initializer": self.initializer,
         }
