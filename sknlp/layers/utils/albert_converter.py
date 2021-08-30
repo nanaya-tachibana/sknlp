@@ -1,18 +1,5 @@
-import logging
 from functools import partial
-
-import tensorflow as tf
-from official.modeling import activations
-from official.nlp.modeling import networks
-
 from .bert_converter import convert_checkpoint, BERT_PERMUTATIONS
-
-
-logger = logging.getLogger(__name__)
-handler = logging.StreamHandler()
-handler.setLevel(logging.INFO)
-logger.addHandler(handler)
-logger.setLevel(logging.INFO)
 
 
 ALBERT_NAME_REPLACEMENTS = (

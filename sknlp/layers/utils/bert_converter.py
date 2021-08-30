@@ -1,4 +1,5 @@
-from typing import List, Optional, Sequence
+from __future__ import annotations
+from typing import Optional, Sequence
 import logging
 from functools import partial
 
@@ -7,7 +8,7 @@ import tensorflow as tf
 import tensorflow.compat.v1 as tfv1
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("sknlp")
 handler = logging.StreamHandler()
 handler.setLevel(logging.INFO)
 logger.addHandler(handler)
