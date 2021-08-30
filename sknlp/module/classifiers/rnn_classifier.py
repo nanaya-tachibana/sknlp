@@ -9,7 +9,7 @@ from sknlp.module.text2vec import Text2vec
 from .deep_classifier import DeepClassifier
 
 
-class TextRNNClassifier(DeepClassifier):
+class RNNClassifier(DeepClassifier):
     def __init__(
         self,
         classes: list[str],

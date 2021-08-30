@@ -1,16 +1,13 @@
 from __future__ import annotations
-from typing import Optional
 
 import tensorflow as tf
 from tensorflow.keras.layers import Dense, Dropout
 
-from sknlp.typing import WeightInitializer
 from sknlp.layers import BiLSTM
-from sknlp.module.text2vec import Text2vec
 from .rnn_classifier import TextRNNClassifier
 
 
-class TextRCNNClassifier(TextRNNClassifier):
+class RCNNClassifier(TextRNNClassifier):
     def build_encoding_layer(self, inputs: tf.Tensor) -> list[tf.Tensor]:
         embeddings = self.text2vec(inputs)
         mask = self.text2vec.compute_mask(inputs)
