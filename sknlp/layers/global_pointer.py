@@ -65,18 +65,15 @@ class GlobalPointerLayer(tf.keras.layers.Layer):
 
         logits = tf.einsum("bmhs,bnhs->bhmn", qw, kw)
         mask = tf.cast(mask, logits.dtype)
-        mask = tf.expand_dims(tf.expand_dims(mask, 1), 3) * tf.expand_dims(
-            tf.expand_dims(mask, 1), 1
-        )
-        logits = logits * mask + logits.dtype.min * (1 - mask)
+        mask = mask[:, None, None, :] * mask[:, None, :, None]
         boolean_mask = tf.repeat(tf.cast(mask, tf.bool), self.heads, axis=1)
         # 排除下三角
-        mask = tf.linalg.band_part(tf.ones_like(logits), 0, -1)
+        mask *= tf.linalg.band_part(tf.ones_like(logits), 0, -1)
         logits = logits * mask + logits.dtype.min * (1 - mask)
         return tf.ragged.boolean_mask(logits / self.head_size ** 0.5, boolean_mask)
 
     def compute_output_shape(self, input_shape: tf.TensorShape) -> tf.TensorShape:
-        return tf.TensorShape([input_shape[0], self.heads, input_shape[1] ** 2])
+        return tf.TensorShape([input_shape[0], self.heads, None, None])
 
     def get_config(self) -> dict[str, Any]:
         return {
