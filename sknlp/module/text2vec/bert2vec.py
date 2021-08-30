@@ -12,7 +12,7 @@ from official.nlp.bert.configs import BertConfig
 
 from sknlp.vocab import Vocab
 from sknlp.activations import gelu
-from sknlp.layers import BertEncodeLayer
+from sknlp.layers import BertLayer
 from sknlp.layers.utils import (
     convert_bert_checkpoint,
     convert_electra_checkpoint,
@@ -77,7 +77,7 @@ class Bert2vec(Text2vec):
         dropout_rate: float = 0.1,
         attention_dropout_rate: float = 0.1,
         initializer: tf.keras.initializers.Initializer = TruncatedNormal(stddev=0.02),
-        return_all_encoder_outputs: bool = False,
+        return_all_layer_outputs: bool = False,
         share_layer: bool = False,
         cls_pooling: bool = True,
         name: str = "bert2vec",
@@ -94,8 +94,8 @@ class Bert2vec(Text2vec):
             name=name,
             **kwargs,
         )
-        self.return_all_encoder_outputs = return_all_encoder_outputs
-        self.bert_layer = BertEncodeLayer(
+        self.return_all_layer_outputs = return_all_layer_outputs
+        self.bert_layer = BertLayer(
             len(self.vocab.sorted_tokens),
             embedding_size=embedding_size,
             hidden_size=hidden_size,
@@ -119,19 +119,26 @@ class Bert2vec(Text2vec):
         type_ids = tf.keras.Input(
             shape=(sequence_length,), dtype=tf.int64, name="input_type_ids"
         )
-        self.inputs = [token_ids, type_ids]
+        attention_mask = tf.keras.Input(
+            shape=(sequence_length, sequence_length),
+            dtype=tf.float32,
+            name="attention_mask",
+        )
+        self.inputs = [token_ids, type_ids, attention_mask]
         self._model = tf.keras.Model(
             inputs=self.inputs, outputs=self.bert_layer(self.inputs), name=name
         )
 
     def __call__(self, inputs: list[tf.Tensor]) -> list[tf.Tensor]:
         outputs = super().__call__(inputs)
-        if not self.return_all_encoder_outputs:
-            return [outputs[0][-1], outputs[1]]
+        if not self.return_all_layer_outputs:
+            return [outputs[0], outputs[1][-1]]
         return outputs
 
-    def compute_mask(self, inputs: tf.Tensor, mask: Optional[tf.Tensor]) -> tf.Tensor:
-        return self._model.get_layer(self._name).compute_mask(inputs, mask=mask)[0]
+    def compute_mask(
+        self, inputs: list[tf.Tensor], mask: Optional[tf.Tensor] = None
+    ) -> tf.Tensor:
+        return self._model.get_layer(self.name).compute_mask(inputs, mask=mask)
 
     def update_dropout(self, dropout: float) -> None:
         bert_layer = self._model.get_layer(self.name)
@@ -228,5 +235,5 @@ class Bert2vec(Text2vec):
     def get_config(self) -> dict[str, Any]:
         return {
             **super().get_config(),
-            "return_all_encoder_outputs": self.return_all_encoder_outputs,
+            "return_all_layer_outputs": self.return_all_layer_outputs,
         }

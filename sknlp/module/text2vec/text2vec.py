@@ -70,7 +70,9 @@ class Text2vec(BaseNLPModel):
         return self._model(inputs)
 
     def compute_mask(
-        self, inputs: tf.Tensor, mask: Optional[tf.Tensor] = None
+        self,
+        inputs: Union[tf.Tensor, list[tf.Tensor]],
+        mask: Optional[tf.Tensor] = None,
     ) -> tf.Tensor:
         raise NotImplementedError()
 

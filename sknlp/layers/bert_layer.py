@@ -33,16 +33,22 @@ class BertCharPreprocessingLayer(tf.keras.layers.Layer):
             idx = vocab.index("[UNK]")
             vocab[idx] = "unk"
         self.vocab = vocab
-        self.tokenizer = TextVectorization(
-            max_tokens=len(vocab),
-            standardize=None,
-            split=BertTokenizationLayer(cls_token=cls_token, sep_token=sep_token),
-        )
-        self.tokenizer.set_vocabulary(vocab[2:])
         super().__init__(**kwargs)
 
-    def call(self, inputs: tf.Tensor) -> tf.Tensor:
-        return self.tokenizer(inputs)
+    def build(self, input_shape: tf.TensorShape) -> None:
+        self.tokenizer = TextVectorization(
+            max_tokens=len(self.vocab),
+            standardize=None,
+            split=BertTokenizationLayer(
+                cls_token=self.cls_token, sep_token=self.sep_token
+            ),
+        )
+        self.tokenizer.set_vocabulary(self.vocab[2:])
+        super().build(input_shape)
+
+    def call(self, inputs: tf.Tensor) -> list[tf.Tensor]:
+        token_ids = self.tokenizer(inputs)
+        return token_ids, tf.zeros_like(token_ids, dtype=token_ids.dtype)
 
     def get_config(self) -> dict[str, Any]:
         return {
@@ -91,7 +97,7 @@ class BertPreprocessingLayer(tf.keras.layers.Layer):
         )
         super().build(input_shape)
 
-    def call(self, inputs: tf.Tensor) -> tf.Tensor:
+    def call(self, inputs: tf.Tensor) -> list[tf.Tensor]:
         token_ids = self.tokenizer.tokenize(inputs)
         flatten_ids = token_ids.merge_dims(-2, -1)
         cls_ids = tf.reshape(
@@ -103,7 +109,8 @@ class BertPreprocessingLayer(tf.keras.layers.Layer):
             [token_ids.nrows(), 1],
         )
         ids = tf.concat([cls_ids, flatten_ids, sep_ids], axis=1)
-        return ids.to_tensor(0)
+        ids_tensor = ids.to_tensor(0)
+        return ids_tensor, tf.zeros_like(ids_tensor, dtype=ids_tensor.dtype)
 
     def get_config(self) -> dict[str, Any]:
         return {
@@ -150,7 +157,7 @@ class BertPairPreprocessingLayer(BertPreprocessingLayer):
 
 
 @tf.keras.utils.register_keras_serializable(package="sknlp")
-class BertEncodeLayer(tf.keras.layers.Layer):
+class BertLayer(tf.keras.layers.Layer):
     """
     copy from https://github.com/tensorflow/models/blob/v2.2.0/official/nlp/modeling/networks/transformer_encoder.py.
     """
@@ -172,7 +179,7 @@ class BertEncodeLayer(tf.keras.layers.Layer):
         initializer: tf.keras.initializers.Initializer = TruncatedNormal(stddev=0.02),
         share_layer: bool = False,
         cls_pooling: bool = True,
-        name: str = "bert_encode_layer",
+        name: str = "bert_layer",
         **kwargs
     ) -> None:
         if embedding_size is None:
@@ -204,7 +211,6 @@ class BertEncodeLayer(tf.keras.layers.Layer):
             initializer=self.initializer,
             name="word_embeddings",
         )
-        # Always uses dynamic slicing for simplicity.
         self.position_embedding_layer = layers.PositionEmbedding(
             self.max_sequence_length,
             initializer=self.initializer,
@@ -267,8 +273,7 @@ class BertEncodeLayer(tf.keras.layers.Layer):
         super().build(input_shape)
 
     def call(self, inputs: list[tf.Tensor]) -> list[tf.Tensor]:
-        token_ids, type_ids = inputs
-        mask = self.compute_mask(inputs, mask=None)[0]
+        token_ids, type_ids, attention_mask = inputs
         word_embeddings = self.embedding_layer(token_ids)
         position_embeddings = self.position_embedding_layer(word_embeddings)
         type_embeddings = self.type_embedding_layer(type_ids)
@@ -280,7 +285,6 @@ class BertEncodeLayer(tf.keras.layers.Layer):
         if self.embedding_projection is not None:
             embeddings = self.embedding_projection(embeddings)
         data = embeddings
-        attention_mask = layers.SelfAttentionMask()(data, mask)
         encoder_outputs = []
         if self.share_layer:
             for _ in range(self.num_layers):
@@ -297,14 +301,14 @@ class BertEncodeLayer(tf.keras.layers.Layer):
         cls_output = first_token_tensor
         if self.cls_pooling:
             cls_output = self.cls_output_layer(cls_output)
-        return [encoder_outputs, cls_output]
+        return [cls_output, encoder_outputs]
 
     def compute_mask(
         self, inputs: list[tf.Tensor], mask: Optional[tf.Tensor] = None
     ) -> tf.Tensor:
         if mask is not None:
-            return [mask for _ in range(self.num_layers)]
-        return [tf.math.not_equal(inputs[0], 0) for _ in range(self.num_layers)]
+            return mask
+        return tf.math.not_equal(inputs[0], 0)
 
     def get_config(self):
         return {
@@ -325,3 +329,12 @@ class BertEncodeLayer(tf.keras.layers.Layer):
             "share_layer": self.share_layer,
             "cls_pooling": self.cls_pooling,
         }
+
+
+@tf.keras.utils.register_keras_serializable(package="sknlp")
+class BertEncodeLayer(BertLayer):
+    """
+    兼容旧版本
+    """
+
+    pass
