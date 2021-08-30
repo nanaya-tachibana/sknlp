@@ -29,10 +29,15 @@ class MLPLayer(Layer):
             if i == self.num_layers - 1:
                 self.dense_layers.append(Dense(self.output_size, name="dense-%d" % i))
             else:
+                activation = tf.keras.activations.get(self.activation)
+                kernel_initializer = "glorot_uniform"
+                if activation is tf.keras.activations.relu:
+                    kernel_initializer = "he_uniform"
                 self.dense_layers.append(
                     Dense(
                         self.hidden_size,
-                        activation=tf.keras.activations.get(self.activation),
+                        activation=activation,
+                        kernel_initializer=kernel_initializer,
                         name="dense-%d" % i,
                     )
                 )
