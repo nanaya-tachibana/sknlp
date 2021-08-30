@@ -13,7 +13,7 @@ class SinusoidalPositionEmbedding(tf.keras.layers.Layer):
         name: str = "sinusoidal_position_embedding",
         **kwargs
     ) -> None:
-        super().__init__(name=name, **kwargs)
+        super().__init__(name=name, trainable=False, **kwargs)
         self.output_size = output_size
         self.max_sequence_length = max_sequence_length
 
@@ -35,7 +35,6 @@ class SinusoidalPositionEmbedding(tf.keras.layers.Layer):
         weights[:, ::2] = np.sin(weights[:, ::2])
         weights[:, 1::2] = np.cos(weights[:, 1::2])
         self.embedding.set_weights([weights])
-        self.trainable = False
         super().build(input_shape)
 
     def call(self, inputs: tf.Tensor, *args, **kwargs) -> tf.Tensor:
