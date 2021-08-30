@@ -1,3 +1,4 @@
+from __future__ import annotations
 from typing import Optional
 
 import tensorflow as tf
@@ -5,7 +6,7 @@ from tensorflow.keras import backend as K
 from tensorflow.keras import constraints
 from tensorflow.keras import initializers
 from tensorflow.keras import regularizers
-from tensorflow.keras.layers import InputSpec
+from tensorflow.keras.layers import InputSpec, Bidirectional, Dropout
 from tensorflow.python.keras.layers.recurrent import LSTM, LSTMCell
 from tensorflow.python.training.tracking import data_structures
 
@@ -99,7 +100,7 @@ class LSTMPCell(LSTMCell):
         recurrent_dropout: float = 0.0,
         recurrent_clip: Optional[float] = None,
         projection_clip: Optional[float] = None,
-        implementation: int = 2,
+        implementation: int = 1,
         **kwargs
     ) -> None:
         super().__init__(
@@ -299,7 +300,7 @@ class LSTMP(LSTM):
 
     def __init__(
         self,
-        units,
+        units: int,
         projection_size: int = 100,
         activation: str = "tanh",
         recurrent_activation: str = "sigmoid",
@@ -321,7 +322,7 @@ class LSTMP(LSTM):
         recurrent_dropout: float = 0.0,
         recurrent_clip: Optional[float] = None,
         projection_clip: Optional[float] = None,
-        implementation: int = 2,
+        implementation: int = 1,
         activity_regularizer: Optional[WeightRegularizer] = None,
         return_sequences: bool = False,
         return_state: bool = False,
@@ -410,3 +411,92 @@ class LSTMP(LSTM):
         if "implementation" in config and config["implementation"] == 0:
             config["implementation"] = 2
         return cls(**config)
+
+
+@tf.keras.utils.register_keras_serializable(package="sknlp")
+class BiLSTM(tf.keras.layers.Layer):
+    def __init__(
+        self,
+        num_layers: int,
+        hidden_size: int,
+        projection_size: int = 100,
+        kernel_initializer: WeightInitializer = "glorot_uniform",
+        recurrent_initializer: WeightInitializer = "orthogonal",
+        projection_initializer: WeightInitializer = "glorot_uniform",
+        dropout: float = 0.0,
+        recurrent_clip: Optional[float] = None,
+        projection_clip: Optional[float] = None,
+        return_sequences: bool = False,
+        name: str = "bilstm",
+        **kwargs
+    ) -> None:
+        super().__init__(name=name, **kwargs)
+        self.num_layers = num_layers
+        self.hidden_size = hidden_size
+        self.projection_size = projection_size
+        self.recurrent_clip = recurrent_clip
+        self.projection_clip = projection_clip
+        self.dropout = dropout
+        self.kernel_initializer = kernel_initializer
+        self.recurrent_initializer = recurrent_initializer
+        self.projection_initializer = projection_initializer
+        self.return_sequences = return_sequences
+
+    def build(self, input_shape: tf.TensorShape) -> None:
+        self.rnn_layers: list[Bidirectional] = []
+        for i in range(self.num_layers):
+            return_sequences = self.return_sequences or i != self.num_layers - 1
+            self.rnn_layers.append(
+                Bidirectional(
+                    LSTMP(
+                        self.hidden_size,
+                        projection_size=self.projection_size,
+                        recurrent_clip=self.recurrent_clip,
+                        projection_clip=self.projection_clip,
+                        dropout=self.dropout,
+                        recurrent_dropout=self.dropout,
+                        kernel_initializer=self.kernel_initializer,
+                        recurrent_initializer=self.recurrent_initializer,
+                        projection_initializer=self.projection_initializer,
+                        return_sequences=return_sequences,
+                    )
+                )
+            )
+
+        if self.dropout:
+            noise_shape = None
+            if self.return_sequences:
+                noise_shape = (None, 1, self.projection_size * 2)
+            self.dropout_layer = Dropout(
+                self.dropout, noise_shape=noise_shape, name="encoding_dropout"
+            )
+        super().build(input_shape)
+
+    def compute_output_shape(self, input_shape: tf.TensorShape) -> tf.TensorShape:
+        if self.return_sequences:
+            return [*input_shape[:-1], self.projection_size * 2]
+        else:
+            return [input_shape[0], self.projection_size * 2]
+
+    def call(self, inputs: tf.Tensor, mask: tf.Tensor, **kwargs) -> tf.Tensor:
+        outputs = inputs
+        for layer in self.rnn_layers:
+            outputs = layer(outputs, mask=mask)
+        if self.dropout:
+            outputs = self.dropout_layer(outputs)
+        return outputs
+
+    def get_config(self):
+        return {
+            **super().get_config(),
+            "num_layers": self.num_layers,
+            "hidden_size": self.hidden_size,
+            "projection_size": self.projection_size,
+            "recurrent_clip": self.recurrent_clip,
+            "projection_clip": self.projection_clip,
+            "dropout": self.dropout,
+            "kernel_initializer": self.kernel_initializer,
+            "recurrent_initializer": self.recurrent_initializer,
+            "projection_initializer": self.projection_initializer,
+            "return_sequences": self.return_sequences,
+        }
