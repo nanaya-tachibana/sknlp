@@ -2,10 +2,8 @@ from __future__ import annotations
 from typing import Sequence, Union, Optional, Any
 
 import os
-import logging
 
 import tensorflow as tf
-import tensorflow_addons as tfa
 import numpy as np
 import pandas as pd
 from tabulate import tabulate
@@ -13,13 +11,9 @@ from tabulate import tabulate
 from sknlp.data import NLPDataset
 from sknlp.vocab import Vocab
 from sknlp.callbacks import default_supervised_model_callbacks
+from sknlp.optimizers import AdamOptimizer
 from .text2vec import Text2vec
 from .base_model import BaseNLPModel
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-stream = logging.StreamHandler()
-logger.addHandler(stream)
 
 
 class SupervisedNLPModel(BaseNLPModel):
@@ -29,13 +23,12 @@ class SupervisedNLPModel(BaseNLPModel):
     def __init__(
         self,
         classes: list[str],
-        max_sequence_length: Optional[int] = None,
         text2vec: Optional[Text2vec] = None,
         task: Optional[str] = None,
         algorithm: Optional[str] = None,
         **kwargs
     ) -> None:
-        super().__init__(max_sequence_length=max_sequence_length, **kwargs)
+        super().__init__(**kwargs)
         if text2vec is not None:
             self.text2vec = text2vec
 
@@ -99,9 +92,6 @@ class SupervisedNLPModel(BaseNLPModel):
         else:
             return self.inputs
 
-    def get_outputs(self) -> tf.Tensor:
-        return self.build_output_layer(self.build_encode_layer(self.get_inputs()))
-
     def build(self) -> None:
         if self._built:
             return
@@ -142,13 +132,18 @@ class SupervisedNLPModel(BaseNLPModel):
     def compile_optimizer(self, optimizer_name, **kwargs) -> None:
         if not self._built:
             self.build()
+
         weight_decay = kwargs.pop("weight_decay", 0)
         if optimizer_name != "adam":
             optimizer = tf.keras.optimizers.deserialize(
                 {"class_name": optimizer_name, "config": kwargs}
             )
         else:
-            optimizer = tfa.optimizers.AdamW(weight_decay, **kwargs)
+            optimizer = AdamOptimizer(
+                weight_decay,
+                learning_rate_multiplier=self.learning_rate_multiplier,
+                **kwargs
+            )
         self._model.compile(
             optimizer=optimizer,
             loss=self.get_loss(),

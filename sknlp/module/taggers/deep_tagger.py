@@ -101,25 +101,27 @@ class DeepTagger(SupervisedNLPModel):
 
     def build_output_layer(self, inputs: list[tf.Tensor]) -> list[tf.Tensor]:
         if self.output_format == "bio":
-            embeddings, mask, tag_ids = inputs
+            encodings, mask, tag_ids = inputs
             emissions = MLPLayer(
                 self.num_fc_layers,
                 hidden_size=self.fc_hidden_size,
                 output_size=self.num_classes * 2 + 1,
                 activation=self.fc_activation,
                 name="mlp",
-            )(embeddings)
-            return CrfLossLayer(
-                self.num_classes * 2 + 1,
-                learning_rate_multiplier=self.crf_learning_rate_multiplier,
-            )([emissions, tag_ids], mask)
+            )(encodings)
+            crf_layer = CrfLossLayer(self.num_classes * 2 + 1)
+            if self.crf_learning_rate_multiplier != 1:
+                self._layerwise_learning_rate_multiplier.append(
+                    (crf_layer, self.crf_learning_rate_multiplier)
+                )
+            return crf_layer([emissions, tag_ids], mask)
         else:
-            embeddings, mask = inputs
+            encodings, mask = inputs
             return GlobalPointerLayer(
                 self.num_classes,
                 self.global_pointer_head_size,
                 self.max_sequence_length + 2 * self.add_start_end_tag,
-            )(embeddings, mask)
+            )(encodings, mask)
 
     def predict(
         self,
@@ -174,10 +176,7 @@ class DeepTagger(SupervisedNLPModel):
         if self.output_format == "bio":
             mask = self._model.get_layer("mask_layer").output
             emissions = self._model.get_layer("mlp").output
-            crf = CrfDecodeLayer(
-                self.num_classes * 2 + 1,
-                learning_rate_multiplier=self.crf_learning_rate_multiplier,
-            )
+            crf = CrfDecodeLayer(self.num_classes * 2 + 1)
             crf.build(
                 [tf.TensorShape([None, None, None]), tf.TensorShape([None, None])]
             )

@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Sequence, Optional, Any, Callable
+from typing import Sequence, Optional, Any, Callable, Union
 
 import json
 import os
@@ -18,18 +18,24 @@ class BaseNLPModel:
         max_sequence_length: Optional[int] = None,
         sequence_length: Optional[int] = None,
         segmenter: Optional[str] = None,
-        name: Optional[str] = None,
+        learning_rate_multiplier: Optional[dict[str, float]] = None,
         prediction_kwargs: Optional[dict[str, Any]] = None,
         custom_kwargs: Optional[dict[str, Any]] = None,
+        name: Optional[str] = None,
         **kwargs
     ) -> None:
         self._max_sequence_length = max_sequence_length
         self._sequence_length = sequence_length
         self._segmenter = segmenter
-        self._name = name
+        self._learning_rate_multiplier = learning_rate_multiplier or dict()
+        self._layerwise_learning_rate_multiplier: list[
+            tuple[tf.keras.layers.Layer, float]
+        ] = []
         self._prediction_kwargs = prediction_kwargs or dict()
         self._custom_kwargs = custom_kwargs or dict()
         self._kwargs = kwargs
+
+        self._name = name
         self._model: tf.keras.Model = None
         self._built = False
 
@@ -50,6 +56,13 @@ class BaseNLPModel:
         return self._segmenter
 
     @property
+    def learning_rate_multiplier(self):
+        for layer, multiplier in self._layerwise_learning_rate_multiplier:
+            for variable in layer.variables:
+                self._learning_rate_multiplier[variable.name] = multiplier
+        return self._learning_rate_multiplier
+
+    @property
     def prediction_kwargs(self) -> dict[str, Any]:
         return self._prediction_kwargs
 
@@ -68,12 +81,6 @@ class BaseNLPModel:
         )
         return Vocab(counter, min_frequency=min_frequency)
 
-    def build_encode_layer(self, inputs: tf.Tensor) -> tf.Tensor:
-        raise NotImplementedError()
-
-    def build_output_layer(self, inputs: tf.Tensor) -> tf.Tensor:
-        raise NotImplementedError()
-
     def build(self) -> None:
         if self._built:
             return
@@ -82,13 +89,37 @@ class BaseNLPModel:
         )
         self._built = True
 
+    def build_preprocessing_layer(
+        self, inputs: Union[tf.Tensor, list[tf.Tensor]]
+    ) -> Union[tf.Tensor, list[tf.Tensor]]:
+        return inputs
+
+    def build_encoding_layer(
+        self, inputs: Union[tf.Tensor, list[tf.Tensor]]
+    ) -> Union[tf.Tensor, list[tf.Tensor]]:
+        raise NotImplementedError()
+
+    def build_intermediate_layer(
+        self, inputs: Union[tf.Tensor, list[tf.Tensor]]
+    ) -> Union[tf.Tensor, list[tf.Tensor]]:
+        return inputs
+
+    def build_output_layer(self, inputs: tf.Tensor) -> tf.Tensor:
+        raise NotImplementedError()
+
     def get_inputs(self) -> tf.Tensor:
         raise NotImplementedError()
 
     def get_outputs(self) -> tf.Tensor:
-        raise NotImplementedError()
+        return self.build_output_layer(
+            self.build_intermediate_layer(
+                self.build_encoding_layer(
+                    self.build_preprocessing_layer(self.get_inputs())
+                )
+            )
+        )
 
-    def get_loss(self, *args, **kwargs) -> tf.keras.losses.Loss:
+    def get_loss(self, *args, **kwargs) -> Optional[tf.keras.losses.Loss]:
         raise NotImplementedError()
 
     def get_metrics(self, *args, **kwargs) -> list[tf.keras.metrics.Metric]:
