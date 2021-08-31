@@ -92,6 +92,17 @@ class RNNTagger(DeepTagger):
             outputs.append(tag_ids)
         return outputs
 
+    def build_intermediate_layer(self, inputs: list[tf.Tensor]) -> list[tf.Tensor]:
+        encodings = inputs[0]
+        if self.dropout:
+            noise_shape = (None, 1, self.rnn_projection_size * 2)
+            encodings = tf.keras.layers.Dropout(
+                self.dropout,
+                noise_shape=noise_shape,
+                name="encoding_dropout",
+            )(encodings)
+        return [encodings, *inputs[1:]]
+
     def get_config(self) -> dict[str, Any]:
         return {**super().get_config(), "dropout": self.dropout}
 

@@ -4,7 +4,7 @@ from typing import Optional
 import tensorflow as tf
 
 from sknlp.typing import WeightInitializer
-from sknlp.layers import BiLSTM
+from sknlp.layers import BiLSTM, AttentionPooling1D
 from sknlp.module.text2vec import Text2vec
 from .deep_classifier import DeepClassifier
 
@@ -54,15 +54,21 @@ class RNNClassifier(DeepClassifier):
     def build_encoding_layer(self, inputs: tf.Tensor) -> tf.Tensor:
         embeddings = self.text2vec(inputs)
         mask = self.text2vec.compute_mask(inputs)
-        return BiLSTM(
-            self.num_rnn_layers,
-            self.rnn_hidden_size,
-            projection_size=self.rnn_projection_size,
-            recurrent_clip=self.rnn_recurrent_clip,
-            projection_clip=self.rnn_projection_clip,
-            dropout=self.dropout,
-            kernel_initializer=self.rnn_kernel_initializer,
-            recurrent_initializer=self.rnn_recurrent_initializer,
-            projection_initializer=self.rnn_projection_initializer,
-            return_sequences=False,
-        )(embeddings, mask)
+        return (
+            BiLSTM(
+                self.num_rnn_layers,
+                self.rnn_hidden_size,
+                projection_size=self.rnn_projection_size,
+                recurrent_clip=self.rnn_recurrent_clip,
+                projection_clip=self.rnn_projection_clip,
+                dropout=self.dropout,
+                kernel_initializer=self.rnn_kernel_initializer,
+                recurrent_initializer=self.rnn_recurrent_initializer,
+                projection_initializer=self.rnn_projection_initializer,
+                return_sequences=True,
+            )(embeddings, mask),
+            mask,
+        )
+
+    def build_intermediate_layer(self, inputs: list[tf.Tensor]) -> tf.Tensor:
+        return AttentionPooling1D()(*inputs)
