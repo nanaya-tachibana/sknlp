@@ -69,13 +69,6 @@ class Text2vec(BaseNLPModel):
     ) -> Union[tf.Tensor, list[tf.Tensor]]:
         return self._model(inputs)
 
-    def compute_mask(
-        self,
-        inputs: Union[tf.Tensor, list[tf.Tensor]],
-        mask: Optional[tf.Tensor] = None,
-    ) -> tf.Tensor:
-        raise NotImplementedError()
-
     def update_dropout(self, dropout: float) -> None:
         pass
 

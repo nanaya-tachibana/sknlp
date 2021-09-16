@@ -69,8 +69,3 @@ class Word2vec(Text2vec):
             name="embeddings",
         )
         self._model = tf.keras.Sequential(self.embedding, name=name)
-
-    def compute_mask(
-        self, inputs: tf.Tensor, mask: Optional[tf.Tensor] = None
-    ) -> tf.Tensor:
-        return self._model.get_layer("embeddings").compute_mask(inputs, mask=mask)
