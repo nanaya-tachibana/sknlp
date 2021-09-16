@@ -9,6 +9,7 @@ from collections import Counter
 import tensorflow as tf
 from tensorflow.python.keras.utils.generic_utils import DisableSharedObjectScope
 
+import sknlp
 from sknlp.vocab import Vocab
 
 
@@ -197,6 +198,8 @@ class BaseNLPModel:
             "name": self.name,
             "prediction_kwargs": self.prediction_kwargs,
             "custom_kwargs": self.custom_kwargs,
+            "__version__": sknlp.__version__,
+            "__package__": sknlp.__name__,
         }
 
     @classmethod
