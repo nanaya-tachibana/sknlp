@@ -1,7 +1,8 @@
-from typing import Optional, List, Union, Sequence, Dict
+from __future__ import annotations
+from typing import Optional, Union, Sequence
 
 import json
-from collections import defaultdict, Counter
+from collections import Counter
 
 
 class Vocab:
@@ -11,36 +12,45 @@ class Vocab:
         min_frequency: int = 1,
         pad_token: str = "<pad>",
         unk_token: str = "<unk>",
+        bos_token: Optional[str] = None,
+        eos_token: Optional[str] = None,
     ) -> None:
         self._min_frequency = min_frequency
         self._unk_token = unk_token
         self._pad_token = pad_token
+        self._bos_token = bos_token
+        self._eos_token = eos_token
 
         self._token2idx = dict()
-        self._token2idx[pad_token] = 0
-        self._token2idx[unk_token] = 1
-        self._reversed_tokens = {unk_token, pad_token}
 
         self._token_frequency = dict()
+        if counter is None or pad_token not in counter:
+            self._token2idx[pad_token] = len(self._token2idx)
+        if counter is None or unk_token not in counter:
+            self._token2idx[unk_token] = len(self._token2idx)
+        if counter is None or (bos_token is not None and bos_token not in counter):
+            self._token2idx[bos_token] = len(self._token2idx)
+        if counter is None or (eos_token is not None and eos_token not in counter):
+            self._token2idx[eos_token] = len(self._token2idx)
         if counter is not None:
             for _, (token, frequency) in enumerate(counter.most_common()):
-                if token not in self._reversed_tokens and frequency >= min_frequency:
+                if frequency >= min_frequency:
                     self._token2idx[token] = len(self._token2idx)
                     self._token_frequency[token] = frequency
         self._idx2token = dict(zip(self._token2idx.values(), self._token2idx.keys()))
 
     def set_vocab(
-        self, token2idx: Dict[str, int], pad_token: str, unk_token: str
+        self, token2idx: dict[str, int], pad_token: str, unk_token: str
     ) -> None:
-        if token2idx.get(pad_token, None) != 0:
-            raise ValueError("padding token should have index 0")
-        if token2idx.get(unk_token, None) != 1:
-            raise ValueError("unknown token should have index 1")
+        if token2idx.get(pad_token, None) is None:
+            raise ValueError("no padding token")
+        if token2idx.get(unk_token, None) is None:
+            raise ValueError("no unk token")
         self._token2idx = dict()
         self._token2idx.update(**token2idx)
         self._idx2token = dict(zip(self._token2idx.values(), self._token2idx.keys()))
 
-    def idx2token(self, indices: Union[int, Sequence[int]]) -> Union[str, List[str]]:
+    def idx2token(self, indices: Union[int, Sequence[int]]) -> Union[str, list[str]]:
         """
         Lookup tokens by indices.
 
@@ -71,9 +81,9 @@ class Vocab:
                 "but %s was given" % type(indices)
             )
 
-    def token2idx(self, tokens: Union[str, List[str]]) -> Union[int, List[int]]:
+    def token2idx(self, tokens: Union[str, list[str]]) -> Union[int, list[int]]:
         if isinstance(tokens, str):
-            return self._token2idx.get(tokens, 1)
+            return self._token2idx.get(tokens, self._token2idx[self.unk])
         elif isinstance(tokens, (list, tuple)):
             return [self.token2idx(token) for token in tokens]
         else:
@@ -89,6 +99,8 @@ class Vocab:
                 "token2idx": self._token2idx,
                 "unk": self.unk,
                 "pad": self.pad,
+                "bos": self.bos,
+                "eos": self.eos,
             },
             ensure_ascii=False,
         )
@@ -97,12 +109,16 @@ class Vocab:
     def from_json(cls, json_str: str) -> "Vocab":
         vocab_dict = json.loads(json_str)
         vocab = cls(
-            min_frequency=1, pad_token=vocab_dict["pad"], unk_token=vocab_dict["unk"]
+            min_frequency=1,
+            pad_token=vocab_dict["pad"],
+            unk_token=vocab_dict["unk"],
+            bos_token=vocab_dict.get("bos", None),
+            eos_token=vocab_dict.get("eos", None),
         )
         vocab.set_vocab(vocab_dict["token2idx"], vocab_dict["pad"], vocab_dict["unk"])
         return vocab
 
-    def __getitem__(self, tokens: Union[str, Sequence[str]]) -> List[int]:
+    def __getitem__(self, tokens: Union[str, Sequence[str]]) -> list[int]:
         return self.token2idx(tokens)
 
     def __contains__(self, token: str) -> bool:
@@ -123,6 +139,14 @@ class Vocab:
         return self._unk_token
 
     @property
-    def sorted_tokens(self) -> List[str]:
+    def bos(self) -> str:
+        return self._bos_token
+
+    @property
+    def eos(self) -> str:
+        return self._eos_token
+
+    @property
+    def sorted_tokens(self) -> list[str]:
         items = sorted(self._token2idx.items(), key=lambda x: x[1])
-        return [k for k, v in items]
+        return [k for k, _ in items]
