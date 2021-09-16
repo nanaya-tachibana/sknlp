@@ -172,7 +172,7 @@ class DeepTagger(SupervisedNLPModel):
             [[Tag(*l) for l in yi] for yi in dataset.y], predictions, classes
         )
 
-    def export(self, directory: str, name: str, version: str = "0") -> None:
+    def build_inference_model(self) -> tf.keras.Model:
         if self.output_format == "bio":
             mask = self._model.get_layer("mask_layer").output
             emissions = self._model.get_layer("mlp").output
@@ -181,20 +181,25 @@ class DeepTagger(SupervisedNLPModel):
                 [tf.TensorShape([None, None, None]), tf.TensorShape([None, None])]
             )
             crf.set_weights(self._model.get_layer("crf").get_weights())
-            original_model = self._model
-            self._model = tf.keras.Model(
+            model = tf.keras.Model(
                 inputs=self._model.inputs[0], outputs=crf(emissions, mask)
             )
-            super().export(directory, name, version=version)
-            self._model = original_model
         else:
-            original_model = self._model
-            self._model = tf.keras.Model(
-                inputs=self._model.inputs,
-                outputs=self._model.outputs[0].to_tensor(tf.float32.min),
-            )
-            super().export(directory, name, version=version)
-            self._model = original_model
+            model = self._model
+        return model
+
+    def export(self, directory: str, name: str, version: str = "0") -> None:
+        original_model = self._inference_model
+        if self.output_format == "bio":
+            fill_value = tf.cast(0, tf.int32)
+        else:
+            fill_value = tf.float32.min
+        self._inference_model = tf.keras.Model(
+            inputs=self._inference_model.inputs,
+            outputs=self._inference_model.outputs[0].to_tensor(fill_value),
+        )
+        super().export(directory, name, version=version)
+        self._inference_model = original_model
 
     def get_config(self) -> dict[str, Any]:
         return {

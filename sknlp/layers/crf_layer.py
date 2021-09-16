@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import Any
 
 import tensorflow as tf
+from tensorflow.python.ops.array_ops import boolean_mask
 from tensorflow_addons.text import crf_log_likelihood, crf_decode
 
 from sknlp.typing import WeightInitializer
@@ -84,14 +85,14 @@ class CrfDecodeLayer(tf.keras.layers.Layer):
         )
 
     def call(self, emissions: tf.Tensor, mask: tf.Tensor) -> tf.Tensor:
-        mask = tf.cast(mask, tf.int32)
-        sequence_lengths = tf.math.reduce_sum(mask, axis=1)
+        sequence_lengths = tf.math.reduce_sum(tf.cast(mask, tf.int32), axis=1)
         decoded_tag_ids, _ = crf_decode(
             emissions,
             self.transition_weight,
             sequence_lengths,
         )
-        return decoded_tag_ids * mask
+        boolean_mask = tf.cast(mask, tf.bool)
+        return tf.ragged.boolean_mask(decoded_tag_ids, boolean_mask)
 
     def get_config(self) -> dict[str, Any]:
         return {

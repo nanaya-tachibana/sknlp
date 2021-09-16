@@ -21,7 +21,6 @@ class MLPLayer(Layer):
         self.hidden_size = hidden_size
         self.output_size = output_size
         self.activation = activation
-        self.supports_masking = True
 
     def build(self, input_shape: tf.TensorShape) -> None:
         self.dense_layers = []
