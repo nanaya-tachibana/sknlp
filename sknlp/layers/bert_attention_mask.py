@@ -20,7 +20,7 @@ class BertAttentionMaskLayer(tf.keras.layers.Layer):
         mask = tf.cast(mask, self.dtype)
         attention_mask = mask[..., None] * mask[:, None, :]
         if self.mask_mode == "unilm":
-            pos = tf.cumsum(type_ids)
+            pos = tf.cumsum(type_ids, axis=1)
             attention_mask *= tf.cast(pos[:, None, :] <= pos[..., None], self.dtype)
         return attention_mask
 
