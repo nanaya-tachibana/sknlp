@@ -4,6 +4,7 @@ import os
 import tempfile
 from enum import Enum
 from collections import Counter
+import logging
 
 import tensorflow as tf
 from tensorflow.keras.initializers import TruncatedNormal
@@ -124,21 +125,27 @@ class Bert2vec(Text2vec):
             dtype=tf.float32,
             name="attention_mask",
         )
-        self.inputs = [token_ids, type_ids, attention_mask]
+        logits_mask = tf.keras.Input(
+            shape=(sequence_length,),
+            dtype=tf.int64,
+            name="logits_mask",
+        )
+        self.inputs = [token_ids, type_ids, attention_mask, logits_mask]
         self._model = tf.keras.Model(
             inputs=self.inputs, outputs=self.bert_layer(self.inputs), name=name
         )
 
-    def __call__(self, inputs: list[tf.Tensor]) -> list[tf.Tensor]:
+    def __call__(
+        self, inputs: list[tf.Tensor], logits_mask: Optional[tf.Tensor] = None
+    ) -> list[tf.Tensor]:
+        if logits_mask is None:
+            inputs.append(tf.ones_like(inputs[0]))
+        else:
+            inputs.append(logits_mask)
         outputs = super().__call__(inputs)
         if not self.return_all_layer_outputs:
-            return [outputs[0], outputs[1][-1]]
+            return [outputs[0], outputs[1][-1], *outputs[2:]]
         return outputs
-
-    def compute_mask(
-        self, inputs: list[tf.Tensor], mask: Optional[tf.Tensor] = None
-    ) -> tf.Tensor:
-        return self._model.get_layer(self.name).compute_mask(inputs, mask=mask)
 
     def update_dropout(self, dropout: float) -> None:
         bert_layer = self._model.get_layer(self.name)
@@ -161,8 +168,15 @@ class Bert2vec(Text2vec):
         config_filename: Optional[str] = None,
         cls_pooling: bool = True,
         sequence_length: Optional[int] = None,
+        verbose: bool = False,
         name: str = "bert2vec",
     ):
+        logger = logging.getLogger("sknlp-pretrain-converter")
+        if verbose:
+            logger.setLevel(logging.INFO)
+        else:
+            logger.setLevel(logging.WARNING)
+
         create_checkpoint_file(v1_checkpoint)
         config_filename = get_bert_config_filename(
             v1_checkpoint, config_filename=config_filename
@@ -171,7 +185,11 @@ class Bert2vec(Text2vec):
         with open(os.path.join(v1_checkpoint, "vocab.txt")) as f:
             token_list = f.read().strip("\n").split("\n")
             vocab = Vocab(
-                Counter(token_list), pad_token=token_list[0], unk_token=token_list[1]
+                Counter(token_list),
+                pad_token=token_list[0],
+                unk_token=token_list[100],
+                bos_token=token_list[101],
+                eos_token=token_list[102],
             )
         share_layer, cls_pooling = False, True
         convert_checkpoint = convert_bert_checkpoint
@@ -200,17 +218,27 @@ class Bert2vec(Text2vec):
             cls_pooling=cls_pooling,
             name=name,
         )
-        with tempfile.TemporaryDirectory() as temp_dir:
-            temporary_checkpoint = os.path.join(temp_dir, "ckpt")
-            convert_checkpoint(
-                checkpoint_from_path=v1_checkpoint,
-                checkpoint_to_path=temporary_checkpoint,
-                num_heads=config.num_attention_heads,
-                converted_root_name=name,
-            )
-            module._model.load_weights(
-                temporary_checkpoint
-            ).assert_existing_objects_matched()
+        module.build()
+        variable_mapping = convert_checkpoint(
+            checkpoint_from_path=v1_checkpoint,
+            num_heads=config.num_attention_heads,
+            converted_root_name=name,
+        )
+        weight_value_pairs = []
+        missing_variables = set()
+        for variable in module._model.trainable_weights:
+            name = variable.name.split(":")[0]
+            if name in variable_mapping:
+                weight_value_pairs.append((variable, variable_mapping[name]))
+            else:
+                missing_variables.add(variable.name)
+        ignored_variables = set(variable_mapping.keys()) - {
+            v.name.split(":")[0] for v in module._model.trainable_weights
+        }
+        if verbose:
+            logger.info(f"Ignored variables: {ignored_variables}")
+            logger.info(f"Missing variables: {missing_variables}")
+        tf.keras.backend.batch_set_value(weight_value_pairs)
         return module
 
     def export(
