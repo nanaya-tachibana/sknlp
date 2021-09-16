@@ -20,6 +20,9 @@ class DeepGenerator(SupervisedNLPModel):
         text2vec: Optional[Text2vec] = None,
         **kwargs,
     ) -> None:
+        self._beam_width = beam_width
+        self.maximum_iterations = kwargs.pop("maximum_iterations", 50)
+        self.parallel_iterations = kwargs.pop("parallel_iterations", 1)
         super().__init__(
             [],
             max_sequence_length=max_sequence_length,
@@ -27,7 +30,6 @@ class DeepGenerator(SupervisedNLPModel):
             task="generation",
             **kwargs,
         )
-        self._beam_width = beam_width
 
     @property
     def beam_width(self) -> int:

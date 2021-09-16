@@ -26,19 +26,17 @@ class BertGenerator(DeepGenerator):
         dropout: float = 0.5,
         **kwargs
     ):
-        self.dropout = dropout
-        self.inputs = [
-            tf.keras.Input(shape=(), dtype=tf.string, name="text_input"),
-            tf.keras.Input(shape=(), dtype=tf.string, name="target_input"),
-        ]
-        self.maximum_iterations = kwargs.pop("maximum_iterations", 50)
-        self.parallel_iterations = kwargs.pop("parallel_iterations", 1)
         super().__init__(
             max_sequence_length=max_sequence_length,
             beam_width=beam_width,
             text2vec=text2vec,
             **kwargs
         )
+        self.dropout = dropout
+        self.inputs = [
+            tf.keras.Input(shape=(), dtype=tf.string, name="text_input"),
+            tf.keras.Input(shape=(), dtype=tf.string, name="target_input"),
+        ]
 
     def build_preprocessing_layer(
         self, inputs: Union[tf.Tensor, list[tf.Tensor]]
