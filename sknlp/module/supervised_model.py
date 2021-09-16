@@ -99,14 +99,14 @@ class SupervisedNLPModel(BaseNLPModel):
         super().build()
 
     def create_dataset_from_csv(
-        self, filename: str, no_label: bool = False
+        self, filename: str, has_label: bool = True
     ) -> NLPDataset:
         return self.dataset_class(
             self.text2vec.tokenize,
             self.classes,
             csv_file=filename,
             max_length=self.max_sequence_length,
-            no_label=no_label,
+            has_label=has_label,
             **self.dataset_kwargs
         )
 
@@ -125,7 +125,7 @@ class SupervisedNLPModel(BaseNLPModel):
             X=X,
             y=y,
             max_length=self.max_sequence_length,
-            no_label=y is None,
+            has_label=y is not None,
             **self.dataset_kwargs
         )
 
@@ -241,12 +241,14 @@ class SupervisedNLPModel(BaseNLPModel):
             callbacks.append(callback)
 
         self._model.fit(
-            training_tf_dataset,
+            x=training_tf_dataset,
+            y=None,
             epochs=n_epochs,
-            validation_data=validation_tf_dataset if self.validation_dataset else None,
+            validation_data=validation_tf_dataset if has_validation_dataset else None,
             callbacks=callbacks,
             verbose=verbose,
         )
+        self._inference_model = self.build_inference_model()
 
     def predict(
         self,
@@ -258,7 +260,9 @@ class SupervisedNLPModel(BaseNLPModel):
     ) -> Union[np.ndarray, Sequence[Any]]:
         assert self._built
         dataset = self.prepare_dataset(X, None, dataset)
-        return self._model.predict(dataset.batchify(batch_size, shuffle=False))
+        return self._inference_model.predict(
+            dataset.batchify(batch_size, shuffle=False, training=False)
+        )
 
     def score(
         self,
@@ -298,6 +302,7 @@ class SupervisedNLPModel(BaseNLPModel):
             max_sequence_length=module.max_sequence_length,
             sequence_length=module.sequence_length,
         )
+        module._inference_model = module.build_inference_model()
         return module
 
     def export(self, directory: str, name: str, version: str = "0") -> None:

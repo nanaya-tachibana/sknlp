@@ -36,7 +36,8 @@ class BaseNLPModel:
         self._kwargs = kwargs
 
         self._name = name
-        self._model: tf.keras.Model = None
+        self._model: Optional[tf.keras.Model] = None
+        self._inference_model: Optional[tf.keras.Model] = None
         self._built = False
 
     @property
@@ -85,9 +86,12 @@ class BaseNLPModel:
         if self._built:
             return
         self._model = tf.keras.Model(
-            inputs=self.get_inputs(), outputs=self.get_outputs(), name=self._name
+            inputs=self.get_inputs(), outputs=self.get_outputs(), name=self.name
         )
         self._built = True
+
+    def build_inference_model(self) -> tf.keras.Model:
+        return self._model
 
     def build_preprocessing_layer(
         self, inputs: Union[tf.Tensor, list[tf.Tensor]]
@@ -173,7 +177,7 @@ class BaseNLPModel:
         d = os.path.join(directory, name, version)
 
         model: tf.keras.Model = tf.keras.models.model_from_json(
-            self._model.to_json(),
+            self._inference_model.to_json(),
             custom_objects={
                 "TruncatedNormal": tf.keras.initializers.TruncatedNormal,
                 "GlorotUniform": tf.keras.initializers.GlorotUniform,
