@@ -9,7 +9,7 @@ from .nlp_dataset import NLPDataset
 
 
 def _combine_xy(x, y):
-    return (x, y), y
+    return ((x, y),)
 
 
 class TaggingDataset(NLPDataset):
@@ -21,12 +21,13 @@ class TaggingDataset(NLPDataset):
         y: Optional[Sequence[Any]] = None,
         csv_file: Optional[str] = None,
         in_memory: bool = True,
-        no_label: bool = False,
+        has_label: bool = True,
         add_start_end_tag: bool = False,
         output_format: str = "global_pointer",
         max_length: Optional[int] = None,
         text_dtype: tf.DType = tf.int32,
         label_dtype: tf.DType = tf.int32,
+        **kwargs
     ):
         self.add_start_end_tag = add_start_end_tag
         self.output_format = output_format
@@ -37,17 +38,18 @@ class TaggingDataset(NLPDataset):
             y=y,
             csv_file=csv_file,
             in_memory=in_memory,
-            no_label=no_label,
+            has_label=has_label,
             max_length=max_length,
             na_value="",
             column_dtypes=["str", "str"],
             text_dtype=text_dtype,
             label_dtype=label_dtype,
+            **kwargs
         )
 
     @property
     def y(self) -> list[list[str]]:
-        if self.no_label:
+        if not self.has_label:
             return []
         return [
             json.loads(data[-1].decode("UTF-8"))
@@ -96,7 +98,7 @@ class TaggingDataset(NLPDataset):
         text = data[0]
 
         _text = self._text_transform(text)
-        if self.no_label:
+        if not self.has_label:
             if self.output_format == "bio":
                 return _text, [0 for _ in range(len(_text))]
             else:
@@ -111,11 +113,15 @@ class TaggingDataset(NLPDataset):
         self,
         batch_size: int,
         shuffle: bool = True,
+        training: bool = True,
         shuffle_buffer_size: Optional[int] = None,
     ) -> tf.data.Dataset:
+        after_batch = None
+        if self.output_format == "bio" and self.has_label and training:
+            after_batch = _combine_xy
         return super().batchify(
             batch_size,
             shuffle=shuffle,
             shuffle_buffer_size=shuffle_buffer_size,
-            after_batch=_combine_xy if self.output_format == "bio" else None,
+            after_batch=after_batch,
         )

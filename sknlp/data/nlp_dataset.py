@@ -15,16 +15,16 @@ class NLPDataset:
         y: Optional[Sequence[Any]] = None,
         csv_file: Optional[str] = None,
         in_memory: bool = True,
-        no_label: bool = False,
+        has_label: bool = True,
         max_length: Optional[int] = None,
         na_value: str = "",
         column_dtypes: list[str] = ["str", "str"],
         text_dtype: tf.DType = tf.string,
         label_dtype: tf.DType = tf.string,
-    ):
-        assert (
-            X is not None
-        ) or csv_file is not None, "either X or csv_file may not be None"
+        **kwargs
+    ) -> None:
+        if X is None and csv_file is None:
+            raise ValueError("Either `X` or `csv_file` may not be None.")
         self.in_memory = in_memory
         self.na_value = na_value
         self.column_dtypes = column_dtypes
@@ -33,25 +33,30 @@ class NLPDataset:
                 csv_file, "\t", in_memory, column_dtypes, na_value
             )
         else:
-            no_label = no_label and y is None
+            has_label = has_label and y is not None
             df = self.Xy_to_dataframe(X, y=y)
             self._original_dataset = self.dataframe_to_dataset(
                 df, column_dtypes, na_value
             )
             self.size = df.shape[0]
 
-        self.no_label = no_label
         self.tokenizer = tokenizer
         self.max_length = max_length or 99999
         self.text_dtype = text_dtype
         self.label_dtype = label_dtype
+
+        self._has_label = has_label
         self._dataset = self._transform(self._original_dataset)
+
+    @property
+    def has_label(self) -> bool:
+        return self._has_label
 
     @property
     def X(self) -> list[Any]:
         x = []
         for data in self._original_dataset.as_numpy_iterator():
-            texts = data[: None if self.no_label else -1]
+            texts = data[: -1 if self.has_label else None]
             if len(texts) == 1:
                 x.append(texts[0].decode("UTF-8"))
             else:
@@ -60,7 +65,7 @@ class NLPDataset:
 
     @property
     def y(self) -> list[str]:
-        if self.no_label:
+        if not self.has_label:
             return []
         return [
             data[-1].decode("UTF-8")
@@ -99,13 +104,13 @@ class NLPDataset:
     def _transform_func(self, *data) -> list[Any]:
         text = data[0]
         _text = self._text_transform(text)
-        if self.no_label:
+        if not self.has_label:
             return _text
         label = data[1]
         return _text, self._label_transform(label)
 
     def _transform_func_out_dtype(self) -> list[tf.DType]:
-        return (self.text_dtype, self.label_dtype)[: -1 if self.no_label else None]
+        return (self.text_dtype, self.label_dtype)[: None if self.has_label else -1]
 
     def _transform(self, dataset: tf.data.Dataset) -> tf.data.Dataset:
         return dataset.map(
@@ -125,6 +130,7 @@ class NLPDataset:
         self,
         batch_size: int,
         shuffle: bool = True,
+        training: bool = True,
         shuffle_buffer_size: Optional[int] = None,
         before_batch: Optional[Callable] = None,
         after_batch: Optional[Callable] = None,
@@ -161,7 +167,7 @@ class NLPDataset:
         na_value: str,
     ) -> tuple[tf.data.Dataset, Optional[int]]:
         if in_memory:
-            df = pd.read_csv(filename, sep=sep, quoting=3)
+            df = pd.read_csv(filename, sep=sep, quoting=3, escapechar="\\")
             return self.dataframe_to_dataset(df, column_dtypes, na_value), df.shape[0]
         tf_dtype_mapping = {"str": tf.string, "int": tf.int32, "float": tf.float32}
         return (
@@ -169,7 +175,7 @@ class NLPDataset:
                 filename,
                 [
                     tf_dtype_mapping.get(dtype.rstrip(string.digits), "str")
-                    for dtype in column_dtypes[: -1 if self.no_label else None]
+                    for dtype in column_dtypes[: None if self.has_label else -1]
                 ],
                 header=True,
                 field_delim=sep,
