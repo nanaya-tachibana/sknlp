@@ -38,7 +38,7 @@ class TaggingFScoreMetric(tf.keras.callbacks.Callback):
             )
 
         y = []
-        for _, tag_ids_array in self.validation_data.as_numpy_iterator():
+        for ((_, tag_ids_array),) in self.validation_data.as_numpy_iterator():
             y.extend(
                 [
                     convert_ids_to_tags(
