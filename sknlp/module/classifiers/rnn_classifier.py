@@ -53,7 +53,7 @@ class RNNClassifier(DeepClassifier):
 
     def build_encoding_layer(self, inputs: tf.Tensor) -> tf.Tensor:
         embeddings = self.text2vec(inputs)
-        mask = self.text2vec.compute_mask(inputs)
+        mask = tf.math.not_equal(inputs, 0)
         return (
             BiLSTM(
                 self.num_rnn_layers,

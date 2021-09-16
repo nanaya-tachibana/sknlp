@@ -21,12 +21,13 @@ from ..text2vec import Text2vec
 
 class DeepClassifier(SupervisedNLPModel):
     dataset_class = ClassificationDataset
-    dataset_args = ["is_multilabel"]
+    dataset_args = ["is_multilabel", "is_pair_text"]
 
     def __init__(
         self,
         classes: Sequence[str],
         is_multilabel: bool = True,
+        is_pair_text: bool = False,
         max_sequence_length: Optional[int] = None,
         num_fc_layers: int = 2,
         fc_hidden_size: int = 256,
@@ -48,7 +49,8 @@ class DeepClassifier(SupervisedNLPModel):
             task="classification",
             **kwargs,
         )
-        self._is_multilabel = is_multilabel
+        self._is_pair_text = is_pair_text
+        self._is_multilabel = is_multilabel and not is_pair_text
         self._loss = loss
         self._loss_kwargs = loss_kwargs
         self.num_fc_layers = num_fc_layers
@@ -58,6 +60,10 @@ class DeepClassifier(SupervisedNLPModel):
     @property
     def is_multilabel(self) -> bool:
         return self._is_multilabel
+
+    @property
+    def is_pair_text(self) -> bool:
+        return self._is_pair_text
 
     @property
     def thresholds(self) -> list[float]:
@@ -111,7 +117,7 @@ class DeepClassifier(SupervisedNLPModel):
 
     def predict_proba(
         self,
-        X: Sequence[str] = None,
+        X: Sequence[Union[Sequence[str], Sequence[tuple[str, str]]]] = None,
         *,
         dataset: ClassificationDataset = None,
         batch_size: int = 128,
@@ -121,7 +127,7 @@ class DeepClassifier(SupervisedNLPModel):
 
     def predict(
         self,
-        X: Sequence[str] = None,
+        X: Sequence[Union[Sequence[str], Sequence[tuple[str, str]]]] = None,
         *,
         dataset: ClassificationDataset = None,
         thresholds: Union[float, list[float], None] = None,
@@ -140,7 +146,7 @@ class DeepClassifier(SupervisedNLPModel):
 
     def score(
         self,
-        X: Sequence[str] = None,
+        X: Sequence[Union[Sequence[str], Sequence[tuple[str, str]]]] = None,
         y: Union[Sequence[Sequence[str]], Sequence[str]] = None,
         *,
         dataset: ClassificationDataset = None,
@@ -161,6 +167,7 @@ class DeepClassifier(SupervisedNLPModel):
         return {
             **super().get_config(),
             "is_multilabel": self.is_multilabel,
+            "is_pair_text": self.is_pair_text,
         }
 
     @classmethod

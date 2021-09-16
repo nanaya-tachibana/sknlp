@@ -10,8 +10,8 @@ from .rnn_classifier import RNNClassifier
 class RCNNClassifier(RNNClassifier):
     def build_encoding_layer(self, inputs: tf.Tensor) -> list[tf.Tensor]:
         embeddings = self.text2vec(inputs)
-        mask = self.text2vec.compute_mask(inputs)
-        return (
+        mask = tf.math.not_equal(inputs, 0)
+        return [
             embeddings,
             BiLSTM(
                 self.num_rnn_layers,
@@ -26,7 +26,7 @@ class RCNNClassifier(RNNClassifier):
                 return_sequences=True,
             )(embeddings, mask),
             mask,
-        )
+        ]
 
     def build_intermediate_layer(self, inputs: list[tf.Tensor]) -> tf.Tensor:
         embeddings, encodings, mask = inputs

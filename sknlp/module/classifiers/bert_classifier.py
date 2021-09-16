@@ -4,7 +4,11 @@ from typing import Any, Sequence, Optional, Union
 import tensorflow as tf
 from tensorflow.keras.layers import Dropout
 
-from sknlp.layers import BertPreprocessingLayer, BertAttentionMaskLayer
+from sknlp.layers import (
+    BertPreprocessingLayer,
+    BertPairPreprocessingLayer,
+    BertAttentionMaskLayer,
+)
 from sknlp.data import BertClassificationDataset
 from sknlp.module.text2vec import Bert2vec
 from .deep_classifier import DeepClassifier
@@ -17,6 +21,7 @@ class BertClassifier(DeepClassifier):
         self,
         classes: Sequence[str],
         is_multilabel: bool = True,
+        is_pair_text: bool = False,
         max_sequence_length: int = 120,
         num_fc_layers: int = 2,
         fc_hidden_size: int = 256,
@@ -28,6 +33,7 @@ class BertClassifier(DeepClassifier):
         super().__init__(
             classes,
             is_multilabel=is_multilabel,
+            is_pair_text=is_pair_text,
             algorithm="bert",
             num_fc_layers=num_fc_layers,
             fc_hidden_size=fc_hidden_size,
@@ -37,25 +43,30 @@ class BertClassifier(DeepClassifier):
             **kwargs
         )
         self.dropout = dropout
-        self.inputs = tf.keras.Input(shape=(), dtype=tf.string, name="text_input")
+        if self.is_pair_text:
+            self.inputs = [
+                tf.keras.Input(shape=(), dtype=tf.string, name="text_input"),
+                tf.keras.Input(shape=(), dtype=tf.string, name="context_input"),
+            ]
+        else:
+            self.inputs = tf.keras.Input(shape=(), dtype=tf.string, name="text_input")
 
     def build_preprocessing_layer(
         self, inputs: Union[tf.Tensor, list[tf.Tensor]]
     ) -> Union[tf.Tensor, list[tf.Tensor]]:
-        layer = BertPreprocessingLayer(self.text2vec.vocab.sorted_tokens)
-        return layer(inputs)
+        return BertPreprocessingLayer(self.text2vec.vocab.sorted_tokens)(inputs)
 
     def build_encoding_layer(self, inputs: list[tf.Tensor]) -> list[tf.Tensor]:
         if self.dropout:
             self.text2vec.update_dropout(dropout=self.dropout)
-        mask = self.text2vec.compute_mask(inputs)
         token_ids, type_ids = inputs
-        return (
+        mask = tf.math.not_equal(token_ids, 0)
+        return [
             *self.text2vec(
                 [token_ids, type_ids, BertAttentionMaskLayer()([type_ids, mask])]
             ),
             mask,
-        )
+        ]
 
     def build_intermediate_layer(self, inputs: list[tf.Tensor]) -> list[tf.Tensor]:
         cls = inputs[0]
