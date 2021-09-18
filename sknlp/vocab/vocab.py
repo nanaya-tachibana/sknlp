@@ -1,80 +1,40 @@
 from __future__ import annotations
-from typing import Optional, Union, Sequence
-
+from typing import Optional, Union, Sequence, Any
 import json
-from collections import Counter
-
-DEFAULT_SPECIAL_TOKENS = ["<pad>", "<unk>", "<bos>", "<eos>"]
 
 
 class Vocab:
     def __init__(
         self,
-        counter: Optional[Counter] = None,
+        tokens: Sequence[str],
+        frequencies: Optional[list[int]] = None,
         min_frequency: int = 1,
-        pad_token: Optional[str] = None,
-        unk_token: Optional[str] = None,
-        bos_token: Optional[str] = None,
-        eos_token: Optional[str] = None,
+        pad_token: str = "<pad>",
+        unk_token: str = "<unk>",
+        bos_token: str = "<bos>",
+        eos_token: str = "<eos>",
     ) -> None:
-        if counter is not None and len(counter) < 4:
-            raise ValueError(f"`counter`大小至少为4, 实际为{len(counter)}.")
-        pad_id = 0
-        unk_id = 1
-        bos_id = 2
-        eos_id = 3
-
-        self._min_frequency = min_frequency
+        frequencies = frequencies or [min_frequency for _ in range(len(tokens))]
+        special_tokens = (pad_token, unk_token, bos_token, eos_token)
+        special_token_index_offset = 0
+        _tokens = list(tokens)
+        for special_token in (pad_token, unk_token, bos_token, eos_token):
+            if special_token not in _tokens:
+                _tokens.insert(special_token_index_offset, special_token)
+                frequencies.insert(special_token_index_offset, min_frequency)
+                special_token_index_offset += 1
 
         self._token2idx = dict()
         self._token_frequency = dict()
-        if counter is None:
-            counter = Counter(dict(zip(DEFAULT_SPECIAL_TOKENS, [1] * 4)))
-
-        for token, frequency in counter.most_common():
-            is_special_token = True
-            if token == pad_token:
-                pad_id = len(self._token2idx)
-            elif token == unk_token:
-                unk_id = len(self._token2idx)
-            elif token == bos_token:
-                bos_id = len(self._token2idx)
-            elif token == eos_token:
-                eos_id = len(self._token2idx)
-            else:
-                is_special_token = False
-            if is_special_token or frequency >= min_frequency:
+        for token, frequency in zip(_tokens, frequencies):
+            if token in special_tokens or frequency >= min_frequency:
                 self._token2idx[token] = len(self._token2idx)
                 self._token_frequency[token] = frequency
         self._idx2token = dict(zip(self._token2idx.values(), self._token2idx.keys()))
-        self._pad_token = self._idx2token[pad_id]
-        self._unk_token = self._idx2token[unk_id]
-        self._bos_token = self._idx2token[bos_id]
-        self._eos_token = self._idx2token[eos_id]
-
-    def set_vocab(
-        self,
-        token2idx: dict[str, int],
-        pad_token: str,
-        unk_token: str,
-        bos_token: str,
-        eos_token: str,
-    ) -> None:
-        if pad_token not in token2idx:
-            raise ValueError(f"{pad_token} not in `token2idx`")
-        if unk_token not in token2idx:
-            raise ValueError(f"{unk_token} not in `token2idx`")
-        if bos_token not in token2idx:
-            raise ValueError(f"{bos_token} not in `token2idx`")
-        if eos_token not in token2idx:
-            raise ValueError(f"{eos_token} not in `token2idx`")
         self._pad_token = pad_token
         self._unk_token = unk_token
         self._bos_token = bos_token
         self._eos_token = eos_token
-
-        self._token2idx = dict(**token2idx)
-        self._idx2token = dict(zip(self._token2idx.values(), self._token2idx.keys()))
 
     def idx2token(self, indices: Union[int, Sequence[int]]) -> Union[str, list[str]]:
         """
@@ -133,17 +93,19 @@ class Vocab:
 
     @classmethod
     def from_json(cls, json_str: str) -> "Vocab":
-        vocab_dict = json.loads(json_str)
-        pad_token = vocab_dict.get("pad", None)
-        unk_token = vocab_dict.get("unk", None)
-        bos_token = vocab_dict.get("bos", None)
-        eos_token = vocab_dict.get("eos", None)
+        vocab_dict: dict[str, Any] = json.loads(json_str)
+        pad_token = vocab_dict["pad"]
+        unk_token = vocab_dict["unk"]
+        bos_token = vocab_dict["bos"]
+        eos_token = vocab_dict["eos"]
         vocab = cls(
-            Counter(**vocab_dict["token_frequency"]),
+            vocab_dict["token_frequency"].keys(),
+            vocab_dict["token_frequency"].values(),
             min_frequency=1,
-        )
-        vocab.set_vocab(
-            vocab_dict["token2idx"], pad_token, unk_token, bos_token, eos_token
+            pad_token=pad_token,
+            unk_token=unk_token,
+            bos_token=bos_token,
+            eos_token=eos_token,
         )
         return vocab
 
