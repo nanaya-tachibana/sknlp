@@ -6,7 +6,6 @@ from tensorflow.keras.initializers import TruncatedNormal
 from tensorflow.keras.layers.experimental.preprocessing import TextVectorization
 
 from official.nlp.keras_nlp import layers
-from tensorflow.python.ops.gen_batch_ops import batch
 import tensorflow_text as tftext
 
 from sknlp.activations import gelu
@@ -117,7 +116,7 @@ class BertPreprocessingLayer(tf.keras.layers.Layer):
         cls_ids = self._create_cls_tensor(batch_size)
         sep_ids = self._create_sep_tensor(batch_size)
         if len(inputs) == 1:
-            token_ids = self.tokenizer.tokenize(inputs)
+            token_ids = self.tokenizer.tokenize(inputs[0])
             flatten_ids = token_ids.merge_dims(-2, -1)
             ids = tf.concat([cls_ids, flatten_ids, sep_ids], axis=1)
             ids_tensor = ids.to_tensor(0)
@@ -223,22 +222,23 @@ class BertLayer(tf.keras.layers.Layer):
             use_one_hot=True,
             name="type_embeddings",
         )
-        if self.embedding_size != self.hidden_size:
-            self.embedding_projection = tf.keras.layers.experimental.EinsumDense(
-                "...x,xy->...y",
-                output_shape=self.hidden_size,
-                bias_axes="y",
-                kernel_initializer=self.initializer,
-                name="embedding_projection",
-            )
-        else:
-            self.embedding_projection = None
         self.embedding_normalize_layer = tf.keras.layers.LayerNormalization(
             name="embeddings/layer_norm", axis=-1, epsilon=1e-12, dtype=tf.float32
         )
         self.embedding_dropout_layer = tf.keras.layers.Dropout(
             rate=self.dropout_rate, name="embeddings/dropout"
         )
+        if self.embedding_size != self.hidden_size:
+            self.embedding_projection = tf.keras.layers.experimental.EinsumDense(
+                "...x,xy->...y",
+                output_shape=self.hidden_size,
+                bias_axes="y",
+                kernel_initializer=self.initializer,
+                name="embeddings/transform",
+            )
+        else:
+            self.embedding_projection = None
+
         if self.share_layer:
             self.shared_layer = layers.TransformerEncoderBlock(
                 self.num_attention_heads,
@@ -268,13 +268,12 @@ class BertLayer(tf.keras.layers.Layer):
                 units=self.hidden_size,
                 activation="tanh",
                 kernel_initializer=self.initializer,
-                name="pooler_transform",
+                name="cls_pooler",
             )
         self.lm_dense = tf.keras.layers.Dense(
-            self.hidden_size,
+            self.embedding_size,
             activation=self.activation,
             kernel_initializer=self.initializer,
-            bias_initializer="zeros",
             name="lm/transform/dense",
         )
         self.lm_normalize_layer = tf.keras.layers.LayerNormalization(
@@ -284,6 +283,9 @@ class BertLayer(tf.keras.layers.Layer):
             "lm/output_bias",
             shape=(self.vocab_size,),
             initializer="zeros",
+        )
+        self.relationship_dense = tf.keras.layers.Dense(
+            2, kernel_initializer=self.initializer, name="relationship"
         )
         super().build(input_shape)
 
@@ -329,11 +331,12 @@ class BertLayer(tf.keras.layers.Layer):
         lm_data = self.lm_dense(token_encodings)
         lm_data = self.lm_normalize_layer(lm_data)
         # (batch_size, mask_seq_len, vocab_size)
-        logits = tf.nn.bias_add(
+        lm_logits = tf.nn.bias_add(
             tf.matmul(lm_data, self.embedding_layer.embeddings, transpose_b=True),
             self.lm_bias,
         )
-        return cls_output, encoder_outputs, logits
+        rel_logits = self.relationship_dense(cls_output)
+        return cls_output, encoder_outputs, lm_logits, rel_logits
 
     def get_config(self):
         return {

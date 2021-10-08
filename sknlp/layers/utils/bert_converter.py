@@ -1,167 +1,222 @@
 from __future__ import annotations
-from token import OP
-from typing import Optional, Sequence
+
+import re
 import logging
-from functools import partial
+import warnings
 
 import numpy as np
 import tensorflow as tf
 
+import sknlp
 
-logger = logging.getLogger("sknlp-pretrain-converter")
+
+logger = logging.getLogger(sknlp.__name__)
 handler = logging.StreamHandler()
 handler.setLevel(logging.INFO)
 logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 
 
-BERT_NAME_REPLACEMENTS = [
-    ("embeddings_project", "embedding_projection"),
-    ("encoder", "transformer"),
-    ("embeddings/word_embeddings", "word_embeddings/embeddings"),
-    ("embeddings/token_type_embeddings", "type_embeddings/embeddings"),
-    ("embeddings/position_embeddings", "position_embedding/embeddings"),
-    ("embeddings/LayerNorm", "embeddings/layer_norm"),
-    ("attention/self", "self_attention"),
-    ("attention/output/dense", "self_attention/attention_output"),
-    ("attention/output/LayerNorm", "self_attention_layer_norm"),
-    ("intermediate/dense", "intermediate"),
-    ("output/dense", "output"),
-    ("output/LayerNorm", "output_layer_norm"),
-    ("pooler/dense", "pooler_transform"),
-    ("predictions", "lm"),
-    ("transform/LayerNorm", "transform/layer_norm"),
-    ("cls/seq_relationship/output_bias", "predictions/transform/logits/bias"),
-    ("cls/seq_relationship/output_weights", "predictions/transform/logits/kernel"),
-]
-BERT_PERMUTATIONS = [
-    ("cls/seq_relationship/output_weights", (1, 0)),
-]
+class BertCheckpointConverter:
+    def __init__(
+        self, num_layers: int, num_heads: int, converted_root_name: str = ""
+    ) -> None:
+        self.num_layers = num_layers
+        self.num_heads = num_heads
+        self.converted_root_name = converted_root_name
+        self.variable_name_mapping: dict[str, str] = dict()
+        for mapping in (
+            self.embeddings,
+            self.embedding_transform,
+            self.transformer,
+            self.cls_pooler,
+        ):
+            self.variable_name_mapping.update(
+                {
+                    self.prefix(k): self.prefix(v, original=False)
+                    for k, v in mapping.items()
+                }
+            )
+        for mapping in (self.lm, self.relationship):
+            self.variable_name_mapping.update(
+                {k: self.prefix(v, original=False) for k, v in mapping.items()}
+            )
 
+    @property
+    def original_root_name(self) -> str:
+        return "bert"
 
-def _bert_name_replacement(
-    var_name: str, name_replacements: list[tuple[str, str]]
-) -> str:
-    """Gets the variable name replacement."""
-    for src_pattern, tgt_pattern in name_replacements:
-        if src_pattern in var_name:
-            old_var_name = var_name
-            var_name = var_name.replace(src_pattern, tgt_pattern)
-            logger.info("Converted: %s --> %s", old_var_name, var_name)
-    return var_name
+    def prefix(self, name: str, original: bool = True) -> str:
+        if original:
+            root_name = self.original_root_name
+        else:
+            root_name = self.converted_root_name
+        if root_name:
+            root_name += "/"
+        return root_name + name
 
+    @property
+    def embeddings(self) -> dict[str, str]:
+        return {
+            "embeddings/LayerNorm/beta": "embeddings/layer_norm/beta",
+            "embeddings/LayerNorm/gamma": "embeddings/layer_norm/gamma",
+            "embeddings/position_embeddings": "position_embedding/embeddings",
+            "embeddings/token_type_embeddings": "type_embeddings/embeddings",
+            "embeddings/word_embeddings": "word_embeddings/embeddings",
+        }
 
-def _has_exclude_patterns(name: str, exclude_patterns: list[str]) -> bool:
-    """Checks if a string contains substrings that match patterns to exclude."""
-    for p in exclude_patterns:
-        if p in name:
-            return True
-    return False
+    @property
+    def embedding_transform(self) -> dict[str, str]:
+        return {
+            "embeddings_project/kernel": "embeddings/transform/kernel",
+            "embeddings_project/bias": "embeddings/transform/bias",
+        }
 
+    @property
+    def transformer(self) -> dict[str, str]:
+        mapping = dict()
+        for i in range(self.num_layers):
+            mapping.update(
+                {
+                    f"encoder/layer_{i}/attention/self/key/bias": f"transformer/layer_{i}/self_attention/key/bias",
+                    f"encoder/layer_{i}/attention/self/key/kernel": f"transformer/layer_{i}/self_attention/key/kernel",
+                    f"encoder/layer_{i}/attention/self/query/bias": f"transformer/layer_{i}/self_attention/query/bias",
+                    f"encoder/layer_{i}/attention/self/query/kernel": f"transformer/layer_{i}/self_attention/query/kernel",
+                    f"encoder/layer_{i}/attention/self/value/bias": f"transformer/layer_{i}/self_attention/value/bias",
+                    f"encoder/layer_{i}/attention/self/value/kernel": f"transformer/layer_{i}/self_attention/value/kernel",
+                    f"encoder/layer_{i}/attention/output/dense/bias": f"transformer/layer_{i}/self_attention/attention_output/bias",
+                    f"encoder/layer_{i}/attention/output/dense/kernel": f"transformer/layer_{i}/self_attention/attention_output/kernel",
+                    f"encoder/layer_{i}/attention/output/LayerNorm/beta": f"transformer/layer_{i}/self_attention_layer_norm/beta",
+                    f"encoder/layer_{i}/attention/output/LayerNorm/gamma": f"transformer/layer_{i}/self_attention_layer_norm/gamma",
+                    f"encoder/layer_{i}/intermediate/dense/bias": f"transformer/layer_{i}/intermediate/bias",
+                    f"encoder/layer_{i}/intermediate/dense/kernel": f"transformer/layer_{i}/intermediate/kernel",
+                    f"encoder/layer_{i}/output/dense/bias": f"transformer/layer_{i}/output/bias",
+                    f"encoder/layer_{i}/output/dense/kernel": f"transformer/layer_{i}/output/kernel",
+                    f"encoder/layer_{i}/output/LayerNorm/beta": f"transformer/layer_{i}/output_layer_norm/beta",
+                    f"encoder/layer_{i}/output/LayerNorm/gamma": f"transformer/layer_{i}/output_layer_norm/gamma",
+                }
+            )
+        return mapping
 
-def _get_permutation(
-    name: str, permutations: list[tuple[str, Sequence[int]]]
-) -> Optional[Sequence[int]]:
-    """Checks whether a variable requires transposition by pattern matching."""
-    for src_pattern, permutation in permutations:
-        if src_pattern in name:
-            logger.info("Permuted: %s --> %s", name, permutation)
-            return permutation
-    return None
+    @property
+    def cls_pooler(self) -> dict[str, str]:
+        return {
+            "pooler/dense/bias": "cls_pooler/bias",
+            "pooler/dense/kernel": "cls_pooler/kernel",
+        }
 
+    @property
+    def lm(self) -> dict[str, str]:
+        return {
+            "cls/predictions/output_bias": "lm/output_bias",
+            "cls/predictions/transform/LayerNorm/beta": "lm/transform/layer_norm/beta",
+            "cls/predictions/transform/LayerNorm/gamma": "lm/transform/layer_norm/gamma",
+            "cls/predictions/transform/dense/bias": "lm/transform/dense/bias",
+            "cls/predictions/transform/dense/kernel": "lm/transform/dense/kernel",
+        }
 
-def _get_new_shape(
-    name: str, shape: Sequence[int], num_heads: int
-) -> Optional[Sequence[int]]:
-    """Checks whether a variable requires reshape by pattern matching."""
-    if "self_attention/attention_output/kernel" in name:
-        return (num_heads, shape[0] // num_heads, shape[1])
-    if "self_attention_output/bias" in name:
-        return shape
+    @property
+    def relationship(self) -> dict[str, str]:
+        return {
+            "cls/seq_relationship/output_bias": "relationship/bias",
+            "cls/seq_relationship/output_weights": "relationship/kernel",
+        }
 
-    patterns = ["self_attention/query", "self_attention/value", "self_attention/key"]
-    for pattern in patterns:
-        if pattern in name:
-            if "kernel" in name:
-                return tuple([shape[0], num_heads, shape[1] // num_heads])
-            if "bias" in name:
-                return tuple([num_heads, shape[0] // num_heads])
-    return None
+    @property
+    def exclude_keywords(self) -> set[str]:
+        return {"adam", "Adam", "global_step"}
 
+    def has_exclude_keywords(self, variable_name: str) -> bool:
+        for keyword in self.exclude_keywords:
+            if keyword in variable_name:
+                return True
+        return False
 
-def convert_checkpoint(
-    checkpoint_from_path: str,
-    num_heads: int,
-    original_root_name: str = "bert",
-    converted_root_name: str = "bert",
-    name_replacements: Optional[Sequence] = None,
-    permutations: Optional[Sequence] = None,
-    exclude_patterns: Optional[Sequence] = None,
-) -> dict[str, np.arry]:
-    """Migrates the names of variables within a checkpoint.
-    Args:
-      checkpoint_from_path: Path to source checkpoint to be read in.
-      checkpoint_to_path: Path to checkpoint to be written out.
-      num_heads: The number of heads of the model.
-      name_replacements: A list of tuples of the form (match_str, replace_str)
-        describing variable names to adjust.
-      permutations: A list of tuples of the form (match_str, permutation)
-        describing permutations to apply to given variables. Note that match_str
-        should match the original variable name, not the replaced one.
-      exclude_patterns: A list of string patterns to exclude variables from
-        checkpoint conversion.
-    Returns:
-      A dictionary that maps the new variable names to the Variable objects.
-      A dictionary that maps the old variable names to the new variable names.
-    """
-    name_replacements = list(name_replacements) or list()
-    if converted_root_name != "":
-        name_replacements.insert(0, ("cls", converted_root_name))
-        name_replacements.insert(0, (original_root_name, converted_root_name))
-    else:
-        name_replacements.insert(0, ("cls/", ""))
-        name_replacements.insert(0, (original_root_name + "/", ""))
-    permutations = permutations or list()
-    exclude_patterns = exclude_patterns or ["adam", "Adam"]
-    with tf.Graph().as_default():
-        logger.info("Reading checkpoint_from_path %s", checkpoint_from_path)
-        name_shape_pairs = tf.train.list_variables(checkpoint_from_path)
-        new_variable_mapping = {}
-        for var_name, shape in name_shape_pairs:
-            if exclude_patterns and _has_exclude_patterns(var_name, exclude_patterns):
-                continue
-            # Get the original tensor data.
-            tensor = tf.train.load_variable(checkpoint_from_path, var_name)
+    def reshape_tensor(self, variable_name: str, tensor: np.ndarray) -> np.ndarray:
+        r = re.search(
+            "self_attention/(query|key|value|attention_output)/(kernel|bias)",
+            variable_name,
+        )
+        if r is None:
+            return tensor
+        layer, var = r.groups()
+        if layer == "attention_output" and var == "bias":
+            return tensor
 
-            # Look up the new variable name, if any.
-            new_var_name = _bert_name_replacement(var_name, name_replacements)
+        num_heads = self.num_heads
+        shape: tuple = tensor.shape
+        if layer == "attention_output" and var == "kernel":
+            return tensor.reshape((num_heads, shape[0] // num_heads, shape[1]))
+        elif var == "kernel":
+            return tensor.reshape((shape[0], num_heads, shape[1] // num_heads))
+        else:
+            return tensor.reshape((num_heads, shape[0] // num_heads))
 
-            # See if we need to reshape the underlying tensor.
-            new_shape = None
-            if num_heads > 0:
-                new_shape = _get_new_shape(new_var_name, shape, num_heads)
-            if new_shape:
-                logger.info(
-                    "Veriable %s has a shape change from %s to %s",
-                    var_name,
-                    shape,
-                    new_shape,
+    def transpose_tensor(self, variable_name: str, tensor: np.ndarray) -> np.ndarray:
+        r = re.search("relationship/kernel", variable_name)
+        if r is None:
+            return tensor
+        return tensor.transpose((1, 0))
+
+    def convert(self, checkpoint_directory: str) -> dict[str, np.ndarray]:
+        with tf.Graph().as_default():
+            logger.info("Reading checkpoint from: %s", checkpoint_directory)
+            name_shape_pairs = tf.train.list_variables(checkpoint_directory)
+            new_variables = {}
+            for var_name, _ in name_shape_pairs:
+                if self.has_exclude_keywords(var_name):
+                    continue
+                tensor: np.ndarray = tf.train.load_variable(
+                    checkpoint_directory, var_name
                 )
-                tensor = np.reshape(tensor, new_shape)
+                new_var_name = self.variable_name_mapping.get(var_name, None)
+                if new_var_name is None:
+                    warnings.warn(f"Missing convertion rule for variable {var_name}.")
+                    continue
 
-            # See if we need to permute the underlying tensor.
-            permutation = _get_permutation(var_name, permutations)
-            if permutation:
-                tensor = np.transpose(tensor, permutation)
-            new_variable_mapping[new_var_name] = tensor
-        return new_variable_mapping
+                if self.num_heads > 0:
+                    tensor = self.reshape_tensor(new_var_name, tensor)
+                tensor = self.transpose_tensor(new_var_name, tensor)
+                new_variables[new_var_name] = tensor
+            return new_variables
 
 
-convert_bert_checkpoint = partial(
-    convert_checkpoint,
-    name_replacements=BERT_NAME_REPLACEMENTS,
-    permutations=BERT_PERMUTATIONS,
-)
-convert_electra_checkpoint = partial(
-    convert_bert_checkpoint, original_root_name="electra"
-)
+class AlbertCheckpointConverter(BertCheckpointConverter):
+    @property
+    def embedding_transform(self) -> dict[str, str]:
+        return {
+            "encoder/embedding_hidden_mapping_in/kernel": "embeddings/transform/kernel",
+            "encoder/embedding_hidden_mapping_in/bias": "embeddings/transform/bias",
+        }
+
+    @property
+    def transformer(self) -> dict[str, str]:
+        prefix = "encoder/transformer/group_0/inner_group_0"
+        return {
+            f"{prefix}/attention_1/self/key/bias": "transformer/self_attention/key/bias",
+            f"{prefix}/attention_1/self/key/kernel": "transformer/self_attention/key/kernel",
+            f"{prefix}/attention_1/self/query/bias": "transformer/self_attention/query/bias",
+            f"{prefix}/attention_1/self/query/kernel": "transformer/self_attention/query/kernel",
+            f"{prefix}/attention_1/self/value/bias": "transformer/self_attention/value/bias",
+            f"{prefix}/attention_1/self/value/kernel": "transformer/self_attention/value/kernel",
+            f"{prefix}/attention_1/output/dense/bias": "transformer/self_attention/attention_output/bias",
+            f"{prefix}/attention_1/output/dense/kernel": "transformer/self_attention/attention_output/kernel",
+            f"{prefix}/LayerNorm/beta": "transformer/self_attention_layer_norm/beta",
+            f"{prefix}/LayerNorm/gamma": "transformer/self_attention_layer_norm/gamma",
+            f"{prefix}/ffn_1/intermediate/dense/bias": "transformer/intermediate/bias",
+            f"{prefix}/ffn_1/intermediate/dense/kernel": "transformer/intermediate/kernel",
+            f"{prefix}/ffn_1/intermediate/output/dense/bias": "transformer/output/bias",
+            f"{prefix}/ffn_1/intermediate/output/dense/kernel": "transformer/output/kernel",
+            f"{prefix}/LayerNorm_1/beta": "transformer/output_layer_norm/beta",
+            f"{prefix}/LayerNorm_1/gamma": "transformer/output_layer_norm/gamma",
+        }
+
+
+class ElectraCheckpointConverter(BertCheckpointConverter):
+    @property
+    def original_root_name(self) -> str:
+        return "electra"
+
+    @property
+    def exclude_keywords(self) -> set[str]:
+        return {*super().exclude_keywords, "generator", "discriminator_predictions"}
