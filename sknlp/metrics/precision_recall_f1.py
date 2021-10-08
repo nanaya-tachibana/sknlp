@@ -5,6 +5,7 @@ import tensorflow as tf
 from tensorflow.keras.metrics import Precision, Recall
 from tensorflow_addons.metrics import FBetaScore
 
+from sknlp.utils.tensor import pad2shape
 from .utils import logits2pred
 
 
@@ -35,6 +36,7 @@ class PrecisionWithLogits(Precision):
         sample_weight: Optional[tf.Tensor] = None,
     ) -> None:
         y_pred = logits2pred(y_logits, self.activation)
+        y_pred = pad2shape(y_pred, tf.shape(y_true), value=0)
         super().update_state(y_true, y_pred, sample_weight=sample_weight)
 
     def get_config(self) -> dict[str, Any]:
@@ -74,6 +76,7 @@ class RecallWithLogits(Recall):
         sample_weight: Optional[tf.Tensor] = None,
     ) -> None:
         y_pred = logits2pred(y_logits, self.activation)
+        y_pred = pad2shape(y_pred, tf.shape(y_true), value=0)
         super().update_state(y_true, y_pred, sample_weight=sample_weight)
 
     def get_config(self) -> dict[str, Any]:
@@ -117,6 +120,7 @@ class FBetaScoreWithLogits(FBetaScore):
         sample_weight: Optional[tf.Tensor] = None,
     ) -> None:
         y_pred = logits2pred(y_logits, self.activation)
+        y_pred = pad2shape(y_pred, tf.shape(y_true), value=0)
         if self.class_id is not None:
             y_true = y_true[..., self.class_id]
             y_pred = y_pred[..., self.class_id]

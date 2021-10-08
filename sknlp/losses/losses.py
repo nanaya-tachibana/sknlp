@@ -1,6 +1,9 @@
 from __future__ import annotations
 from typing import Any
+
 import tensorflow as tf
+
+from sknlp.utils.tensor import pad2shape
 
 
 @tf.keras.utils.register_keras_serializable(package="sknlp")
@@ -22,6 +25,7 @@ class MultiLabelCategoricalCrossentropy(tf.keras.losses.Loss):
         if isinstance(y_pred, tf.RaggedTensor):
             y_pred = y_pred.to_tensor(y_pred.dtype.min)
         y_true = tf.cast(y_true, y_pred.dtype)
+        y_pred = pad2shape(y_pred, tf.shape(y_true))
 
         sample_size = tf.reduce_prod(tf.shape(y_true)[: self.flatten_axis])
         y_true = tf.reshape(y_true, (sample_size, -1))
