@@ -83,14 +83,6 @@ class Text2vec(BaseNLPModel):
     def tokenize(self, text: str) -> list[int]:
         return self._tokenizer.tokenize(text)
 
-    @property
-    def weights(self) -> list[tf.Tensor]:
-        return self._model.get_weights()
-
-    @weights.setter
-    def weights(self, weights: list[tf.Tensor]) -> None:
-        self._model.set_weights(weights)
-
     def save_vocab(self, directory: str, filename: str = "vocab.json") -> None:
         with open(os.path.join(directory, filename), "w", encoding="UTF-8") as f:
             f.write(self.vocab.to_json())
