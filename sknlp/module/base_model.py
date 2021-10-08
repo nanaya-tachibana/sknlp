@@ -20,7 +20,7 @@ class BaseNLPModel:
         sequence_length: Optional[int] = None,
         segmenter: Optional[str] = None,
         learning_rate_multiplier: Optional[dict[str, float]] = None,
-        prediction_kwargs: Optional[dict[str, Any]] = None,
+        inference_kwargs: Optional[dict[str, Any]] = None,
         custom_kwargs: Optional[dict[str, Any]] = None,
         name: Optional[str] = None,
         **kwargs
@@ -32,7 +32,7 @@ class BaseNLPModel:
         self._layerwise_learning_rate_multiplier: list[
             tuple[tf.keras.layers.Layer, float]
         ] = []
-        self._prediction_kwargs = prediction_kwargs or dict()
+        self._inference_kwargs = inference_kwargs or dict()
         self._custom_kwargs = custom_kwargs or dict()
         self._kwargs = kwargs
 
@@ -63,14 +63,6 @@ class BaseNLPModel:
             for variable in layer.variables:
                 self._learning_rate_multiplier[variable.name] = multiplier
         return self._learning_rate_multiplier
-
-    @property
-    def prediction_kwargs(self) -> dict[str, Any]:
-        return self._prediction_kwargs
-
-    @property
-    def custom_kwargs(self) -> dict[str, Any]:
-        return self._custom_kwargs
 
     @staticmethod
     def build_vocab(
@@ -186,6 +178,8 @@ class BaseNLPModel:
                 "Zeros": tf.keras.initializers.Zeros,
             },
         )
+        self._inference_kwargs["input_names"] = model.input_names
+        self._inference_kwargs["output_names"] = model.output_names
         model.set_weights(self._model.get_weights())
         model.save(d, include_optimizer=False, save_format="tf")
         self.save_config(d)
@@ -196,8 +190,8 @@ class BaseNLPModel:
             "sequence_length": self.sequence_length,
             "segmenter": self.segmenter,
             "name": self.name,
-            "prediction_kwargs": self.prediction_kwargs,
-            "custom_kwargs": self.custom_kwargs,
+            "inference_kwargs": self._inference_kwargs,
+            "custom_kwargs": self._custom_kwargs,
             "__version__": sknlp.__version__,
             "__package__": sknlp.__name__,
         }

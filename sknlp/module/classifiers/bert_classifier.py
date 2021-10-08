@@ -6,7 +6,6 @@ from tensorflow.keras.layers import Dropout
 
 from sknlp.layers import (
     BertPreprocessingLayer,
-    BertPairPreprocessingLayer,
     BertAttentionMaskLayer,
 )
 from sknlp.data import BertClassificationDataset

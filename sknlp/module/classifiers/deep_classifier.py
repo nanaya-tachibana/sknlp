@@ -68,19 +68,30 @@ class DeepClassifier(SupervisedNLPModel):
     @property
     def thresholds(self) -> list[float]:
         _thresholds = [0.5 for _ in range(self.num_classes)]
-        _kthresholds: Optional[dict[str, float]] = self.prediction_kwargs.get(
+        class_thresholds: Optional[dict[str, float]] = self._inference_kwargs.get(
             "thresholds", None
         )
-        if _kthresholds is not None:
-            for c, t in _kthresholds.items():
+        if class_thresholds is not None:
+            for c, t in class_thresholds.items():
                 _thresholds[self.class2idx(c)] = t
         return _thresholds
 
     @thresholds.setter
-    def thresholds(self, thresholds: list[float]) -> None:
-        if len(thresholds) != self.num_classes:
-            raise ValueError(f"类别数为{self.num_classes}, 但thresholds长度为{len(thresholds)}")
-        self.prediction_kwargs["thresholds"] = dict(zip(self.classes, thresholds))
+    def thresholds(self, thresholds: Union[list[float], dict[str, float]]) -> None:
+        if (
+            isinstance(thresholds, list)
+            and len(thresholds) != self.num_classes
+            and len(thresholds) - 1 != self.num_classes
+        ):
+            raise ValueError(
+                f"类别数为{self.num_classes - 1}(不含NULL类别), "
+                f"但`thresholds`长度为{len(thresholds)}."
+            )
+        elif isinstance(thresholds, dict):
+            _thresholds = self.thresholds
+            for c, t in thresholds.items():
+                _thresholds[self.class2idx(c)] = t
+        self._inference_kwargs["thresholds"] = dict(zip(self.classes[1:], thresholds))
 
     def get_loss(self, *args, **kwargs) -> list[tf.keras.losses.Loss]:
         if self.is_multilabel:
