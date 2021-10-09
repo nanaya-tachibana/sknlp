@@ -120,7 +120,7 @@ class Vocab:
 
     def __repr__(self) -> str:
         return (
-            f"Vocab(size=%d, "
+            f"Vocab(size={len(self)}, "
             f'pad="{self.pad}", '
             f'unk="{self.unk}", '
             f'bos="{self.bos}", '
