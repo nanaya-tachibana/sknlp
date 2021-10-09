@@ -30,6 +30,7 @@ class BertGenerator(DeepGenerator):
             max_sequence_length=max_sequence_length,
             beam_width=beam_width,
             text2vec=text2vec,
+            algorithm="bert",
             **kwargs
         )
         self.dropout = dropout
