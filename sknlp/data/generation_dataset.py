@@ -1,9 +1,10 @@
 from __future__ import annotations
-from typing import Any, Sequence, Optional, Callable
+from typing import Any, Sequence, Optional
 
 import tensorflow as tf
 import numpy as np
 
+from sknlp.vocab import Vocab
 from .nlp_dataset import NLPDataset
 
 
@@ -14,8 +15,9 @@ def _combine_xy(text, target):
 class GenerationDataset(NLPDataset):
     def __init__(
         self,
-        tokenizer: Callable[[str], list[int]],
+        vocab: Vocab,
         labels: Sequence[str],
+        segmenter: Optional[str] = None,
         X: Optional[Sequence[Any]] = None,
         y: Optional[Sequence[Any]] = None,
         csv_file: Optional[str] = None,
@@ -27,7 +29,8 @@ class GenerationDataset(NLPDataset):
         **kwargs
     ):
         super().__init__(
-            tokenizer,
+            vocab,
+            segmenter=segmenter,
             X=X,
             y=y,
             csv_file=csv_file,

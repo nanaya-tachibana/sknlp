@@ -1,9 +1,10 @@
 from __future__ import annotations
-from typing import Sequence, Union, Optional, Callable, Any
+from typing import Sequence, Union, Optional, Any
 
 import numpy as np
 import tensorflow as tf
 
+from sknlp.vocab import Vocab
 from .nlp_dataset import NLPDataset
 from .utils import serialize_example
 
@@ -19,8 +20,9 @@ def _combine_x(text, context):
 class ClassificationDataset(NLPDataset):
     def __init__(
         self,
-        tokenizer: Callable[[str], list[int]],
+        vocab: Vocab,
         labels: Sequence[str],
+        segmenter: Optional[str] = None,
         X: Optional[Sequence[Any]] = None,
         y: Optional[Sequence[Any]] = None,
         csv_file: Optional[str] = None,
@@ -41,7 +43,8 @@ class ClassificationDataset(NLPDataset):
             column_dtypes.append("str")
         self.label2idx = dict(zip(labels, range(len(labels))))
         super().__init__(
-            tokenizer,
+            vocab,
+            segmenter=segmenter,
             X=X,
             y=y,
             csv_file=csv_file,

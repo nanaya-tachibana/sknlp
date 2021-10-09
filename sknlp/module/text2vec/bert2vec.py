@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Callable, Optional, Any
+from typing import Callable, Optional, Any, Union
 import os
 from enum import Enum
 import logging
@@ -122,6 +122,7 @@ class Bert2vec(Text2vec):
         return_all_layer_outputs: bool = False,
         share_layer: bool = False,
         cls_pooling: bool = True,
+        add_relationship_loss: bool = False,
         name: str = "bert2vec",
         **kwargs,
     ) -> None:
@@ -133,11 +134,13 @@ class Bert2vec(Text2vec):
             sequence_length=sequence_length,
             max_sequence_length=max_sequence_length,
             embedding_size=embedding_size,
+            algorithm="bert",
             name=name,
             **kwargs,
         )
         self.return_all_layer_outputs = return_all_layer_outputs
-        self.bert_layer = BertLayer(
+        self.add_relationship_loss = add_relationship_loss
+        self.pretrain_layer = BertLayer(
             len(self.vocab.sorted_tokens),
             embedding_size=embedding_size,
             hidden_size=hidden_size,
@@ -153,28 +156,39 @@ class Bert2vec(Text2vec):
             initializer=initializer,
             share_layer=share_layer,
             cls_pooling=cls_pooling,
-            name=name,
+            name=self.name,
         )
-        token_ids = tf.keras.Input(
-            shape=(sequence_length,), dtype=tf.int64, name="input_token_ids"
+        self.inputs = [
+            tf.keras.Input(shape=(), dtype=tf.string, name="text_input"),
+            tf.keras.Input(
+                shape=(sequence_length,), dtype=tf.int64, name="lm_logits_mask"
+            ),
+        ]
+        if self.add_relationship_loss:
+            self.inputs.insert(
+                1, tf.keras.Input(shape=(), dtype=tf.string, name="relation_text_input")
+            )
+
+    def build_preprocessing_layer(self, inputs: list[tf.Tensor]) -> list[tf.Tensor]:
+        return [
+            *BertPreprocessingLayer(self.vocab.sorted_tokens)(inputs[:-1]),
+            inputs[-1],
+        ]
+
+    def build_encoding_layer(self, inputs: list[tf.Tensor]) -> list[tf.Tensor]:
+        token_ids, type_ids, logits_mask = inputs
+        mask = tf.math.not_equal(token_ids, 0)
+        return self.pretrain_layer(
+            [
+                token_ids,
+                type_ids,
+                BertAttentionMaskLayer()([type_ids, mask]),
+                logits_mask,
+            ]
         )
-        type_ids = tf.keras.Input(
-            shape=(sequence_length,), dtype=tf.int64, name="input_type_ids"
-        )
-        attention_mask = tf.keras.Input(
-            shape=(sequence_length, sequence_length),
-            dtype=tf.float32,
-            name="attention_mask",
-        )
-        logits_mask = tf.keras.Input(
-            shape=(sequence_length,),
-            dtype=tf.int64,
-            name="logits_mask",
-        )
-        self.inputs = [token_ids, type_ids, attention_mask, logits_mask]
-        self._model = tf.keras.Model(
-            inputs=self.inputs, outputs=self.bert_layer(self.inputs), name=name
-        )
+
+    def build_output_layer(self, inputs: list[tf.Tensor]) -> tf.Tensor:
+        return inputs[-1]
 
     def __call__(
         self, inputs: list[tf.Tensor], logits_mask: Optional[tf.Tensor] = None
@@ -183,13 +197,13 @@ class Bert2vec(Text2vec):
             inputs.append(tf.ones_like(inputs[0]))
         else:
             inputs.append(logits_mask)
-        outputs = super().__call__(inputs)
+        outputs = self.pretrain_layer(inputs)
         if not self.return_all_layer_outputs:
             return [outputs[0], outputs[1][-1], *outputs[2:]]
         return outputs
 
     def update_dropout(self, dropout: float) -> None:
-        bert_layer = self._model.get_layer(self.name)
+        bert_layer = self.pretrain_layer
         bert_layer.embedding_dropout_layer.rate = dropout
         transformer_layers = []
         layer = getattr(bert_layer, "shared_layer", None)
@@ -265,7 +279,7 @@ class Bert2vec(Text2vec):
         token_ids, type_ids = preprocessing_layer(self.text_input)
         mask = tf.not_equal(token_ids, 0)
         attention_mask = attention_mask_layer([type_ids, mask])
-        outputs = self._model(
+        outputs = self.pretrain_layer(
             [token_ids, type_ids, attention_mask, tf.ones_like(token_ids)]
         )
         if only_output_cls:

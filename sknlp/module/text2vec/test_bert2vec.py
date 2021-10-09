@@ -8,11 +8,13 @@ from .bert2vec import Bert2vec, BertFamily
 
 @pytest.fixture
 def inputs():
-    token_ids = tf.constant([[101, 3432, 324, 123, 102], [101, 444, 222, 102, 0]])
-    type_ids = tf.zeros_like(token_ids)
-    mask = tf.constant([[1, 1, 1, 1, 1], [1, 1, 1, 1, 0]])
-    attention_mask = mask[..., None] * mask[:, None, :]
-    logits_mask = tf.constant([[0, 0, 1, 1, 0], [0, 1, 0, 0, 0]])
+    token_ids = tf.constant(
+        [[101, 3432, 324, 123, 102], [101, 444, 222, 102, 0]], dtype=tf.int64
+    )
+    type_ids = tf.zeros_like(token_ids, dtype=tf.int64)
+    mask = tf.constant([[1, 1, 1, 1, 1], [1, 1, 1, 1, 0]], dtype=tf.int64)
+    attention_mask = tf.cast(mask[..., None] * mask[:, None, :], dtype=tf.float32)
+    logits_mask = tf.constant([[0, 0, 1, 1, 0], [0, 1, 0, 0, 0]], dtype=tf.int64)
     return [token_ids, type_ids, attention_mask, logits_mask]
 
 

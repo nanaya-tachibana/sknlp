@@ -1,8 +1,9 @@
 from __future__ import annotations
-from typing import Sequence, Optional, Callable, Any
+from typing import Sequence, Optional, Any
 
 import tensorflow as tf
 
+from sknlp.vocab import Vocab
 from .classification_dataset import ClassificationDataset
 from .tagging_dataset import TaggingDataset
 from .generation_dataset import GenerationDataset
@@ -11,8 +12,9 @@ from .generation_dataset import GenerationDataset
 class BertGenerationDataset(GenerationDataset):
     def __init__(
         self,
-        tokenizer: Callable[[str], list[int]],
+        vocab: Vocab,
         labels: Sequence[str],
+        segmenter: Optional[str] = None,
         X: Optional[Sequence[Any]] = None,
         y: Optional[Sequence[Any]] = None,
         csv_file: Optional[str] = None,
@@ -22,8 +24,9 @@ class BertGenerationDataset(GenerationDataset):
         **kwargs,
     ):
         super().__init__(
-            tokenizer,
+            vocab,
             labels,
+            segmenter=segmenter,
             X=X,
             y=y,
             csv_file=csv_file,
@@ -46,8 +49,9 @@ class BertGenerationDataset(GenerationDataset):
 class BertClassificationDataset(ClassificationDataset):
     def __init__(
         self,
-        tokenizer: Callable[[str], list[int]],
+        vocab: Vocab,
         labels: Sequence[str],
+        segmenter: Optional[str] = None,
         X: Optional[Sequence[Any]] = None,
         y: Optional[Sequence[Any]] = None,
         csv_file: Optional[str] = None,
@@ -59,8 +63,9 @@ class BertClassificationDataset(ClassificationDataset):
         **kwargs,
     ):
         super().__init__(
-            tokenizer,
+            vocab,
             labels,
+            segmenter=segmenter,
             X=X,
             y=y,
             csv_file=csv_file,
@@ -85,8 +90,9 @@ class BertClassificationDataset(ClassificationDataset):
 class BertTaggingDataset(TaggingDataset):
     def __init__(
         self,
-        tokenizer: Callable[[str], list[int]],
+        vocab: Vocab,
         labels: Sequence[str],
+        segmenter: Optional[str] = None,
         X: Optional[Sequence[Any]] = None,
         y: Optional[Sequence[Any]] = None,
         csv_file: Optional[str] = None,
@@ -98,8 +104,9 @@ class BertTaggingDataset(TaggingDataset):
         **kwargs,
     ):
         super().__init__(
-            tokenizer,
+            vocab,
             labels,
+            segmenter=segmenter,
             X=X,
             y=y,
             csv_file=csv_file,

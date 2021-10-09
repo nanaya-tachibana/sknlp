@@ -1,10 +1,11 @@
 from __future__ import annotations
-from typing import Sequence, Optional, Tuple, Any, Callable
+from typing import Sequence, Optional, Tuple, Any
 import json
 
 import numpy as np
 import tensorflow as tf
 
+from sknlp.vocab import Vocab
 from .nlp_dataset import NLPDataset
 
 
@@ -15,8 +16,9 @@ def _combine_xy(x, y):
 class TaggingDataset(NLPDataset):
     def __init__(
         self,
-        tokenizer: Callable[[str], list[int]],
+        vocab: Vocab,
         labels: Sequence[str],
+        segmenter: Optional[str] = None,
         X: Optional[Sequence[Any]] = None,
         y: Optional[Sequence[Any]] = None,
         csv_file: Optional[str] = None,
@@ -33,7 +35,8 @@ class TaggingDataset(NLPDataset):
         self.output_format = output_format
         self.label2idx = dict(zip(labels, range(len(labels))))
         super().__init__(
-            tokenizer,
+            vocab,
+            segmenter=segmenter,
             X=X,
             y=y,
             csv_file=csv_file,

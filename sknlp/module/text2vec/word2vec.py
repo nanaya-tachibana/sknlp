@@ -32,19 +32,26 @@ class Word2vec(Text2vec):
             max_sequence_length=max_sequence_length,
             sequence_length=sequence_length,
             embedding_size=embedding_size,
+            algorithm="word2vec",
             name=name,
             **kwargs,
         )
-        self.embedding = Embedding(
+        self.pretrain_layer = Embedding(
             len(vocab),
             embedding_size,
             embeddings_initializer=embeddings_initializer,
             embeddings_regularizer=embeddings_regularizer,
             embeddings_constraint=embeddings_constraint,
             mask_zero=True,
-            name="embeddings",
+            name=self.name,
         )
-        self._model = tf.keras.Sequential(self.embedding, name=name)
+        self.inputs = tf.keras.Input(shape=(None,), dtype=tf.int64, name="token_ids")
+
+    def __call__(self, inputs: tf.Tensor) -> tf.Tensor:
+        return self.pretrain_layer(inputs)
+
+    def build_output_layer(self, inputs: tf.Tensor) -> tf.Tensor:
+        return self.pretrain_layer(inputs)
 
     def to_word2vec_format(self, filename: str) -> None:
         with open(filename, "w") as f:
@@ -130,5 +137,6 @@ class Word2vec(Text2vec):
         if not has_unk:
             weights[1, :] = weights[4:, :].mean(axis=0)
         word2vec = cls(vocab, embedding_size, segmenter=segmenter)
+        word2vec.build()
         word2vec._model.set_weights([weights])
         return word2vec

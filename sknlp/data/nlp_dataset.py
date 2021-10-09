@@ -6,11 +6,15 @@ import pandas as pd
 import numpy as np
 import tensorflow as tf
 
+from sknlp.vocab import Vocab
+from .tokenizer import get_tokenizer
+
 
 class NLPDataset:
     def __init__(
         self,
-        tokenizer: Callable[[str], list[int]],
+        vocab: Vocab,
+        segmenter: Optional[str] = None,
         X: Optional[Sequence[Any]] = None,
         y: Optional[Sequence[Any]] = None,
         csv_file: Optional[str] = None,
@@ -40,7 +44,8 @@ class NLPDataset:
             )
             self.size = df.shape[0]
 
-        self.tokenizer = tokenizer
+        self.tokenizer = get_tokenizer(segmenter, vocab)
+        self.vocab = vocab
         self.max_length = max_length or 99999
         self.text_dtype = text_dtype
         self.label_dtype = label_dtype
