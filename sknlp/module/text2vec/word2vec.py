@@ -76,15 +76,16 @@ class Word2vec(Text2vec):
         has_unk = False
         with open(filename) as f:
             for line in f:
+                line = line.strip("\n")
                 if line == "":
                     continue
-                if embedding_size == 0:
+                if embedding_size == 0 and not line.startswith(" "):
                     if len(line.split()) == 2:
-                        embedding_size = int(line.split()[1])
+                        embedding_size = int(line.split(" ")[1])
                         has_header = True
                         continue
                     else:
-                        embedding_size = len(line.split()) - 1
+                        embedding_size = len(line.split(" ")) - 1
                 if (
                     line.startswith(pad)
                     or line.startswith(unk)
@@ -101,14 +102,19 @@ class Word2vec(Text2vec):
         tokens = [pad, unk, bos, eos]
         with open(filename) as f:
             for i, line in enumerate(f):
+                line = line.strip("\n")
                 if line == "":
                     continue
                 if has_header:
                     i -= 1
                 if i < 0:
                     continue
-                cell = line.split()
-                token = cell[0]
+
+                cells = line.split(" ")
+                if cells[0] == "":
+                    del cells[0]
+                    cells[0] = " "
+                token = cells[0]
                 idx = i + num_adding_tokens + num_special_tokens
                 if token == pad:
                     idx = 0
@@ -125,7 +131,7 @@ class Word2vec(Text2vec):
                     num_special_tokens -= 1
                 else:
                     tokens.append(token)
-                vec = list(map(float, cell[1:]))
+                vec = list(map(float, cells[1:]))
                 weights[idx, :] = vec
         vocab = Vocab(
             tokens,
