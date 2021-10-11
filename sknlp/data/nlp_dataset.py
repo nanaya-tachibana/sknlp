@@ -44,7 +44,7 @@ class NLPDataset:
             )
             self.size = df.shape[0]
 
-        self.tokenizer = get_tokenizer(segmenter, vocab)
+        self.tokenizer = get_tokenizer(segmenter, vocab).tokenize
         self.vocab = vocab
         self.max_length = max_length or 99999
         self.text_dtype = text_dtype
