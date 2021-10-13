@@ -313,6 +313,7 @@ class BaseNLPModel:
             early_stopping_use_best_epoch=early_stopping_use_best_epoch,
             checkpoint=checkpoint,
             log_file=log_file,
+            verbose=verbose,
         )
         for callback in self.get_callbacks():
             callback.validation_data = validation_tf_dataset

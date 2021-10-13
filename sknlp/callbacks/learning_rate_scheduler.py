@@ -38,7 +38,8 @@ class LearningRateScheduler(Callback):
         new_lr = self.warmup_schedule(step, lr)
         if new_lr == lr:
             self.warmup_ended = True
-            print("\nStep %07d: learning rate warmup ended." % step)
+            if self.verbose > 1:
+                print("\nStep %07d: learning rate warmup ended." % step)
             return
 
         K.set_value(self.model.optimizer.lr, K.get_value(new_lr))

@@ -68,6 +68,7 @@ def default_supervised_model_callbacks(
                 patience=early_stopping_patience or learning_rate_update_epochs,
                 mode=early_stopping_monitor_direction,
                 restore_best_weights=early_stopping_use_best_epoch,
+                verbose=verbose,
             )
         )
     if checkpoint is not None:

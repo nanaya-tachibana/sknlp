@@ -9,7 +9,7 @@ from sknlp.utils.tagging import (
 )
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("sknlp")
 logger.setLevel(logging.INFO)
 stream = logging.StreamHandler()
 logger.addHandler(stream)
