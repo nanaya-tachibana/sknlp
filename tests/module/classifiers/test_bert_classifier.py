@@ -1,5 +1,5 @@
 import pytest
-from .bert_classifier import BertClassifier
+from sknlp.module.classifiers import BertClassifier
 
 
 @pytest.mark.parametrize(

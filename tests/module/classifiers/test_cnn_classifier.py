@@ -1,5 +1,5 @@
 import pytest
-from .cnn_classifier import CNNClassifier
+from sknlp.module.classifiers import CNNClassifier
 
 
 @pytest.mark.parametrize(

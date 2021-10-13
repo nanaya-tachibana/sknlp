@@ -1,40 +1,58 @@
-from collections import Counter
-
+import pathlib
 import numpy as np
 
 from sknlp.vocab import Vocab
-from sknlp.module.text2vec import Word2vec
-
-from .test_text2vec import TestText2vec
+from .word2vec import Word2vec
 
 
-class TestWord2vec(TestText2vec):
+def test_word2vec():
+    vocab = Vocab(["a", "b", "c"])
+    wv = Word2vec(vocab, 10)
+    token_ids = np.array([1, 2, 0, 0])
+    embeddings = wv(token_ids)
+    assert embeddings.shape == (4, 10)
+    assert embeddings._keras_mask.numpy().tolist() == [True, True, False, False]
 
-    vocab = Vocab(Counter({"a": 10, "b": 12, "c": 22}))
-    embed_size = 10
-    segmenter = "jieba"
-    sequence_length = None
-    max_sequence_length = 100
-    module = Word2vec(vocab,
-                      embed_size,
-                      segmenter,
-                      max_sequence_length=max_sequence_length,
-                      sequence_length=sequence_length)
 
-    def test_save_load(self, tmp_path):
-        filename = "tmp.tar"
-        tmp_file = tmp_path / filename
-        self.module.save_archive(str(tmp_file))
-        new_module = Word2vec.load_archive(str(tmp_file))
-        np.testing.assert_array_almost_equal(
-            self.module(np.array([[1, 3, 4]])), new_module(np.array([[1, 3, 4]]))
-        )
-        assert new_module.vocab["a"] == self.module.vocab["a"]
+def test_load_word2vec_format(tmp_path):
+    filepath: pathlib.Path = tmp_path / "vec.txt"
+    with open(str(filepath), "w") as f:
+        f.write("5 3\n")
+        f.write(" ".join(["a", " ".join(["0.1"] * 3)]))
+        f.write("\n")
+        f.write(" ".join(["<unk>", " ".join(["0.3"] * 3)]))
+        f.write("\n")
+        f.write(" ".join(["b", " ".join(["0.2"] * 3)]))
+        f.write("\n")
+        f.write(" ".join(["</s>", " ".join(["0.4"] * 3)]))
+        f.write("\n")
+        f.write(" ".join([" ", " ".join(["0.4"] * 3)]))
+    wv = Word2vec.from_word2vec_format(str(filepath))
+    assert len(wv.vocab) == 7
+    assert wv.vocab["a"] == 4
+    assert wv.vocab["</s>"] == 3
+    np.testing.assert_array_almost_equal(wv._model.get_weights()[0][1, :], [0.3] * 3)
+    np.testing.assert_array_almost_equal(wv._model.get_weights()[0][4, :], [0.1] * 3)
 
-    def test_embedding_size(self):
-        assert self.module.embedding_size == self.embed_size
 
-    def test_get_config(self):
-        super().test_get_config()
-        config = self.module.get_config()
-        assert config["embedding_size"] == self.embed_size
+def test_save_load_glove_format(tmp_path):
+    filepath: pathlib.Path = tmp_path / "vec.txt"
+    with open(str(filepath), "w") as f:
+        f.write(" ".join(["a", " ".join(["0.1"] * 3)]))
+        f.write("\n")
+        f.write(" ".join(["<s>", " ".join(["0.3"] * 3)]))
+        f.write("\n")
+        f.write(" ".join(["b", " ".join(["0.2"] * 3)]))
+        f.write("\n")
+        f.write(" ".join(["</s>", " ".join(["0.4"] * 3)]))
+    wv = Word2vec.from_word2vec_format(str(filepath))
+    assert len(wv.vocab) == 6
+    assert wv.vocab["a"] == 4
+    assert wv.vocab["</s>"] == 3
+    np.testing.assert_array_almost_equal(wv._model.get_weights()[0][1, :], [0.15] * 3)
+    np.testing.assert_array_almost_equal(wv._model.get_weights()[0][4, :], [0.1] * 3)
+
+    wv.to_word2vec_format(filepath)
+    new_wv = Word2vec.from_word2vec_format(filepath)
+    assert len(wv.vocab) == len(new_wv.vocab)
+    np.testing.assert_array_almost_equal(wv._model.weights[0], new_wv._model.weights[0])
