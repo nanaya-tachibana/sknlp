@@ -37,7 +37,7 @@ class ClassificationDataset(NLPDataset):
     ):
         self.labels = list(labels)
         self.is_pair_text = is_pair_text
-        self.is_multilabel = is_multilabel and not is_pair_text
+        self.is_multilabel = is_multilabel
         column_dtypes = ["str", "str"]
         if self.is_pair_text:
             column_dtypes.append("str")

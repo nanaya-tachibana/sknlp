@@ -94,7 +94,9 @@ class NLPDataset:
         if y is not None:
             y = self._normalize_y(y)
         if isinstance(X[0], (list, tuple)):
-            df = pd.DataFrame(zip(*X, y) if y is not None else X)
+            df = pd.DataFrame(
+                [[*xi, yi] for xi, yi in zip(X, y)] if y is not None else X
+            )
         else:
             df = pd.DataFrame(zip(X, y) if y is not None else X)
         return df
