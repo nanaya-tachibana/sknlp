@@ -1,8 +1,7 @@
-import pytest
 import random
 import string
 
-from sknlp.module.text2vec import Bert2vec, Word2vec
+import pytest
 
 
 @pytest.fixture
@@ -97,13 +96,3 @@ def file_data_pairwise(raw_data_pairwise, tmp_path_factory):
     write_data(training_filename, training_X, training_y)
     write_data(validation_filename, validation_X, validation_y)
     return training_filename, validation_filename
-
-
-@pytest.fixture
-def bert2vec():
-    return Bert2vec.from_tfv1_checkpoint(1, "data/bert_3l")
-
-
-@pytest.fixture
-def word2vec():
-    return Word2vec.from_word2vec_format("data/char/vec.txt", segmenter="char")
