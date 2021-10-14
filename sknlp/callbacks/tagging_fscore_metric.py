@@ -47,8 +47,3 @@ class TaggingFScoreMetric(tf.keras.callbacks.Callback):
         score_df = tagging_fscore(y, predictions, self.classes[1:])
         logger = get_logger()
         logger.info(score_df)
-        row = score_df[score_df["class"] == "avg"]
-        for col in score_df.columns:
-            if col == "support":
-                continue
-            logs[f"val_{col}"] = row[col].values.tolist()[0]

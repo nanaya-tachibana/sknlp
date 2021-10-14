@@ -18,12 +18,9 @@ def get_logger():
 
         logger = logging.getLogger("sknlp")
         logger.setLevel(logging.INFO)
-        # Don't further configure the TensorFlow logger if the root logger is
-        # already configured. This prevents double logging in those cases.
-        if not logging.getLogger().handlers:
-            handler = logging.StreamHandler()
-            handler.setLevel(logging.INFO)
-            logger.addHandler(handler)
+        handler = logging.StreamHandler()
+        handler.setLevel(logging.INFO)
+        logger.addHandler(handler)
         _logger = logger
         return _logger
     finally:
