@@ -72,6 +72,10 @@ class DeepTagger(SupervisedNLPModel):
     def crf_learning_rate_multiplier(self) -> float:
         return self._crf_learning_rate_multiplier
 
+    @property
+    def num_bio_tags(self) -> int:
+        return self.num_classes * 2 - 1
+
     def get_loss(self) -> None:
         if self.output_format == "bio":
             return None
@@ -105,11 +109,11 @@ class DeepTagger(SupervisedNLPModel):
             emissions = MLPLayer(
                 self.num_fc_layers,
                 hidden_size=self.fc_hidden_size,
-                output_size=self.num_classes * 2 + 1,
+                output_size=self.num_bio_tags,
                 activation=self.fc_activation,
                 name="mlp",
             )(encodings)
-            crf_layer = CrfLossLayer(self.num_classes * 2 + 1)
+            crf_layer = CrfLossLayer(self.num_bio_tags)
             if self.crf_learning_rate_multiplier != 1:
                 self._layerwise_learning_rate_multiplier.append(
                     (crf_layer, self.crf_learning_rate_multiplier)
@@ -176,7 +180,7 @@ class DeepTagger(SupervisedNLPModel):
         if self.output_format == "bio":
             mask = self._model.get_layer("mask_layer").output
             emissions = self._model.get_layer("mlp").output
-            crf = CrfDecodeLayer(self.num_classes * 2 + 1)
+            crf = CrfDecodeLayer(self.num_bio_tags)
             crf.build(
                 [tf.TensorShape([None, None, None]), tf.TensorShape([None, None])]
             )
