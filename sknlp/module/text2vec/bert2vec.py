@@ -1,15 +1,13 @@
 from __future__ import annotations
-from typing import Callable, Optional, Any, Union
+from typing import Callable, Optional, Any
 import os
 from enum import Enum
-import logging
 
 import tensorflow as tf
 from tensorflow.keras.initializers import TruncatedNormal
 
 from official.nlp.bert.configs import BertConfig
 
-import sknlp
 from sknlp.vocab import Vocab
 from sknlp.activations import gelu
 from sknlp.layers import (
@@ -22,6 +20,7 @@ from sknlp.layers.utils import (
     AlbertCheckpointConverter,
     ElectraCheckpointConverter,
 )
+from sknlp.utils.logging import get_logger
 from .text2vec import Text2vec
 
 
@@ -224,7 +223,7 @@ class Bert2vec(Text2vec):
         sequence_length: Optional[int] = None,
         name: str = "bert2vec",
     ):
-        logger = logging.getLogger(sknlp.__name__)
+        logger = get_logger()
         checkpoint = ModelCheckpoint(
             model_type, v1_checkpoint, config_filename=config_filename, name=name
         )

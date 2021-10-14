@@ -1,18 +1,12 @@
 from __future__ import annotations
 from typing import Optional, Any
-import logging
 import tensorflow as tf
 
 from sknlp.utils.tagging import (
     convert_ids_to_tags,
     tagging_fscore,
 )
-
-
-logger = logging.getLogger("sknlp")
-logger.setLevel(logging.INFO)
-stream = logging.StreamHandler()
-logger.addHandler(stream)
+from sknlp.utils.logging import get_logger
 
 
 class TaggingFScoreMetric(tf.keras.callbacks.Callback):
@@ -51,6 +45,7 @@ class TaggingFScoreMetric(tf.keras.callbacks.Callback):
             )
 
         score_df = tagging_fscore(y, predictions, self.classes[1:])
+        logger = get_logger()
         logger.info(score_df)
         row = score_df[score_df["class"] == "avg"]
         for col in score_df.columns:
