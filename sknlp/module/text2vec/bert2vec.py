@@ -20,7 +20,7 @@ from sknlp.layers.utils import (
     AlbertCheckpointConverter,
     ElectraCheckpointConverter,
 )
-from sknlp.utils.logging import get_logger
+from sknlp.utils.logging import logger
 from .text2vec import Text2vec
 
 
@@ -223,7 +223,6 @@ class Bert2vec(Text2vec):
         sequence_length: Optional[int] = None,
         name: str = "bert2vec",
     ):
-        logger = get_logger()
         checkpoint = ModelCheckpoint(
             model_type, v1_checkpoint, config_filename=config_filename, name=name
         )

@@ -6,7 +6,7 @@ from sknlp.utils.tagging import (
     convert_ids_to_tags,
     tagging_fscore,
 )
-from sknlp.utils.logging import get_logger
+from sknlp.utils.logging import logger
 
 
 class TaggingFScoreMetric(tf.keras.callbacks.Callback):
@@ -45,5 +45,4 @@ class TaggingFScoreMetric(tf.keras.callbacks.Callback):
             )
 
         score_df = tagging_fscore(y, predictions, self.classes[1:])
-        logger = get_logger()
         logger.info(score_df)

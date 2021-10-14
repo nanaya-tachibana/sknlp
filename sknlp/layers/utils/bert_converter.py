@@ -6,7 +6,7 @@ import warnings
 import numpy as np
 import tensorflow as tf
 
-from sknlp.utils.logging import get_logger
+from sknlp.utils.logging import logger
 
 
 class BertCheckpointConverter:
@@ -152,7 +152,6 @@ class BertCheckpointConverter:
 
     def convert(self, checkpoint_directory: str) -> dict[str, np.ndarray]:
         with tf.Graph().as_default():
-            logger = get_logger()
             logger.info("Reading checkpoint from: %s", checkpoint_directory)
             name_shape_pairs = tf.train.list_variables(checkpoint_directory)
             new_variables = {}
