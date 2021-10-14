@@ -64,7 +64,7 @@ class TaggingDataset(NLPDataset):
         if self.output_format == "bio":
             return ((None,), (None,))
         else:
-            return ((None,), (None, None, None))
+            return ((None,), (None, None, None))[: None if self.has_label else -1]
 
     def _normalize_y(self, y: Sequence[Any]) -> Sequence[Any]:
         if isinstance(y[0], (list, tuple)):
@@ -108,9 +108,6 @@ class TaggingDataset(NLPDataset):
                 return _text
         label = data[1]
         return _text, self._label_transform(label, len(_text))
-
-    def _transform_func_out_dtype(self) -> list[tf.DType]:
-        return (self.text_dtype, self.label_dtype)
 
     def batchify(
         self,

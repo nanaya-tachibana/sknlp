@@ -86,10 +86,10 @@ class ClassificationDataset(NLPDataset):
         return transformed_data
 
     def _transform_func_out_dtype(self) -> list[tf.DType]:
-        dtypes = [self.text_dtype, self.label_dtype]
+        dtypes = super()._transform_func_out_dtype()
         if self.is_pair_text:
             dtypes.insert(0, self.text_dtype)
-        return dtypes[: None if self.has_label else -1]
+        return dtypes
 
     def _normalize_y(self, y: Sequence[Any]) -> Sequence[Any]:
         if isinstance(y[0], (list, tuple)):

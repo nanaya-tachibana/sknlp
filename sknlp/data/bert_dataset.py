@@ -43,7 +43,7 @@ class BertGenerationDataset(GenerationDataset):
         return None
 
     def _text_transform(self, text: tf.Tensor) -> str:
-        return text.numpy().decode("UTF-8")[: self.max_length]
+        return text.numpy().decode("UTF-8").lower()[: self.max_length]
 
 
 class BertClassificationDataset(ClassificationDataset):
@@ -84,7 +84,7 @@ class BertClassificationDataset(ClassificationDataset):
         return None
 
     def _text_transform(self, text: tf.Tensor) -> str:
-        return text.numpy().decode("UTF-8")[: self.max_length]
+        return text.numpy().decode("UTF-8").lower()[: self.max_length]
 
 
 class BertTaggingDataset(TaggingDataset):
@@ -125,7 +125,10 @@ class BertTaggingDataset(TaggingDataset):
         if self.output_format == "bio":
             return ((), (None,))
         else:
-            return ((), (None, None, None))
+            if self.has_label:
+                return ((), (None, None, None))
+            else:
+                return None
 
     def _text_transform(self, text: tf.Tensor) -> str:
-        return text.numpy().decode("UTF-8")[: self.max_length]
+        return text.numpy().decode("UTF-8").lower()[: self.max_length]
