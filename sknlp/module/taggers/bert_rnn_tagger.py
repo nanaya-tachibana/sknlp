@@ -40,9 +40,9 @@ class BertRNNTagger(BertTagger):
             fc_activation=fc_activation,
             dropout=dropout,
             text2vec=text2vec,
-            algorithm="bert-rnn",
             **kwargs
         )
+        self.algorithm = "bert-rnn"
         self.num_rnn_layers = num_rnn_layers
         self.rnn_hidden_size = rnn_hidden_size
         self.rnn_projection_size = rnn_projection_size
