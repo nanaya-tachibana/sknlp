@@ -117,7 +117,7 @@ class NLPDataset:
         return _text, self._label_transform(label)
 
     def _transform_func_out_dtype(self) -> list[tf.DType]:
-        return (self.text_dtype, self.label_dtype)[: None if self.has_label else -1]
+        return [self.text_dtype, self.label_dtype][: None if self.has_label else -1]
 
     def _transform(self, dataset: tf.data.Dataset) -> tf.data.Dataset:
         return dataset.map(
