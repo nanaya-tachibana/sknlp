@@ -1,6 +1,17 @@
+import random
+import string
+
 import pytest
 
 from sknlp.module.text2vec import Bert2vec, Word2vec
+
+
+def random_digits(length):
+    return "".join(random.choices(string.digits, k=length))
+
+
+def random_letters(length):
+    return "".join(random.choices(string.ascii_uppercase, k=length))
 
 
 @pytest.fixture

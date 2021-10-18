@@ -4,6 +4,7 @@ import string
 
 import pandas as pd
 import pytest
+from ..conftest import random_digits, random_letters
 
 
 @pytest.fixture
@@ -12,12 +13,6 @@ def raw_data():
         new_text = "".join([text[:position], sequence, text[position:]])
         tag = [position, position + len(sequence) - 1, label]
         return new_text, tag
-
-    def random_digits(length):
-        return "".join(random.choices(string.digits, k=length))
-
-    def random_letters(length):
-        return "".join(random.choices(string.ascii_uppercase, k=length))
 
     def random_sequence():
         length = random.choice([2, 3, 4])
@@ -47,9 +42,6 @@ def raw_data():
         texts.append(text)
         tags_list.append(tags)
 
-    X_y = list(zip(texts, tags_list))
-    random.shuffle(X_y)
-    texts, tags_list = zip(*X_y)
     training_size = int(n * 0.8)
     training_X = texts[:training_size]
     training_y = tags_list[:training_size]

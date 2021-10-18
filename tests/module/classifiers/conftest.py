@@ -1,7 +1,8 @@
 import random
-import string
 
 import pytest
+
+from ..conftest import random_letters, random_digits
 
 
 @pytest.fixture
@@ -9,11 +10,8 @@ def raw_data():
     num_letters, num_digits = 100, 20
     size = num_letters + num_digits
     length = random.choices([4, 5, 6], k=size)
-    letters = [
-        "".join(random.choices(string.ascii_uppercase, k=k))
-        for k in length[:num_letters]
-    ]
-    digits = ["".join(random.choices(string.digits, k=k)) for k in length[num_letters:]]
+    letters = [random_letters(k) for k in length[:num_letters]]
+    digits = [random_digits(k) for k in length[num_letters:]]
     training_X = [*letters[: int(num_letters * 0.8)], *digits[: int(num_digits * 0.8)]]
     training_size = int(size * 0.8)
     training_y = [
@@ -51,14 +49,8 @@ def file_data(raw_data, tmp_path_factory):
 @pytest.fixture
 def raw_data_pairwise():
     n = 100
-    letters = [
-        "".join(random.choices(string.ascii_uppercase, k=random.choice([4, 5, 6])))
-        for _ in range(n)
-    ]
-    digits = [
-        "".join(random.choices(string.digits, k=random.choice([4, 5, 6])))
-        for _ in range(n)
-    ]
+    letters = [random_letters(random.choice([4, 5, 6])) for _ in range(n)]
+    digits = [random_digits(random.choice([4, 5, 6])) for _ in range(n)]
     letter_letter = zip(letters[: n // 4], letters[n // 4 : n // 2])
     digit_digit = zip(digits[: n // 4], digits[n // 4 : n // 2])
     letter_digit = zip(letters[n // 2 : n - n // 4], digits[n // 2 : n - n // 4])
