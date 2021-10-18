@@ -9,7 +9,6 @@ from sknlp.layers import (
     BertAttentionMaskLayer,
     BertLMLossLayer,
     BertBeamSearchDecoder,
-    BertDecodeCell,
 )
 from sknlp.module.text2vec import Text2vec
 from .deep_generator import DeepGenerator
@@ -52,14 +51,14 @@ class BertGenerator(DeepGenerator):
         mask = tf.math.not_equal(token_ids, 0)
 
         logits_mask = tf.roll(type_ids, -1, 1)
-        _, _, logits = self.text2vec(
+        logits = self.text2vec(
             [
                 token_ids,
                 type_ids,
                 BertAttentionMaskLayer(mask_mode="unilm")([type_ids, mask]),
             ],
             logits_mask=logits_mask,
-        )
+        )[2]
         return logits, token_ids, type_ids
 
     def build_output_layer(self, inputs: list[tf.Tensor]) -> tf.Tensor:
@@ -71,20 +70,38 @@ class BertGenerator(DeepGenerator):
         return BertLMLossLayer()([masked_token_ids, logits, sequence_mask])
 
     def build_inference_model(self) -> tf.keras.Model:
-        cell = BertDecodeCell(self._model, len(self.text2vec.vocab))
         decoder = BertBeamSearchDecoder(
-            cell,
+            self._model.get_layer("bert2vec").get_config(),
             self.beam_width,
             self.text2vec.vocab["[SEP]"],
             maximum_iterations=self.maximum_iterations,
             parallel_iterations=self.parallel_iterations,
         )
+        decoder(
+            [
+                tf.constant([[101, 567, 45, 342, 102, 102]]),
+                tf.constant([[0, 0, 0, 0, 0, 1]]),
+            ],
+            tf.constant([[0.0]]),
+        )
+        decoder.set_weights(self._model.get_layer("bert2vec").get_weights())
         tokenizer = BertPreprocessingLayer(self.text2vec.vocab.sorted_tokens)
         text_input = self._model.inputs[0]
         token_ids, type_ids = tokenizer([text_input, tf.fill(tf.shape(text_input), "")])
-        state = tf.zeros((tf.shape(token_ids)[0], cell.state_size))
+        state = tf.zeros((tf.shape(token_ids)[0], 1))
         predicted_ids = decoder([token_ids, type_ids], state)[0].predicted_ids
-        return tf.keras.Model(inputs=text_input, outputs=predicted_ids[..., 0])
+        ragged_predicted_ids = tf.RaggedTensor.from_tensor(predicted_ids[..., 0])
+        return tf.keras.Model(inputs=text_input, outputs=ragged_predicted_ids)
+
+    def export(self, directory: str, name: str, version: str = "0") -> None:
+        original_model = self._inference_model
+        fill_value = tf.cast(0, tf.int32)
+        self._inference_model = tf.keras.Model(
+            inputs=self._inference_model.inputs,
+            outputs=self._inference_model.outputs[0].to_tensor(fill_value),
+        )
+        super().export(directory, name, version=version)
+        self._inference_model = original_model
 
     def get_config(self) -> dict[str, Any]:
         return {**super().get_config(), "dropout": self.dropout}

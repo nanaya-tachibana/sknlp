@@ -1,23 +1,90 @@
 from __future__ import annotations
-from typing import Optional
+from typing import Any, Optional
 
 import tensorflow as tf
 import tensorflow_addons as tfa
 from tensorflow_addons.seq2seq.beam_search_decoder import _beam_search_step
+from tensorflow_addons.seq2seq.decoder import BaseDecoder
+
+from sknlp.layers import BertLayer, BertAttentionMaskLayer
+
+
+@tf.keras.utils.register_keras_serializable(package="sknlp")
+class BertDecodeCell(tf.keras.layers.AbstractRNNCell):
+    def __init__(
+        self, bert_config: dict[str, Any], name="decode_cell", **kwargs
+    ) -> None:
+        self.bert_config = bert_config
+        super().__init__(name=name, **kwargs)
+
+    def build(self, input_shape: tf.TensorShape) -> None:
+        self.bert_layer = BertLayer.from_config(self.bert_config)
+        self.attention_mask_layer = BertAttentionMaskLayer()
+        super().build(input_shape)
+
+    @property
+    def state_size(self) -> int:
+        return 1
+
+    @property
+    def output_size(self) -> int:
+        return self.bert_config["vocab_size"]
+
+    def call(
+        self, inputs: list[tf.Tensor], state: tf.Tensor, **kwargs
+    ) -> list[tf.Tensor]:
+        token_ids, type_ids = inputs
+        mask = tf.not_equal(token_ids, 0)
+        attention_mask = self.attention_mask_layer([type_ids, mask])
+        logits_mask = tf.cast(
+            tf.equal(tf.roll(type_ids, -1, 1) - tf.roll(type_ids, -2, 1), 1),
+            type_ids.dtype,
+        )
+        logits = self.bert_layer([token_ids, type_ids, attention_mask, logits_mask])[2]
+        return [tf.squeeze(logits, 1), state]
+
+    def get_config(self) -> dict[str, Any]:
+        return {**super().get_config(), "bert_config": self.get_config}
 
 
 @tf.keras.utils.register_keras_serializable(package="sknlp")
 class BertBeamSearchDecoder(tfa.seq2seq.BeamSearchDecoder):
     def __init__(
         self,
-        cell: tf.keras.layers.AbstractRNNCell,
+        bert_config: dict[str, Any],
         beam_width: int,
         end_token_id: int,
+        length_penalty_weight: float = 0.0,
+        coverage_penalty_weight: float = 0.0,
+        reorder_tensor_arrays: bool = True,
+        output_all_scores: bool = False,
         name="beam_search_decoder",
         **kwargs
     ) -> None:
-        super().__init__(cell, beam_width, name=name, **kwargs)
+        self._bert_config = bert_config
+        self._output_layer = None
+        self._reorder_tensor_arrays = reorder_tensor_arrays
+        self._output_all_scores = output_all_scores
+
+        self._start_tokens = None
         self._end_token = end_token_id
+        self._batch_size = None
+        self._beam_width = beam_width
+        self._length_penalty_weight = length_penalty_weight
+        self._coverage_penalty_weight = coverage_penalty_weight
+        maximum_iterations = kwargs.pop("maximum_iterations", 50)
+        parallel_iterations = kwargs.pop("parallel_iterations", 1)
+        BaseDecoder.__init__(
+            self,
+            name=name,
+            maximum_iterations=maximum_iterations,
+            parallel_iterations=parallel_iterations,
+            **kwargs
+        )
+
+    def build(self, input_shape: tf.TensorShape) -> None:
+        self._cell = BertDecodeCell(self._bert_config)
+        return super().build(input_shape)
 
     def _next_inputs(
         self, inputs: list[tf.Tensor], next_token_id: tf.Tensor
@@ -173,31 +240,10 @@ class BertBeamSearchDecoder(tfa.seq2seq.BeamSearchDecoder):
             decoder_init_kwargs={"state": state},
         )
 
-
-@tf.keras.utils.register_keras_serializable(package="sknlp")
-class BertDecodeCell(tf.keras.layers.AbstractRNNCell):
-    def __init__(
-        self, model: tf.keras.Model, vocab_size: int, name="decode_cell", **kwargs
-    ) -> None:
-        self.vocab_size = vocab_size
-        self.bert_layer = model.get_layer(name="bert2vec")
-        self.attention_mask_layer = model.get_layer("attention_mask")
-        super().__init__(name=name, **kwargs)
-
-    @property
-    def state_size(self) -> int:
-        return 1
-
-    @property
-    def output_size(self) -> int:
-        return self.vocab_size
-
-    def call(
-        self, inputs: list[tf.Tensor], state: tf.Tensor, **kwargs
-    ) -> list[tf.Tensor]:
-        token_ids, type_ids = inputs
-        mask = tf.not_equal(token_ids, 0)
-        attention_mask = self.attention_mask_layer([type_ids, mask])
-        logits_mask = tf.equal(tf.roll(type_ids, -1, 1) - tf.roll(type_ids, -2, 1), 1)
-        logits = self.bert_layer([token_ids, type_ids, attention_mask, logits_mask])[-1]
-        return [tf.squeeze(logits, 1), state]
+    def get_config(self) -> dict[str, Any]:
+        return {
+            **super().get_config(),
+            "bert_config": self._bert_config,
+            "end_token_id": self._end_token,
+            "beam_width": self._beam_width,
+        }

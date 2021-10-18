@@ -63,7 +63,8 @@ class DeepGenerator(SupervisedNLPModel):
             vocab.eos,
         }
         generations: list[str] = []
-        for tokens in vocab.idx2token(predictions.tolist()):
+        for predicted_ids in predictions:
+            tokens = vocab.idx2token(predicted_ids.numpy().tolist())
             translated_tokens = []
             for token in tokens:
                 if token == vocab.bos:
