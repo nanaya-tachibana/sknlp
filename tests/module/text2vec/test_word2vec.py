@@ -2,7 +2,7 @@ import pathlib
 import numpy as np
 
 from sknlp.vocab import Vocab
-from .word2vec import Word2vec
+from sknlp.module.text2vec import Word2vec
 
 
 def test_word2vec():

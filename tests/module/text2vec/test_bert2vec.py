@@ -3,7 +3,7 @@ import pytest
 import tensorflow as tf
 from tensorflow.python.tools import saved_model_utils
 import numpy as np
-from .bert2vec import Bert2vec, BertFamily
+from sknlp.module.text2vec import Bert2vec, BertFamily
 
 
 @pytest.fixture
