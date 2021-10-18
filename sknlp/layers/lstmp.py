@@ -6,15 +6,14 @@ from tensorflow.keras import backend as K
 from tensorflow.keras import constraints
 from tensorflow.keras import initializers
 from tensorflow.keras import regularizers
-from tensorflow.keras.layers import InputSpec, Bidirectional, Dropout
-from tensorflow.python.keras.layers.recurrent import LSTM, LSTMCell
+from tensorflow.keras.layers import Bidirectional, Dropout
 from tensorflow.python.training.tracking import data_structures
 
 from sknlp.typing import WeightRegularizer, WeightInitializer, WeightConstraint
 
 
 @tf.keras.utils.register_keras_serializable(package="sknlp")
-class LSTMPCell(LSTMCell):
+class LSTMPCell(tf.keras.layers.LSTMCell):
     """
     Long-Short Term Memory Projected (LSTMP) network cell with cell clip.
     (https://arxiv.org/abs/1402.1128)
@@ -211,7 +210,7 @@ class LSTMPCell(LSTMCell):
 
 
 @tf.keras.utils.register_keras_serializable(package="sknlp")
-class LSTMP(LSTM):
+class LSTMP(tf.keras.layers.LSTM):
     """
 
     Parameters
@@ -322,7 +321,7 @@ class LSTMP(LSTM):
         recurrent_dropout: float = 0.0,
         recurrent_clip: Optional[float] = None,
         projection_clip: Optional[float] = None,
-        implementation: int = 1,
+        implementation: int = 2,
         activity_regularizer: Optional[WeightRegularizer] = None,
         return_sequences: bool = False,
         return_state: bool = False,
@@ -331,6 +330,27 @@ class LSTMP(LSTM):
         unroll: bool = False,
         **kwargs
     ):
+        super().__init__(
+            units,
+            activation=activation,
+            recurrent_activation=recurrent_activation,
+            use_bias=use_bias,
+            kernel_initializer=kernel_initializer,
+            recurrent_initializer=recurrent_initializer,
+            unit_forget_bias=unit_forget_bias,
+            bias_initializer=bias_initializer,
+            kernel_regularizer=kernel_regularizer,
+            recurrent_regularizer=recurrent_regularizer,
+            bias_regularizer=bias_regularizer,
+            activity_regularizer=activity_regularizer,
+            kernel_constraint=kernel_constraint,
+            recurrent_constraint=recurrent_constraint,
+            bias_constraint=bias_constraint,
+            dropout=dropout,
+            recurrent_dropout=recurrent_dropout,
+            implementation=implementation,
+            dtype=kwargs.get("dtype"),
+        )
         cell = LSTMPCell(
             units,
             projection_size=projection_size,
@@ -357,7 +377,8 @@ class LSTMP(LSTM):
             implementation=implementation,
             dtype=kwargs.get("dtype"),
         )
-        super(LSTM, self).__init__(
+        tf.keras.layers.RNN.__init__(
+            self,
             cell,
             return_sequences=return_sequences,
             return_state=return_state,
@@ -366,9 +387,6 @@ class LSTMP(LSTM):
             unroll=unroll,
             **kwargs
         )
-        self.activity_regularizer = regularizers.get(activity_regularizer)
-        self.supports_masking = True
-        self.input_spec = [InputSpec(ndim=3)]
 
     @property
     def projection_size(self):
@@ -424,6 +442,7 @@ class BiLSTM(tf.keras.layers.Layer):
         recurrent_initializer: WeightInitializer = "orthogonal",
         projection_initializer: WeightInitializer = "glorot_uniform",
         dropout: float = 0.0,
+        recurrent_dropout: float = 0.0,
         recurrent_clip: Optional[float] = None,
         projection_clip: Optional[float] = None,
         return_sequences: bool = False,
@@ -437,6 +456,7 @@ class BiLSTM(tf.keras.layers.Layer):
         self.recurrent_clip = recurrent_clip
         self.projection_clip = projection_clip
         self.dropout = dropout
+        self.recurrent_dropout = recurrent_dropout
         self.kernel_initializer = kernel_initializer
         self.recurrent_initializer = recurrent_initializer
         self.projection_initializer = projection_initializer
@@ -495,6 +515,7 @@ class BiLSTM(tf.keras.layers.Layer):
             "recurrent_clip": self.recurrent_clip,
             "projection_clip": self.projection_clip,
             "dropout": self.dropout,
+            "recurrent_dropout": self.recurrent_dropout,
             "kernel_initializer": self.kernel_initializer,
             "recurrent_initializer": self.recurrent_initializer,
             "projection_initializer": self.projection_initializer,

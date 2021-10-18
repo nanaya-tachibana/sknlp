@@ -20,6 +20,7 @@ class BertRNNTagger(BertTagger):
         num_rnn_layers: int = 1,
         rnn_hidden_size: int = 512,
         rnn_projection_size: int = 128,
+        rnn_recurrent_dropout: float = 0.0,
         rnn_recurrent_clip: float = 3.0,
         rnn_projection_clip: float = 3.0,
         num_fc_layers: int = 2,
@@ -48,6 +49,7 @@ class BertRNNTagger(BertTagger):
         self.rnn_projection_size = rnn_projection_size
         self.rnn_recurrent_clip = rnn_recurrent_clip
         self.rnn_projection_clip = rnn_projection_clip
+        self.rnn_recurrent_dropout = rnn_recurrent_dropout
         self.rnn_learning_rate_multiplier = rnn_learning_rate_multiplier
 
     def build_intermediate_layer(self, inputs: list[tf.Tensor]) -> list[tf.Tensor]:
@@ -60,6 +62,7 @@ class BertRNNTagger(BertTagger):
             recurrent_clip=self.rnn_recurrent_clip,
             projection_clip=self.rnn_projection_clip,
             dropout=self.dropout,
+            recurrent_dropout=self.rnn_recurrent_dropout,
             return_sequences=True,
         )
         if self.rnn_learning_rate_multiplier != 1.0:

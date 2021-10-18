@@ -20,6 +20,7 @@ class RCNNClassifier(RNNClassifier):
                 recurrent_clip=self.rnn_recurrent_clip,
                 projection_clip=self.rnn_projection_clip,
                 dropout=self.dropout,
+                recurrent_dropout=self.rnn_recurrent_dropout,
                 kernel_initializer=self.rnn_kernel_initializer,
                 recurrent_initializer=self.rnn_recurrent_initializer,
                 projection_initializer=self.rnn_projection_initializer,
