@@ -14,7 +14,7 @@ def pad2shape(
         lambda: tf.pad(
             tensor,
             tf.concat([tf.zeros_like(paddings)[:, None], paddings[:, None]], 1),
-            constant_values=value,
+            constant_values=tf.cast(value, tensor.dtype),
         ),
         lambda: tensor,
     )
