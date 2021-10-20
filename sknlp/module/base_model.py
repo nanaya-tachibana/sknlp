@@ -401,7 +401,7 @@ class BaseNLPModel:
         )
         self._inference_kwargs["input_names"] = model.input_names
         self._inference_kwargs["output_names"] = model.output_names
-        model.set_weights(self._model.get_weights())
+        model.set_weights(self._inference_model.get_weights())
         model.save(d, include_optimizer=False, save_format="tf")
         self.save_config(d)
         self.save_vocab(d)
