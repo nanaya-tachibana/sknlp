@@ -8,6 +8,7 @@ from .bert_dataset import (
     BertClassificationDataset,
     BertTaggingDataset,
     BertGenerationDataset,
+    BertSimilarityDataset,
 )
 
 
@@ -16,7 +17,9 @@ __all__ = [
     "ClassificationDataset",
     "TaggingDataset",
     "GenerationDataset",
+    "SimilarityDataset",
     "BertClassificationDataset",
     "BertTaggingDataset",
     "BertGenerationDataset",
+    "BertSimilarityDataset",
 ]

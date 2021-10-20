@@ -7,6 +7,44 @@ from sknlp.vocab import Vocab
 from .classification_dataset import ClassificationDataset
 from .tagging_dataset import TaggingDataset
 from .generation_dataset import GenerationDataset
+from .similarity_dataset import SimilarityDataset
+
+
+class BertSimilarityDataset(SimilarityDataset):
+    def __init__(
+        self,
+        vocab: Vocab,
+        labels: Sequence[str],
+        segmenter: Optional[str] = None,
+        X: Optional[Sequence[Any]] = None,
+        y: Optional[Sequence[Any]] = None,
+        csv_file: Optional[str] = None,
+        in_memory: bool = True,
+        has_label: bool = True,
+        max_length: Optional[int] = None,
+        **kwargs,
+    ):
+        super().__init__(
+            vocab,
+            labels,
+            segmenter=segmenter,
+            X=X,
+            y=y,
+            csv_file=csv_file,
+            in_memory=in_memory,
+            has_label=has_label,
+            max_length=max_length,
+            text_dtype=tf.string,
+            label_dtype=tf.float32,
+            **kwargs,
+        )
+
+    @property
+    def batch_padding_shapes(self) -> Optional[list]:
+        return None
+
+    def _text_transform(self, text: tf.Tensor) -> str:
+        return text.numpy().decode("UTF-8").lower()[: self.max_length]
 
 
 class BertGenerationDataset(GenerationDataset):
