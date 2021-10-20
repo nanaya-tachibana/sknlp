@@ -315,7 +315,7 @@ class Bert2vec(Text2vec):
             num_attention_heads=bert_layer_config["num_attention_heads"],
             intermediate_size=bert_layer_config["intermediate_size"],
             type_vocab_size=bert_layer_config["type_vocab_size"],
-            hidden_act=bert_layer_config["activation"],
+            hidden_act=tf.keras.activations.serialize(bert_layer_config["activation"]),
             hidden_dropout_prob=bert_layer_config["dropout_rate"],
             attention_probs_dropout_prob=bert_layer_config["attention_dropout_rate"],
             embedding_size=bert_layer_config["embedding_size"],
