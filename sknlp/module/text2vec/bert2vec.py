@@ -20,7 +20,6 @@ from sknlp.layers.utils import (
     AlbertCheckpointConverter,
     ElectraCheckpointConverter,
 )
-from sknlp.utils.logging import logger
 from .text2vec import Text2vec
 
 
@@ -35,49 +34,60 @@ class ModelCheckpoint:
         self,
         model_type: BertFamily,
         checkpoint_directory: str,
-        config_filename: Optional[str] = None,
-        name: str = "bert2vec",
+        config: BertConfig,
+        vocab: Vocab,
+        checkpoint_prefix: str = "bert_model.ckpt",
     ) -> None:
         self.directory = checkpoint_directory
-        self.create_checkpoint_file()
-        with open(os.path.join(self.directory, "vocab.txt")) as f:
-            token_list = f.read().strip("\n").split("\n")
-            self.vocab = Vocab(
-                token_list,
-                pad_token=token_list[0],
-                unk_token=token_list[100],
-                bos_token=token_list[101],
-                eos_token=token_list[102],
-            )
-
-        config_filename = config_filename or self.get_config_filename()
-        self.config = BertConfig.from_json_file(
-            os.path.join(self.directory, config_filename)
-        )
+        self.prefix = checkpoint_prefix
+        self.config = config
+        self.vocab = vocab
         share_layer, cls_pooling = False, True
-        converter = BertCheckpointConverter
+        self.converter_class = BertCheckpointConverter
         if model_type is BertFamily.ALBERT:
             share_layer = True
-            converter = AlbertCheckpointConverter
+            self.converter_class = AlbertCheckpointConverter
         if model_type is BertFamily.ELECTRA:
             cls_pooling = False
-            converter = ElectraCheckpointConverter
+            self.converter_class = ElectraCheckpointConverter
         self.config.share_layer = share_layer
         self.config.cls_pooling = cls_pooling
-        self.variables = converter(
+
+    def load(self, weights: list[tf.Variable], name: str = "bert2vec") -> None:
+        self.converter = self.converter_class(
             self.config.num_hidden_layers,
             self.config.num_attention_heads,
             converted_root_name=name,
-        ).convert(self.directory)
+        )
+        self.converter.convert(self.directory, weights)
 
-    def get_config_filename(self) -> str:
+    def save(
+        self,
+        weights: list[tf.Variable],
+        name: str = "bert2vec",
+        config_filename: str = "bert_config.json",
+        vocab_filename: str = "vocab.txt",
+    ) -> None:
+        self.converter = self.converter_class(
+            self.config.num_hidden_layers,
+            self.config.num_attention_heads,
+            converted_root_name=name,
+        )
+        self.converter.invert(weights, self.directory, checkpoint_prefix=self.prefix)
+        config_filename = os.path.join(self.directory, config_filename)
+        vocab_filename = os.path.join(self.directory, vocab_filename)
+        with open(config_filename, "w", encoding="UTF-8") as f:
+            f.write(self.config.to_json_string())
+        with open(vocab_filename, "w", encoding="UTF-8") as f:
+            f.write("\n".join(self.vocab.sorted_tokens))
+
+    @classmethod
+    def search_config_file(cls, directory: str) -> str:
         json_files = [
-            filename
-            for filename in os.listdir(self.directory)
-            if filename.endswith("json")
+            filename for filename in os.listdir(directory) if filename.endswith("json")
         ]
         if not json_files:
-            raise FileNotFoundError(f"{self.directory}中缺少模型配置文件.")
+            raise FileNotFoundError(f"{directory}中缺少模型配置文件.")
         if len(json_files) == 1:
             return json_files[0]
         else:
@@ -85,20 +95,45 @@ class ModelCheckpoint:
                 if "generator" not in json_file:
                     return json_file
 
-    def create_checkpoint_file(self) -> None:
-        checkpoint_filename = os.path.join(self.directory, "checkpoint")
+    @classmethod
+    def create_checkpoint_file(cls, directory: str) -> None:
+        checkpoint_filename = os.path.join(directory, "checkpoint")
         if os.path.exists(checkpoint_filename):
             return
 
-        for filename in os.listdir(self.directory):
-            if "ckpt" in filename:
-                model_checkpoint = filename[: filename.index("ckpt") + 4]
+        for filename in os.listdir(directory):
+            if filename.endswith("index"):
+                model_checkpoint = ".".join(filename.split(".")[:-1])
                 with open(checkpoint_filename, "w") as f:
                     f.write(f'model_checkpoint_path: "{model_checkpoint}"\n')
                     f.write(f'all_model_checkpoint_paths: "{model_checkpoint}"')
                 return
         else:
             raise FileNotFoundError("没有找到合法的ckpt文件.")
+
+    @classmethod
+    def from_checkpoint_file(
+        cls,
+        model_type: BertFamily,
+        checkpoint_directory: str,
+        config_filename: Optional[str] = None,
+    ) -> "ModelCheckpoint":
+        cls.create_checkpoint_file(checkpoint_directory)
+        with open(os.path.join(checkpoint_directory, "vocab.txt")) as f:
+            token_list = f.read().strip("\n").split("\n")
+            vocab = Vocab(
+                token_list,
+                pad_token=token_list[0],
+                unk_token=token_list[100],
+                bos_token=token_list[101],
+                eos_token=token_list[102],
+            )
+        if not config_filename:
+            config_filename = cls.search_config_file(checkpoint_directory)
+        config = BertConfig.from_json_file(
+            os.path.join(checkpoint_directory, config_filename)
+        )
+        return cls(model_type, checkpoint_directory, config, vocab)
 
 
 class Bert2vec(Text2vec):
@@ -122,6 +157,7 @@ class Bert2vec(Text2vec):
         share_layer: bool = False,
         cls_pooling: bool = True,
         add_relationship_loss: bool = False,
+        model_type: BertFamily = BertFamily.BERT,
         name: str = "bert2vec",
         **kwargs,
     ) -> None:
@@ -137,6 +173,7 @@ class Bert2vec(Text2vec):
             name=name,
             **kwargs,
         )
+        self.model_type = model_type
         self.return_all_layer_outputs = return_all_layer_outputs
         self.add_relationship_loss = add_relationship_loss
         self.pretrain_layer = BertLayer(
@@ -218,13 +255,15 @@ class Bert2vec(Text2vec):
     def from_tfv1_checkpoint(
         cls,
         model_type: BertFamily,
-        v1_checkpoint: str,
+        checkpoint_directory: str,
         config_filename: Optional[str] = None,
         sequence_length: Optional[int] = None,
         name: str = "bert2vec",
     ):
-        checkpoint = ModelCheckpoint(
-            model_type, v1_checkpoint, config_filename=config_filename, name=name
+        checkpoint = ModelCheckpoint.from_checkpoint_file(
+            model_type,
+            checkpoint_directory,
+            config_filename=config_filename,
         )
         config = checkpoint.config
         activation = tf.keras.activations.get(config.hidden_act)
@@ -244,25 +283,45 @@ class Bert2vec(Text2vec):
             initializer=TruncatedNormal(stddev=config.initializer_range),
             share_layer=config.share_layer,
             cls_pooling=config.cls_pooling,
+            model_type=model_type,
             name=name,
         )
         module.build()
-        variable_params = checkpoint.variables
-        weight_value_pairs = []
-        missing_variables = set()
-        for variable in module._model.trainable_weights:
-            name = variable.name.split(":")[0]
-            if name in variable_params:
-                weight_value_pairs.append((variable, variable_params[name]))
-            else:
-                missing_variables.add(variable.name)
-        ignored_variables = set(variable_params.keys()) - {
-            v.name.split(":")[0] for v in module._model.trainable_weights
-        }
-        logger.info(f"Ignored variables: {ignored_variables}")
-        logger.info(f"Missing variables: {missing_variables}")
-        tf.keras.backend.batch_set_value(weight_value_pairs)
+        checkpoint.load(module._model.trainable_weights, name=name)
         return module
+
+    def to_tfv1_checkpoint(self, checkpoint_directory: str) -> None:
+        self.save_bert_tfv1_checkpoint(
+            self.model_type,
+            checkpoint_directory,
+            self.pretrain_layer,
+            self.pretrain_layer.get_config(),
+            self.vocab,
+        )
+
+    @classmethod
+    def save_bert_tfv1_checkpoint(
+        cls,
+        model_type: BertFamily,
+        checkpoint_directory: str,
+        bert_layer: BertLayer,
+        bert_layer_config: dict[str, Any],
+        vocab: Vocab,
+    ) -> None:
+        config = BertConfig(
+            bert_layer_config["vocab_size"],
+            hidden_size=bert_layer_config["hidden_size"],
+            num_hidden_layers=bert_layer_config["num_layers"],
+            num_attention_heads=bert_layer_config["num_attention_heads"],
+            intermediate_size=bert_layer_config["intermediate_size"],
+            type_vocab_size=bert_layer_config["type_vocab_size"],
+            hidden_act=bert_layer_config["activation"],
+            hidden_dropout_prob=bert_layer_config["dropout_rate"],
+            attention_probs_dropout_prob=bert_layer_config["attention_dropout_rate"],
+            embedding_size=bert_layer_config["embedding_size"],
+        )
+        checkpoint = ModelCheckpoint(model_type, checkpoint_directory, config, vocab)
+        checkpoint.save(bert_layer.trainable_weights, name=bert_layer_config["name"])
 
     def export(
         self,

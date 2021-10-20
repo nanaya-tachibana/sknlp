@@ -1,10 +1,11 @@
 from __future__ import annotations
-
+import os
 import re
 import warnings
 
 import numpy as np
 import tensorflow as tf
+import tensorflow.compat.v1 as tfv1  # pyright: reportMissingImports=false
 
 from sknlp.utils.logging import logger
 
@@ -124,7 +125,9 @@ class BertCheckpointConverter:
                 return True
         return False
 
-    def reshape_tensor(self, variable_name: str, tensor: np.ndarray) -> np.ndarray:
+    def reshape_tensor(
+        self, variable_name: str, tensor: np.ndarray, invert: bool = False
+    ) -> np.ndarray:
         r = re.search(
             "self_attention/(query|key|value|attention_output)/(kernel|bias)",
             variable_name,
@@ -138,39 +141,98 @@ class BertCheckpointConverter:
         num_heads = self.num_heads
         shape: tuple = tensor.shape
         if layer == "attention_output" and var == "kernel":
-            return tensor.reshape((num_heads, shape[0] // num_heads, shape[1]))
+            if invert:
+                new_shape = (shape[0] * shape[1], shape[2])
+            else:
+                new_shape = (num_heads, shape[0] // num_heads, shape[1])
+            return tensor.reshape(new_shape)
         elif var == "kernel":
-            return tensor.reshape((shape[0], num_heads, shape[1] // num_heads))
+            if invert:
+                new_shape = (shape[0], shape[1] * shape[2])
+            else:
+                new_shape = (shape[0], num_heads, shape[1] // num_heads)
+            return tensor.reshape(new_shape)
         else:
-            return tensor.reshape((num_heads, shape[0] // num_heads))
+            if invert:
+                new_shape = (shape[0] * shape[1],)
+            else:
+                new_shape = (num_heads, shape[0] // num_heads)
+            return tensor.reshape(new_shape)
 
-    def transpose_tensor(self, variable_name: str, tensor: np.ndarray) -> np.ndarray:
+    def transpose_tensor(
+        self,
+        variable_name: str,
+        tensor: np.ndarray,
+    ) -> np.ndarray:
         r = re.search("relationship/kernel", variable_name)
         if r is None:
             return tensor
         return tensor.transpose((1, 0))
 
-    def convert(self, checkpoint_directory: str) -> dict[str, np.ndarray]:
-        with tf.Graph().as_default():
-            logger.info("Reading checkpoint from: %s", checkpoint_directory)
-            name_shape_pairs = tf.train.list_variables(checkpoint_directory)
-            new_variables = {}
-            for var_name, _ in name_shape_pairs:
-                if self.has_exclude_keywords(var_name):
-                    continue
-                tensor: np.ndarray = tf.train.load_variable(
-                    checkpoint_directory, var_name
-                )
-                new_var_name = self.variable_name_mapping.get(var_name, None)
-                if new_var_name is None:
-                    warnings.warn(f"Missing convertion rule for variable {var_name}.")
-                    continue
+    def convert(
+        self, checkpoint_directory: str, new_variables: list[tf.Variable]
+    ) -> None:
+        logger.info("Reading checkpoint from: %s", checkpoint_directory)
+        name2variable = {
+            "".join(var.name.split(":")[:-1]): var for var in new_variables
+        }
+        ignored_variables: set[str] = set()
+        missing_variables = set(name2variable.keys())
+        variable_tensor_pairs: list[tuple[tf.Variable, np.ndarray]] = []
 
-                if self.num_heads > 0:
-                    tensor = self.reshape_tensor(new_var_name, tensor)
-                tensor = self.transpose_tensor(new_var_name, tensor)
-                new_variables[new_var_name] = tensor
-            return new_variables
+        name_shape_pairs = tf.train.list_variables(checkpoint_directory)
+        for var_name, _ in name_shape_pairs:
+            if self.has_exclude_keywords(var_name):
+                continue
+            tensor: np.ndarray = tf.train.load_variable(checkpoint_directory, var_name)
+            new_var_name = self.variable_name_mapping.get(var_name, None)
+            if new_var_name is None:
+                warnings.warn(f"Missing convertion rule for variable {var_name}.")
+                continue
+            if new_var_name not in missing_variables:
+                ignored_variables.add(new_var_name)
+                continue
+            missing_variables.remove(new_var_name)
+
+            if self.num_heads > 0:
+                tensor = self.reshape_tensor(new_var_name, tensor)
+            tensor = self.transpose_tensor(new_var_name, tensor)
+            variable_tensor_pairs.append((name2variable[new_var_name], tensor))
+        logger.info(f"Ignored variables: {ignored_variables}")
+        logger.info(f"Missing variables: {missing_variables}")
+        tf.keras.backend.batch_set_value(variable_tensor_pairs)
+
+    def invert(
+        self,
+        variables: list[tf.Variable],
+        checkpoint_directory: str,
+        checkpoint_prefix: str = "bert_model.ckpt",
+    ) -> None:
+        new_variables: list[tf.Variable] = []
+        variable_tensor_pairs: list[tuple[tf.Variable, np.ndarray]] = []
+
+        invert_mapping = {v: k for k, v in self.variable_name_mapping.items()}
+        tensors = tf.keras.backend.batch_get_value(variables)
+        for variable, tensor in zip(variables, tensors):
+            name = "".join(variable.name.split(":")[:-1])
+            if name not in invert_mapping:
+                continue
+
+            tensor = self.reshape_tensor(name, tensor, invert=True)
+            tensor = self.transpose_tensor(name, tensor)
+            new_variable = tf.Variable(
+                initial_value=tensor,
+                dtype=tensor.dtype,
+                name=invert_mapping[name],
+            )
+            new_variables.append(new_variable)
+            variable_tensor_pairs.append((new_variable, tensor))
+        tf.keras.backend.batch_set_value(variable_tensor_pairs)
+        saver = tfv1.train.Saver(var_list=new_variables)
+        saver.save(
+            tfv1.keras.backend.get_session(),
+            os.path.join(checkpoint_directory, checkpoint_prefix),
+        )
 
 
 class AlbertCheckpointConverter(BertCheckpointConverter):

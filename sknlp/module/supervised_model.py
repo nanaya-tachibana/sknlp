@@ -21,6 +21,8 @@ class SupervisedNLPModel(BaseNLPModel):
         if text2vec is None and vocab is None:
             raise ValueError("`text2vec`和`vocab`不能都为None")
         super().__init__(vocab=vocab or text2vec.vocab, **kwargs)
+        self._text2vec: Optional[Text2vec] = None
+        self._text2vec_name: str = None
         if text2vec is not None:
             self.text2vec = text2vec
 
@@ -54,6 +56,7 @@ class SupervisedNLPModel(BaseNLPModel):
         self._sequence_length = tv.sequence_length
         self._segmenter = tv.segmenter
         self._text2vec = tv
+        self._text2vec_name = tv.name
 
     def get_inputs(self) -> Union[list[tf.Tensor], tf.Tensor]:
         if getattr(self, "inputs", None) is None:
@@ -73,7 +76,15 @@ class SupervisedNLPModel(BaseNLPModel):
             "classes": self.classes,
             "task": self._task,
             "algorithm": self._algorithm,
+            "text2vec": {"name": self._text2vec_name},
         }
+
+    @classmethod
+    def from_config(cls, config: dict[str, Any]) -> "SupervisedNLPModel":
+        text2vec_dict = config.pop("text2vec", dict())
+        module = super().from_config(config)
+        module._text2vec_name = text2vec_dict.get("name", None)
+        return module
 
     @classmethod
     def load(cls, directory: str, epoch: Optional[int] = None) -> "SupervisedNLPModel":
@@ -83,6 +94,7 @@ class SupervisedNLPModel(BaseNLPModel):
             segmenter=module.segmenter,
             max_sequence_length=module.max_sequence_length,
             sequence_length=module.sequence_length,
+            name=module._text2vec_name,
         )
         module._inference_model = module.build_inference_model()
         return module

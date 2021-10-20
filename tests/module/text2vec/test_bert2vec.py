@@ -69,6 +69,18 @@ def test_bert2vec_save_load_archive(tmp_path, inputs):
     )
 
 
+def test_bert2vec_from_to_checkpoint(tmp_path, inputs):
+    bv = Bert2vec.from_tfv1_checkpoint(BertFamily.ELECTRA, "data/electra_180g_small")
+    outputs = bv(inputs[:3])
+    checkpoint_directory = str(tmp_path / "checkpoint")
+    bv.to_tfv1_checkpoint(checkpoint_directory)
+    bv = Bert2vec.from_tfv1_checkpoint(BertFamily.ELECTRA, checkpoint_directory)
+    new_outputs = bv(inputs[:3])
+    np.testing.assert_array_almost_equal(
+        outputs[1].numpy(), new_outputs[1].numpy(), decimal=3
+    )
+
+
 def test_bert2vec_export(tmp_path):
     bv = Bert2vec.from_tfv1_checkpoint(BertFamily.ELECTRA, "data/electra_180g_small")
     bv.export(str(tmp_path), "bert2vec")
