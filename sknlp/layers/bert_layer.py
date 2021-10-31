@@ -67,6 +67,7 @@ class BertPreprocessingLayer(tf.keras.layers.Layer):
         vocab: Sequence[str],
         cls_token: str = "[CLS]",
         sep_token: str = "[SEP]",
+        return_offset: bool = False,
         name: str = "bert_tokenize",
         **kwargs,
     ) -> None:
@@ -77,12 +78,16 @@ class BertPreprocessingLayer(tf.keras.layers.Layer):
             vocab.append(cls_token)
         if sep_token not in vocab:
             vocab.append(sep_token)
-        self.vocab = vocab
+
+        self.max_chars_per_token = 1
         for i, token in enumerate(vocab):
             if token == cls_token:
                 self.cls_id = i
             if token == sep_token:
                 self.sep_id = i
+            self.max_chars_per_token = max(self.max_chars_per_token, len(token))
+        self.vocab = vocab
+        self.return_offset = return_offset
         super().__init__(name=name, **kwargs)
 
     def build(self, input_shape: tf.TensorShape) -> None:
@@ -95,7 +100,8 @@ class BertPreprocessingLayer(tf.keras.layers.Layer):
                     value_dtype=tf.int64,
                 ),
                 1,
-            )
+            ),
+            max_chars_per_token=self.max_chars_per_token,
         )
         super().build(input_shape)
 
@@ -116,19 +122,44 @@ class BertPreprocessingLayer(tf.keras.layers.Layer):
         cls_ids = self._create_cls_tensor(batch_size)
         sep_ids = self._create_sep_tensor(batch_size)
         if len(inputs) == 1:
-            token_ids = self.tokenizer.tokenize(inputs[0])
+            if self.return_offset:
+                (token_ids, starts, ends) = self.tokenizer.tokenize_with_offsets(
+                    inputs[0]
+                )
+                starts = starts.merge_dims(-2, -1)
+                ends = ends.merge_dims(-2, -1)
+            else:
+                token_ids = self.tokenizer.tokenize(inputs[0])
             flatten_ids = token_ids.merge_dims(-2, -1)
             ids = tf.concat([cls_ids, flatten_ids, sep_ids], axis=1)
-            ids_tensor = ids.to_tensor(0)
-            return ids_tensor, tf.zeros_like(ids_tensor, dtype=ids_tensor.dtype)
+            ids_tensor = ids.to_tensor()
+            type_ids_tensor = tf.zeros_like(ids_tensor, dtype=ids_tensor.dtype)
+
+            tensors: list[tf.Tensor] = [ids_tensor, type_ids_tensor]
+            if self.return_offset:
+                tensors.append(starts.to_tensor())
+                tensors.append(ends.to_tensor())
+            return tensors
         elif len(inputs) == 2:
             query, context = inputs
             query_token_ids = self.tokenizer.tokenize(query)
-            context_token_ids = self.tokenizer.tokenize(context)
+            if self.return_offset:
+                # TODO: 句对输入仅输出第二句的start和end索引是否合理,
+                #       需要根据具体任务设计判断, 如阅读理解
+                (
+                    context_token_ids,
+                    starts,
+                    ends,
+                ) = self.tokenizer.tokenize_with_offsets(context)
+                starts = starts.merge_dims(-2, -1)
+                ends = ends.merge_dims(-2, -1)
+            else:
+                context_token_ids = self.tokenizer.tokenize(context)
             query_flatten_ids = query_token_ids.merge_dims(-2, -1)
             context_flatten_ids = context_token_ids.merge_dims(-2, -1)
             query_ids = tf.concat([cls_ids, query_flatten_ids, sep_ids], axis=1)
             context_ids = tf.concat([context_flatten_ids, sep_ids], axis=1)
+            token_ids = tf.concat([query_ids, context_ids], axis=1, name="token_ids")
             type_ids = tf.concat(
                 [
                     tf.zeros_like(query_ids, dtype=tf.int64),
@@ -136,12 +167,12 @@ class BertPreprocessingLayer(tf.keras.layers.Layer):
                 ],
                 axis=1,
             )
-            return (
-                tf.concat([query_ids, context_ids], axis=1, name="token_ids").to_tensor(
-                    0
-                ),
-                type_ids.to_tensor(0),
-            )
+
+            tensors: list[tf.Tensor] = [token_ids.to_tensor(), type_ids.to_tensor()]
+            if self.return_offset:
+                tensors.append(starts.to_tensor())
+                tensors.append(ends.to_tensor())
+            return tensors
         else:
             raise ValueError(
                 f"The length of inputs must be 1 or 2, bug get {len(inputs)}."
@@ -153,6 +184,7 @@ class BertPreprocessingLayer(tf.keras.layers.Layer):
             "vocab": self.vocab,
             "cls_token": self.cls_token,
             "sep_token": self.sep_token,
+            "return_offset": self.return_offset,
         }
 
 
