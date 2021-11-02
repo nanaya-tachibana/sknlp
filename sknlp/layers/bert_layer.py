@@ -1,63 +1,13 @@
 from __future__ import annotations
-from typing import Sequence, Any, Optional, Callable, Union
+from typing import Sequence, Any, Optional, Callable
 
 import tensorflow as tf
 from tensorflow.keras.initializers import TruncatedNormal
-from tensorflow.keras.layers.experimental.preprocessing import TextVectorization
 
 from official.nlp.keras_nlp import layers
 import tensorflow_text as tftext
 
 from sknlp.activations import gelu
-
-from .bert_tokenization import BertTokenizationLayer
-
-
-@tf.keras.utils.register_keras_serializable(package="sknlp")
-class BertCharPreprocessingLayer(tf.keras.layers.Layer):
-    def __init__(
-        self,
-        vocab: Sequence[str],
-        cls_token: str = "[CLS]",
-        sep_token: str = "[SEP]",
-        name: str = "bert_tokenize",
-        **kwargs,
-    ) -> None:
-        vocab: list = list(vocab)
-        self.cls_token = cls_token
-        self.sep_token = sep_token
-        if cls_token not in vocab:
-            vocab.append(cls_token)
-        if sep_token not in vocab:
-            vocab.append(sep_token)
-        if "[UNK]" in vocab:
-            idx = vocab.index("[UNK]")
-            vocab[idx] = "unk"
-        self.vocab = vocab
-        super().__init__(name=name, **kwargs)
-
-    def build(self, input_shape: tf.TensorShape) -> None:
-        self.tokenizer = TextVectorization(
-            max_tokens=len(self.vocab),
-            standardize=None,
-            split=BertTokenizationLayer(
-                cls_token=self.cls_token, sep_token=self.sep_token
-            ),
-        )
-        self.tokenizer.set_vocabulary(self.vocab[2:])
-        super().build(input_shape)
-
-    def call(self, inputs: tf.Tensor) -> list[tf.Tensor]:
-        token_ids = self.tokenizer(inputs)
-        return token_ids, tf.zeros_like(token_ids, dtype=token_ids.dtype)
-
-    def get_config(self) -> dict[str, Any]:
-        return {
-            **super().get_config(),
-            "vocab": self.vocab,
-            "cls_token": self.cls_token,
-            "sep_token": self.sep_token,
-        }
 
 
 @tf.keras.utils.register_keras_serializable(package="sknlp")
@@ -67,6 +17,7 @@ class BertPreprocessingLayer(tf.keras.layers.Layer):
         vocab: Sequence[str],
         cls_token: str = "[CLS]",
         sep_token: str = "[SEP]",
+        max_length: int = 510,
         return_offset: bool = False,
         name: str = "bert_tokenize",
         **kwargs,
@@ -74,6 +25,7 @@ class BertPreprocessingLayer(tf.keras.layers.Layer):
         vocab: list = list(vocab)
         self.cls_token = cls_token
         self.sep_token = sep_token
+        self.max_length = max_length
         if cls_token not in vocab:
             vocab.append(cls_token)
         if sep_token not in vocab:
@@ -105,22 +57,9 @@ class BertPreprocessingLayer(tf.keras.layers.Layer):
         )
         super().build(input_shape)
 
-    def _create_special_tensor(self, token_id: int, nrows: tf.Tensor) -> tf.Tensor:
-        return tf.expand_dims(
-            tf.tile(tf.constant([token_id], dtype=tf.int64), [nrows]), -1
-        )
-
-    def _create_cls_tensor(self, nrows: tf.Tensor) -> tf.Tensor:
-        return self._create_special_tensor(self.cls_id, nrows)
-
-    def _create_sep_tensor(self, nrows: tf.Tensor) -> tf.Tensor:
-        return self._create_special_tensor(self.sep_id, nrows)
-
-    def call(self, inputs: Union[tf.Tensor, list[tf.Tensor]]) -> list[tf.Tensor]:
+    def call(self, inputs: tf.Tensor | list[tf.Tensor]) -> list[tf.Tensor]:
         inputs = tf.nest.flatten(inputs)
-        batch_size = tf.shape(inputs[0])[0]
-        cls_ids = self._create_cls_tensor(batch_size)
-        sep_ids = self._create_sep_tensor(batch_size)
+        trimmer = tftext.WaterfallTrimmer(self.max_length)
         if len(inputs) == 1:
             if self.return_offset:
                 (token_ids, starts, ends) = self.tokenizer.tokenize_with_offsets(
@@ -131,11 +70,12 @@ class BertPreprocessingLayer(tf.keras.layers.Layer):
             else:
                 token_ids = self.tokenizer.tokenize(inputs[0])
             flatten_ids = token_ids.merge_dims(-2, -1)
-            ids = tf.concat([cls_ids, flatten_ids, sep_ids], axis=1)
-            ids_tensor = ids.to_tensor()
-            type_ids_tensor = tf.zeros_like(ids_tensor, dtype=ids_tensor.dtype)
-
-            tensors: list[tf.Tensor] = [ids_tensor, type_ids_tensor]
+            ids, type_ids = tftext.combine_segments(
+                trimmer.trim([flatten_ids]),
+                start_of_sequence_id=self.cls_id,
+                end_of_segment_id=self.sep_id,
+            )
+            tensors: list[tf.Tensor] = [ids.to_tensor(), type_ids.to_tensor()]
             if self.return_offset:
                 tensors.append(starts.to_tensor())
                 tensors.append(ends.to_tensor())
@@ -157,15 +97,10 @@ class BertPreprocessingLayer(tf.keras.layers.Layer):
                 context_token_ids = self.tokenizer.tokenize(context)
             query_flatten_ids = query_token_ids.merge_dims(-2, -1)
             context_flatten_ids = context_token_ids.merge_dims(-2, -1)
-            query_ids = tf.concat([cls_ids, query_flatten_ids, sep_ids], axis=1)
-            context_ids = tf.concat([context_flatten_ids, sep_ids], axis=1)
-            token_ids = tf.concat([query_ids, context_ids], axis=1, name="token_ids")
-            type_ids = tf.concat(
-                [
-                    tf.zeros_like(query_ids, dtype=tf.int64),
-                    tf.ones_like(context_ids, dtype=tf.int64),
-                ],
-                axis=1,
+            token_ids, type_ids = tftext.combine_segments(
+                trimmer.trim([query_flatten_ids, context_flatten_ids]),
+                start_of_sequence_id=self.cls_id,
+                end_of_segment_id=self.sep_id,
             )
 
             tensors: list[tf.Tensor] = [token_ids.to_tensor(), type_ids.to_tensor()]
