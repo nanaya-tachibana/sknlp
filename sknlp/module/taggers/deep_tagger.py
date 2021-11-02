@@ -135,22 +135,30 @@ class DeepTagger(SupervisedNLPModel):
         thresholds: float = 0.5,
         batch_size: int = 128,
     ) -> list[list[Tag]]:
+        dataset = self.prepare_dataset(X, None, dataset)
         raw_predictions = super().predict(X, dataset=dataset, batch_size=batch_size)
+        tokens_list = dataset.tokenize(dataset.X)
         predictions: list[list[Tag]] = []
         if self.output_format == "bio":
-            for tag_ids in raw_predictions:
+            for tag_ids, tokens in zip(raw_predictions, tokens_list):
+                itoken2ichar = self.vocab.create_itoken2ichar_mapping(tokens)
                 predictions.append(
                     convert_ids_to_tags(
-                        tag_ids.numpy().tolist(), self.idx2class, self.add_start_end_tag
+                        tag_ids.numpy().tolist(),
+                        self.idx2class,
+                        itoken2ichar,
+                        self.add_start_end_tag,
                     )
                 )
         else:
-            for pointer in raw_predictions:
+            for pointer, tokens in zip(raw_predictions, tokens_list):
+                itoken2ichar = self.vocab.create_itoken2ichar_mapping(tokens)
                 predictions.append(
                     convert_global_pointer_to_tags(
                         pointer.to_tensor(tf.float32.min).numpy(),
                         thresholds,
                         self.idx2class,
+                        itoken2ichar,
                         self.add_start_end_tag,
                     )
                 )
@@ -186,7 +194,7 @@ class DeepTagger(SupervisedNLPModel):
             )
             crf.set_weights(self._model.get_layer("crf").get_weights())
             model = tf.keras.Model(
-                inputs=self._model.inputs[0], outputs=crf(emissions, mask)
+                inputs=self._model.inputs[:-1], outputs=crf(emissions, mask)
             )
         else:
             model = self._model

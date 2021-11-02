@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Sequence, Optional, Tuple, Any
+from typing import Callable, Sequence, Optional, Tuple, Any
 import json
 
 import numpy as np
@@ -7,6 +7,7 @@ import tensorflow as tf
 
 from sknlp.vocab import Vocab
 from .nlp_dataset import NLPDataset
+from .bert_mixin import BertDatasetMixin
 
 
 def _combine_xy(x, y):
@@ -27,9 +28,9 @@ class TaggingDataset(NLPDataset):
         add_start_end_tag: bool = False,
         output_format: str = "global_pointer",
         max_length: Optional[int] = None,
-        text_dtype: tf.DType = tf.int32,
+        text_dtype: tf.DType = tf.int64,
         label_dtype: tf.DType = tf.int32,
-        **kwargs
+        **kwargs,
     ):
         self.add_start_end_tag = add_start_end_tag
         self.output_format = output_format
@@ -47,7 +48,7 @@ class TaggingDataset(NLPDataset):
             column_dtypes=["str", "str"],
             text_dtype=text_dtype,
             label_dtype=label_dtype,
-            **kwargs
+            **kwargs,
         )
 
     @property
@@ -62,23 +63,28 @@ class TaggingDataset(NLPDataset):
     @property
     def batch_padding_shapes(self) -> list[Tuple]:
         if self.output_format == "bio":
-            return ((None,), (None,))
+            return [(None,), (None,)][: None if self.has_label else -1]
         else:
-            return ((None,), (None, None, None))[: None if self.has_label else -1]
+            return [(None,), (None, None, None)][: None if self.has_label else -1]
 
-    def _normalize_y(self, y: Sequence[Any]) -> Sequence[Any]:
+    def _format_y(self, y: Sequence[Any]) -> Sequence[Any]:
         if isinstance(y[0], (list, tuple)):
             return [json.dumps(yi) for yi in y]
         return y
 
-    def _label_transform(self, label: tf.Tensor, length: int) -> np.array:
-        label = super()._label_transform(label)
-        chunks = json.loads(label)
+    def py_label_transform(self, label: tf.Tensor, tokens: Sequence[str]) -> np.ndarray:
+        label = super().py_label_transform(label)
+        length = len(tokens)
         length += 2 * self.add_start_end_tag
+
+        start_mapping, end_mapping = self.vocab.create_ichar2itoken_mapping(tokens)
+        chunks = json.loads(label)
         if self.output_format == "bio":
             labels = np.zeros(length, dtype=np.int32)
             for chunk_start, chunk_end, chunk_label in chunks:
-                if chunk_end >= self.max_length:
+                chunk_start = start_mapping[chunk_start]
+                chunk_end = end_mapping[chunk_end]
+                if chunk_start == -1 or chunk_end == -1 or chunk_end >= labels.shape[0]:
                     continue
 
                 chunk_start += self.add_start_end_tag
@@ -89,7 +95,9 @@ class TaggingDataset(NLPDataset):
         else:
             labels = np.zeros((len(self.label2idx), length, length), dtype=np.int32)
             for chunk_start, chunk_end, chunk_label in chunks:
-                if chunk_end > self.max_length:
+                chunk_start = start_mapping[chunk_start]
+                chunk_end = end_mapping[chunk_end]
+                if chunk_start == -1 or chunk_end == -1 or chunk_end >= labels.shape[2]:
                     continue
 
                 chunk_start += self.add_start_end_tag
@@ -97,17 +105,13 @@ class TaggingDataset(NLPDataset):
                 labels[self.label2idx[chunk_label], chunk_start, chunk_end] = 1
         return labels
 
-    def _transform_func(self, *data) -> list[Any]:
-        text = data[0]
-
-        _text = self._text_transform(text)
-        if not self.has_label:
-            if self.output_format == "bio":
-                return _text, [0 for _ in range(len(_text))]
-            else:
-                return _text
-        label = data[1]
-        return _text, self._label_transform(label, len(_text))
+    def py_transform(self, *data: Sequence[tf.Tensor]) -> list[Any]:
+        tokens_list = self.py_text_transform(data[: -1 if self.has_label else None])
+        transformed_data = self.vocab.token2idx(tokens_list)
+        if self.has_label:
+            # TODO: 仅在最后一句上做序列标注
+            transformed_data.append(self.py_label_transform(data[-1], tokens_list[-1]))
+        return transformed_data
 
     def batchify(
         self,
@@ -115,13 +119,69 @@ class TaggingDataset(NLPDataset):
         shuffle: bool = True,
         training: bool = True,
         shuffle_buffer_size: Optional[int] = None,
+        after_batch: Optional[Callable] = None,
     ) -> tf.data.Dataset:
-        after_batch = None
-        if self.output_format == "bio" and self.has_label and training:
+        if (
+            after_batch is None
+            and self.output_format == "bio"
+            and self.has_label
+            and training
+        ):
             after_batch = _combine_xy
         return super().batchify(
             batch_size,
             shuffle=shuffle,
+            shuffle_buffer_size=shuffle_buffer_size,
+            after_batch=after_batch,
+        )
+
+
+def _combine_xyz(x, y, z):
+    return ((x, y, z),)
+
+
+def _combine_xy_z(x, y, z):
+    return ((x, y), z)
+
+
+class BertTaggingDataset(BertDatasetMixin, TaggingDataset):
+    @property
+    def batch_padding_shapes(self) -> list[tuple]:
+        shapes = super().batch_padding_shapes
+        if self.output_format != "bio" and self.has_label:
+            shapes[-1] = (None, None, None)
+        return shapes
+
+    def py_transform(self, *data: list[tf.Tensor]) -> list[Any]:
+        tokens = [token.decode("UTF-8") for token in data[0].numpy().tolist()[-1]]
+        transformed_data = self.py_text_transform(data[0])
+        if self.has_label:
+            # TODO: 仅在最后一句上做序列标注
+            transformed_data.append(self.py_label_transform(data[-1], tokens))
+        return transformed_data
+
+    def batchify(
+        self,
+        batch_size: int,
+        shuffle: bool = True,
+        training: bool = True,
+        shuffle_buffer_size: Optional[int] = None,
+        after_batch: Optional[Callable] = None,
+    ) -> tf.data.Dataset:
+        if after_batch is None:
+            if not self.has_label:
+                after_batch = _combine_xy
+            elif self.output_format == "bio":
+                if training:
+                    after_batch = _combine_xyz
+                else:
+                    after_batch = _combine_xy_z
+            else:
+                after_batch = _combine_xy_z
+        return super().batchify(
+            batch_size,
+            shuffle=shuffle,
+            training=training,
             shuffle_buffer_size=shuffle_buffer_size,
             after_batch=after_batch,
         )

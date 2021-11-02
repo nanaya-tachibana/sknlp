@@ -3,7 +3,6 @@ from typing import Callable, Optional, Any, Sequence
 import string
 
 import pandas as pd
-import numpy as np
 import tensorflow as tf
 
 from sknlp.vocab import Vocab
@@ -20,6 +19,7 @@ class NLPDataset:
         csv_file: Optional[str] = None,
         in_memory: bool = True,
         has_label: bool = True,
+        text_normalization: dict[str, str] = {"letter_case": "lowercase"},
         max_length: Optional[int] = None,
         na_value: str = "",
         column_dtypes: list[str] = ["str", "str"],
@@ -31,27 +31,26 @@ class NLPDataset:
             raise ValueError("Either `X` or `csv_file` may not be None.")
         self.in_memory = in_memory
         self.na_value = na_value
+        self.text_normalization = text_normalization
         self.column_dtypes = column_dtypes
+        self._has_label = has_label
         if csv_file is not None:
             self._original_dataset, self.size = self.load_csv(
                 csv_file, "\t", in_memory, column_dtypes, na_value
             )
         else:
-            has_label = has_label and y is not None
+            self._has_label = has_label and y is not None
             df = self.Xy_to_dataframe(X, y=y)
             self._original_dataset = self.dataframe_to_dataset(
                 df, column_dtypes, na_value
             )
             self.size = df.shape[0]
 
-        self.tokenizer = get_tokenizer(segmenter, vocab).tokenize
+        self.tokenize = get_tokenizer(segmenter, vocab, max_length=max_length).tokenize
         self.vocab = vocab
         self.max_length = max_length or 99999
         self.text_dtype = text_dtype
         self.label_dtype = label_dtype
-
-        self._has_label = has_label
-        self._dataset = self._transform(self._original_dataset)
 
     @property
     def has_label(self) -> bool:
@@ -81,57 +80,60 @@ class NLPDataset:
     def batch_padding_shapes(self) -> Optional[list[tuple]]:
         return None
 
-    def _normalize_X(self, X: Sequence[Any]) -> Sequence[Any]:
-        return X
+    def _format_X(
+        self, X: Sequence[Sequence[str]] | Sequence[str]
+    ) -> list[Sequence[str]]:
+        if isinstance(X[0], str):
+            return [X]
+        return list(zip(*X))
 
-    def _normalize_y(self, y: Sequence[Any]) -> Sequence[Any]:
+    def _format_y(self, y: Sequence[Any]) -> Sequence[Any]:
         return y
 
     def Xy_to_dataframe(
         self, X: Sequence[Any], y: Optional[Sequence[Any]] = None
     ) -> pd.DataFrame:
-        X = self._normalize_X(X)
+        X = self._format_X(X)
         if y is not None:
-            y = self._normalize_y(y)
-        if isinstance(X[0], (list, tuple)):
-            df = pd.DataFrame(
-                [[*xi, yi] for xi, yi in zip(X, y)] if y is not None else X
-            )
-        else:
-            df = pd.DataFrame(zip(X, y) if y is not None else X)
-        return df
+            y = self._format_y(y)
+        return pd.DataFrame(zip(*X, y) if y is not None else zip(*X))
 
-    def _text_transform(self, text: tf.Tensor) -> np.array:
-        token_ids = self.tokenizer(text.numpy().decode("UTF-8"))
-        return np.array(token_ids[: self.max_length], dtype=np.int32)
+    def py_text_transform(
+        self, text: tf.Tensor | Sequence[tf.Tensor]
+    ) -> list[list[str]]:
+        if isinstance(text, tf.Tensor):
+            text = [text]
+        return [self.tokenize(t.numpy().decode("UTF-8")) for t in text]
 
-    def _label_transform(self, label: tf.Tensor) -> str:
+    def py_label_transform(self, label: tf.Tensor) -> str:
         return label.numpy().decode("UTF-8")
 
-    def _transform_func(self, *data) -> list[Any]:
-        text = data[0]
-        _text = self._text_transform(text)
-        if not self.has_label:
-            return _text
-        label = data[1]
-        return _text, self._label_transform(label)
+    def py_transform(self, *data: Sequence[tf.Tensor]) -> list[Any]:
+        transformed_data = self.vocab.token2idx(
+            self.py_text_transform(data[: -1 if self.has_label else None])
+        )
+        if self.has_label:
+            transformed_data.append(self.py_label_transform(data[-1]))
+        return transformed_data
 
-    def _transform_func_out_dtype(self) -> list[tf.DType]:
+    def py_transform_out_dtype(self) -> list[tf.DType]:
         return [self.text_dtype, self.label_dtype][: None if self.has_label else -1]
 
-    def _transform(self, dataset: tf.data.Dataset) -> tf.data.Dataset:
-        return dataset.map(
-            lambda *data: tf.py_function(
-                self._transform_func, inp=data, Tout=self._transform_func_out_dtype()
-            ),
-            num_parallel_calls=tf.data.experimental.AUTOTUNE,
-        )
+    def tf_transform_before_py_transform(
+        self, *data: Sequence[tf.Tensor]
+    ) -> list[tf.Tensor]:
+        return data
+
+    def tf_transform_after_py_transform(
+        self, *data: Sequence[tf.Tensor]
+    ) -> list[tf.Tensor]:
+        return data
 
     def shuffled_dataset(
-        self, shuffle_buffer_size: Optional[int] = None
+        self, dataset: tf.data.Dataset, shuffle_buffer_size: Optional[int] = None
     ) -> tf.data.Dataset:
         shuffle_buffer_size = shuffle_buffer_size or self.size or 100000
-        return self._dataset.shuffle(shuffle_buffer_size)
+        return dataset.shuffle(shuffle_buffer_size)
 
     def batchify(
         self,
@@ -139,23 +141,38 @@ class NLPDataset:
         shuffle: bool = True,
         training: bool = True,
         shuffle_buffer_size: Optional[int] = None,
-        before_batch: Optional[Callable] = None,
         after_batch: Optional[Callable] = None,
     ) -> tf.data.Dataset:
-        dataset = (
-            self.shuffled_dataset(shuffle_buffer_size) if shuffle else self._dataset
+        dataset = self._original_dataset
+        dataset = dataset.map(
+            self.tf_transform_before_py_transform, num_parallel_calls=tf.data.AUTOTUNE
         )
-        if before_batch is not None:
-            dataset = dataset.map(before_batch)
+        dataset = dataset.map(
+            lambda *data: tf.py_function(
+                self.py_transform,
+                inp=data,
+                Tout=self.py_transform_out_dtype(),
+            )
+        ).cache()
+        dataset = dataset.map(
+            self.tf_transform_after_py_transform, num_parallel_calls=tf.data.AUTOTUNE
+        )
+        if shuffle:
+            dataset = self.shuffled_dataset(
+                dataset, shuffle_buffer_size=shuffle_buffer_size
+            )
         if self.batch_padding_shapes is None:
             dataset = dataset.batch(batch_size)
         else:
             dataset = dataset.padded_batch(
-                batch_size, padded_shapes=self.batch_padding_shapes
+                batch_size, padded_shapes=tuple(self.batch_padding_shapes)
             )
         if after_batch is not None:
-            dataset = dataset.map(after_batch)
-        return dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+            dataset = dataset.map(
+                after_batch,
+                num_parallel_calls=tf.data.AUTOTUNE,
+            )
+        return dataset.prefetch(buffer_size=tf.data.AUTOTUNE)
 
     def dataframe_to_dataset(
         self, df: pd.DataFrame, column_dtypes: list[str], na_value: str
@@ -163,7 +180,14 @@ class NLPDataset:
         df.fillna(na_value, inplace=True)
         for dtype, col in zip(column_dtypes, df.columns):
             df[col] = df[col].astype(dtype)
-        return tf.data.Dataset.from_tensor_slices(tuple(df[col] for col in df.columns))
+        series = [df[col] for col in df.columns]
+        for i in range(len(series) - self.has_label):
+            letter_case = self.text_normalization["letter_case"]
+            if letter_case == "lowercase":
+                series[i] = series[i].str.lower()
+            elif letter_case == "uppercase":
+                series[i] = series[i].str.upper()
+        return tf.data.Dataset.from_tensor_slices(tuple(series))
 
     def load_csv(
         self,

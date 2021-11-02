@@ -1,20 +1,13 @@
 from __future__ import annotations
-from typing import Sequence, Union, Optional, Any
+from typing import Sequence, Optional, Any
 
 import numpy as np
 import tensorflow as tf
 
 from sknlp.vocab import Vocab
 from .nlp_dataset import NLPDataset
+from .bert_mixin import BertDatasetMixin
 from .utils import serialize_example
-
-
-def _combine_xy(text, context, label):
-    return ((text, context), label)
-
-
-def _combine_x(text, context):
-    return ((text, context),)
 
 
 class ClassificationDataset(NLPDataset):
@@ -31,7 +24,7 @@ class ClassificationDataset(NLPDataset):
         is_multilabel: bool = False,
         is_pair_text: bool = False,
         max_length: Optional[int] = None,
-        text_dtype: tf.DType = tf.int32,
+        text_dtype: tf.DType = tf.int64,
         label_dtype: tf.DType = tf.float32,
         **kwargs,
     ):
@@ -59,7 +52,7 @@ class ClassificationDataset(NLPDataset):
         )
 
     @property
-    def y(self) -> Union[list[str], list[list[str]]]:
+    def y(self) -> list[str] | list[list[str]]:
         if not self.has_label:
             return []
         return [
@@ -72,63 +65,26 @@ class ClassificationDataset(NLPDataset):
     @property
     def batch_padding_shapes(self) -> list[tuple]:
         shapes = [(None,), (None,)]
-        if self.is_pair_text:
-            shapes.append((None,))
-        return tuple(shapes[: None if self.has_label else -1])
+        return shapes[: None if self.has_label else -1]
 
-    def _transform_func(self, *data: list[tf.Tensor]) -> list[Any]:
-        num_text_data = self.is_pair_text + 1
-        transformed_data = []
-        for d in data[:num_text_data]:
-            transformed_data.append(self._text_transform(d))
-        if self.has_label:
-            transformed_data.append(self._label_transform(data[-1]))
-        return transformed_data
-
-    def _transform_func_out_dtype(self) -> list[tf.DType]:
-        dtypes = super()._transform_func_out_dtype()
-        if self.is_pair_text:
-            dtypes.insert(0, self.text_dtype)
-        return dtypes
-
-    def _normalize_y(self, y: Sequence[Any]) -> Sequence[Any]:
+    def _format_y(self, y: Sequence[Any]) -> Sequence[Any]:
         if isinstance(y[0], (list, tuple)):
             return ["|".join(map(str, yi)) for yi in y]
         return y
 
-    def _label_binarizer(self, labels: list[str]) -> np.ndarray:
+    def py_label_binarizer(self, labels: list[str]) -> np.ndarray:
         label2idx = self.label2idx
         res = np.zeros(len(label2idx), dtype=np.float32)
         res[[label2idx[label] for label in labels if label in label2idx]] = 1
         return res
 
-    def _label_transform(self, label: tf.Tensor) -> np.ndarray:
-        _label = super()._label_transform(label)
+    def py_label_transform(self, label: tf.Tensor) -> np.ndarray:
+        _label = super().py_label_transform(label)
         if self.is_multilabel:
             labels = _label.split("|")
         else:
             labels = [_label]
-        return self._label_binarizer(labels)
-
-    def batchify(
-        self,
-        batch_size: int,
-        shuffle: bool = True,
-        training: bool = True,
-        shuffle_buffer_size: Optional[int] = None,
-    ) -> tf.data.Dataset:
-        after_batch = None
-        if self.is_pair_text:
-            if self.has_label:
-                after_batch = _combine_xy
-            else:
-                after_batch = _combine_x
-        return super().batchify(
-            batch_size,
-            shuffle=shuffle,
-            shuffle_buffer_size=shuffle_buffer_size,
-            after_batch=after_batch,
-        )
+        return self.py_label_binarizer(labels)
 
     def to_tfrecord(self, filename: str) -> None:
         def func(text: np.ndarray, label: np.ndarray):
@@ -164,3 +120,7 @@ class ClassificationDataset(NLPDataset):
             )
 
         return tf.data.TFRecordDataset(filename).map(func)
+
+
+class BertClassificationDataset(BertDatasetMixin, ClassificationDataset):
+    pass
