@@ -1,7 +1,6 @@
 from __future__ import annotations
 from typing import Optional, Any, Union
 
-import os
 import shutil
 import tempfile
 
@@ -39,7 +38,7 @@ class Text2vec(UnsupervisedNLPModel):
     ) -> Union[tf.Tensor, list[tf.Tensor]]:
         raise NotImplementedError()
 
-    def update_dropout(self, dropout: float) -> None:
+    def update_dropout(self, dropout: float, **kwargs) -> None:
         pass
 
     def tokenize(self, text: str) -> list[int]:
