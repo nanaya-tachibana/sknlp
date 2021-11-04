@@ -3,7 +3,6 @@ from typing import Optional
 
 import tensorflow as tf
 
-from sknlp.typing import WeightInitializer
 from sknlp.layers import BiLSTM, AttentionPooling1D
 from sknlp.module.text2vec import Text2vec
 from .deep_classifier import DeepClassifier
@@ -21,13 +20,7 @@ class RNNClassifier(DeepClassifier):
         fc_activation: str = "tanh",
         num_rnn_layers: int = 1,
         rnn_hidden_size: int = 512,
-        rnn_projection_size: int = 128,
         rnn_recurrent_dropout: float = 0.0,
-        rnn_recurrent_clip: float = 3.0,
-        rnn_projection_clip: float = 3.0,
-        rnn_kernel_initializer: WeightInitializer = "glorot_uniform",
-        rnn_recurrent_initializer: WeightInitializer = "orthogonal",
-        rnn_projection_initializer: WeightInitializer = "glorot_uniform",
         text2vec: Optional[Text2vec] = None,
         **kwargs
     ):
@@ -45,13 +38,7 @@ class RNNClassifier(DeepClassifier):
         self.dropout = dropout
         self.num_rnn_layers = num_rnn_layers
         self.rnn_hidden_size = rnn_hidden_size
-        self.rnn_projection_size = rnn_projection_size
         self.rnn_recurrent_dropout = rnn_recurrent_dropout
-        self.rnn_recurrent_clip = rnn_recurrent_clip
-        self.rnn_projection_clip = rnn_projection_clip
-        self.rnn_kernel_initializer = rnn_kernel_initializer
-        self.rnn_recurrent_initializer = rnn_recurrent_initializer
-        self.rnn_projection_initializer = rnn_projection_initializer
 
     def build_encoding_layer(self, inputs: tf.Tensor) -> tf.Tensor:
         embeddings = self.text2vec(inputs)
@@ -60,18 +47,20 @@ class RNNClassifier(DeepClassifier):
             BiLSTM(
                 self.num_rnn_layers,
                 self.rnn_hidden_size,
-                projection_size=self.rnn_projection_size,
-                recurrent_clip=self.rnn_recurrent_clip,
-                projection_clip=self.rnn_projection_clip,
                 dropout=self.dropout,
                 recurrent_dropout=self.rnn_recurrent_dropout,
-                kernel_initializer=self.rnn_kernel_initializer,
-                recurrent_initializer=self.rnn_recurrent_initializer,
-                projection_initializer=self.rnn_projection_initializer,
                 return_sequences=True,
             )(embeddings, mask),
             mask,
         )
 
     def build_intermediate_layer(self, inputs: list[tf.Tensor]) -> tf.Tensor:
-        return AttentionPooling1D()(*inputs)
+        encodings, mask = inputs
+        if self.dropout:
+            noise_shape = (None, 1, self.rnn_hidden_size * 2)
+            encodings = tf.keras.layers.Dropout(
+                self.dropout,
+                noise_shape=noise_shape,
+                name="encoding_dropout",
+            )(encodings)
+        return AttentionPooling1D()(encodings, mask)

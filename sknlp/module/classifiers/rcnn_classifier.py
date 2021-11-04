@@ -16,14 +16,8 @@ class RCNNClassifier(RNNClassifier):
             BiLSTM(
                 self.num_rnn_layers,
                 self.rnn_hidden_size,
-                projection_size=self.rnn_projection_size,
-                recurrent_clip=self.rnn_recurrent_clip,
-                projection_clip=self.rnn_projection_clip,
                 dropout=self.dropout,
                 recurrent_dropout=self.rnn_recurrent_dropout,
-                kernel_initializer=self.rnn_kernel_initializer,
-                recurrent_initializer=self.rnn_recurrent_initializer,
-                projection_initializer=self.rnn_projection_initializer,
                 return_sequences=True,
             )(embeddings, mask),
             mask,
@@ -38,6 +32,13 @@ class RCNNClassifier(RNNClassifier):
                 noise_shape=noise_shape,
                 name="embedding_dropout",
             )(embeddings)
+
+            noise_shape = (None, 1, self.rnn_hidden_size * 2)
+            encodings = tf.keras.layers.Dropout(
+                self.dropout,
+                noise_shape=noise_shape,
+                name="encoding_dropout",
+            )(encodings)
         mixed_inputs = tf.concat([embeddings, encodings], axis=-1)
         mixed_outputs = Dense(self.fc_hidden_size, activation="tanh")(mixed_inputs)
         mask = tf.cast(mask, mixed_outputs.dtype)
