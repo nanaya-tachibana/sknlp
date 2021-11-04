@@ -67,7 +67,7 @@ class DeepGenerator(SupervisedNLPModel):
             tokens = vocab.idx2token(predicted_ids.numpy().tolist())
             translated_tokens = []
             for token in tokens:
-                if token == vocab.bos:
+                if token == vocab.eos:
                     break
                 if token in reversed_tokens:
                     continue

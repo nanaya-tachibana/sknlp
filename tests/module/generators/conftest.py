@@ -8,7 +8,7 @@ from ..conftest import random_letters
 
 @pytest.fixture
 def raw_data():
-    n = 500
+    n = 100
     texts = []
     reversed_texts = []
     for _ in range(n):
