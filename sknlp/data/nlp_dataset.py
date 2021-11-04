@@ -14,8 +14,8 @@ class NLPDataset:
         self,
         vocab: Vocab,
         segmenter: Optional[str] = None,
-        X: Optional[Sequence[Any]] = None,
-        y: Optional[Sequence[Any]] = None,
+        X: Optional[Sequence[str] | Sequence[Sequence[str]]] = None,
+        y: Optional[Sequence[str | float | int]] = None,
         csv_file: Optional[str] = None,
         in_memory: bool = True,
         has_label: bool = True,
@@ -33,6 +33,12 @@ class NLPDataset:
         self.na_value = na_value
         self.text_normalization = text_normalization
         self.column_dtypes = column_dtypes
+        self.tokenize = get_tokenizer(segmenter, vocab, max_length=max_length).tokenize
+        self.vocab = vocab
+        self.max_length = max_length or 99999
+        self.text_dtype = text_dtype
+        self.label_dtype = label_dtype
+
         self._has_label = has_label
         if csv_file is not None:
             self._original_dataset, self.size = self.load_csv(
@@ -45,12 +51,9 @@ class NLPDataset:
                 df, column_dtypes, na_value
             )
             self.size = df.shape[0]
-
-        self.tokenize = get_tokenizer(segmenter, vocab, max_length=max_length).tokenize
-        self.vocab = vocab
-        self.max_length = max_length or 99999
-        self.text_dtype = text_dtype
-        self.label_dtype = label_dtype
+        self._original_dataset = self._original_dataset.map(
+            self.normalize, num_parallel_calls=tf.data.AUTOTUNE
+        )
 
     @property
     def has_label(self) -> bool:
@@ -80,20 +83,42 @@ class NLPDataset:
     def batch_padding_shapes(self) -> Optional[list[tuple]]:
         return None
 
-    def _format_X(
-        self, X: Sequence[Sequence[str]] | Sequence[str]
-    ) -> list[Sequence[str]]:
-        if isinstance(X[0], str):
-            return [X]
+    def normalize_letter_case(self, data: tf.Tensor) -> tf.Tensor:
+        letter_case = self.text_normalization["letter_case"]
+        if letter_case == "lowercase":
+            return tf.strings.lower(data, encoding="utf-8")
+        elif letter_case == "uppercase":
+            return tf.strings.upper(data, encoding="utf-8")
+        return data
+
+    def normalize_text(self, *data: list[tf.Tensor]) -> list[tf.Tensor]:
+        return [self.normalize_letter_case(d) for d in data]
+
+    def normalize_label(self, data: tf.Tensor) -> tf.Tensor:
+        return data
+
+    def normalize(self, *data: list[tf.Tensor]) -> list[tf.Tensor]:
+        normalized = self.normalize_text(*data[: -1 if self.has_label else None])
+        if self.has_label:
+            normalized.append(self.normalize_label(data[-1]))
+        return normalized
+
+    def _format_X(self, *X: Sequence[Sequence[str]]) -> list[Sequence[str]]:
+        if len(X) == 1:
+            return list(X)
         return list(zip(*X))
 
-    def _format_y(self, y: Sequence[Any]) -> Sequence[Any]:
+    def _format_y(self, y: Sequence[str | float | int]) -> Sequence[str | float | int]:
         return y
 
     def Xy_to_dataframe(
-        self, X: Sequence[Any], y: Optional[Sequence[Any]] = None
+        self,
+        X: Sequence[str] | Sequence[Sequence[str]],
+        y: Optional[Sequence[str | float | int]] = None,
     ) -> pd.DataFrame:
-        X = self._format_X(X)
+        if isinstance(X[0], str):
+            X = [X]
+        X = self._format_X(*X)
         if y is not None:
             y = self._format_y(y)
         return pd.DataFrame(zip(*X, y) if y is not None else zip(*X))
