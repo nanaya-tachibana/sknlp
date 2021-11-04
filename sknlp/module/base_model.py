@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Sequence, Optional, Any, Callable, Union
+from typing import Sequence, Optional, Any, Callable
 
 import json
 import os
@@ -22,7 +22,7 @@ from sknlp.data import NLPDataset
 
 class BaseNLPModel:
     dataset_class = NLPDataset
-    dataset_args = []
+    dataset_args = ["text_normalization"]
 
     def __init__(
         self,
@@ -30,6 +30,7 @@ class BaseNLPModel:
         max_sequence_length: Optional[int] = None,
         sequence_length: Optional[int] = None,
         segmenter: Optional[str] = None,
+        text_normalization: dict[str, str] = {"letter_case": "sensitive"},
         learning_rate_multiplier: Optional[dict[str, float]] = None,
         inference_kwargs: Optional[dict[str, Any]] = None,
         custom_kwargs: Optional[dict[str, Any]] = None,
@@ -40,6 +41,7 @@ class BaseNLPModel:
         self._max_sequence_length = max_sequence_length
         self._sequence_length = sequence_length
         self._segmenter = segmenter
+        self._text_normalization = text_normalization
         self._learning_rate_multiplier = learning_rate_multiplier or dict()
         self._layerwise_learning_rate_multiplier: list[
             tuple[tf.keras.layers.Layer, float]
@@ -63,14 +65,6 @@ class BaseNLPModel:
         return kwargs
 
     @property
-    def training_dataset(self) -> NLPDataset:
-        return getattr(self, "_training_dataset", None)
-
-    @property
-    def validation_dataset(self) -> NLPDataset:
-        return getattr(self, "_validation_dataset", None)
-
-    @property
     def name(self) -> str:
         return self._name
 
@@ -89,6 +83,10 @@ class BaseNLPModel:
     @property
     def segmenter(self) -> Optional[str]:
         return self._segmenter
+
+    @property
+    def text_normalization(self) -> dict[str, str]:
+        return self._text_normalization
 
     @property
     def learning_rate_multiplier(self) -> dict[str, float]:
@@ -119,34 +117,27 @@ class BaseNLPModel:
     def build_inference_model(self) -> tf.keras.Model:
         return self._model
 
-    def build_preprocessing_layer(
-        self, inputs: Union[tf.Tensor, list[tf.Tensor]]
-    ) -> Union[tf.Tensor, list[tf.Tensor]]:
-        return inputs
-
     def build_encoding_layer(
-        self, inputs: Union[tf.Tensor, list[tf.Tensor]]
-    ) -> Union[tf.Tensor, list[tf.Tensor]]:
+        self, inputs: tf.Tensor | list[tf.Tensor]
+    ) -> tf.Tensor | list[tf.Tensor]:
         return inputs
 
     def build_intermediate_layer(
-        self, inputs: Union[tf.Tensor, list[tf.Tensor]]
-    ) -> Union[tf.Tensor, list[tf.Tensor]]:
+        self, inputs: tf.Tensor | list[tf.Tensor]
+    ) -> tf.Tensor | list[tf.Tensor]:
         return inputs
 
-    def build_output_layer(self, inputs: tf.Tensor) -> tf.Tensor:
+    def build_output_layer(
+        self, inputs: tf.Tensor | list[tf.Tensor]
+    ) -> tf.Tensor | list[tf.Tensor]:
         raise NotImplementedError()
 
-    def get_inputs(self) -> Union[list[tf.Tensor], tf.Tensor]:
+    def get_inputs(self) -> list[tf.Tensor] | tf.Tensor:
         raise NotImplementedError()
 
-    def get_outputs(self) -> Union[list[tf.Tensor], tf.Tensor]:
+    def get_outputs(self) -> list[tf.Tensor] | tf.Tensor:
         return self.build_output_layer(
-            self.build_intermediate_layer(
-                self.build_encoding_layer(
-                    self.build_preprocessing_layer(self.get_inputs())
-                )
-            )
+            self.build_intermediate_layer(self.build_encoding_layer(self.get_inputs()))
         )
 
     def get_loss(self, *args, **kwargs) -> Optional[tf.keras.losses.Loss]:
@@ -259,19 +250,19 @@ class BaseNLPModel:
         log_file: Optional[str] = None,
         verbose: int = 2
     ) -> None:
-        self._training_dataset = self.prepare_dataset(X, y, dataset)
+        training_dataset = self.prepare_dataset(X, y, dataset)
         if (
             validation_X is None or validation_y is None
         ) and validation_dataset is None:
-            self._validation_dataset = None
+            validation_dataset = None
         else:
-            self._validation_dataset = self.prepare_dataset(
+            validation_dataset = self.prepare_dataset(
                 validation_X, validation_y, validation_dataset
             )
-        training_tf_dataset = self.training_dataset.batchify(batch_size)
+        training_tf_dataset = training_dataset.batchify(batch_size)
         validation_tf_dataset = None
-        if self.validation_dataset is not None:
-            validation_tf_dataset = self.validation_dataset.batchify(
+        if validation_dataset is not None:
+            validation_tf_dataset = validation_dataset.batchify(
                 batch_size, shuffle=False
             )
 
@@ -334,9 +325,9 @@ class BaseNLPModel:
         X: Sequence[Any] = None,
         *,
         dataset: NLPDataset = None,
-        thresholds: Union[float, list[float], None] = None,
+        thresholds: float | list[float] | None = None,
         batch_size: int = 128
-    ) -> Union[np.ndarray, Sequence[Any]]:
+    ) -> np.ndarray | Sequence[Any]:
         assert self._built
         dataset = self.prepare_dataset(X, None, dataset)
         return self._inference_model.predict(
@@ -349,7 +340,7 @@ class BaseNLPModel:
         y: Sequence[Any] = None,
         *,
         dataset: NLPDataset = None,
-        thresholds: Union[float, list[float], None] = None,
+        thresholds: float | list[float] | None = None,
         batch_size: int = 128
     ) -> pd.DataFrame:
         raise NotImplementedError()
