@@ -63,7 +63,7 @@ class BertTokenizer(Tokenizer):
         ragged_tokens = self.tokenizer.tokenize(text_tensor).merge_dims(-2, -1)
         is_tensor = isinstance(text[0], tf.Tensor)
         if is_tensor:
-            return ragged_tokens.to_tensor()
+            return ragged_tokens.to_tensor(self.vocab.pad)
         tokens_list = ragged_tokens.to_list()
         tokens_list = [
             [token.decode("UTF-8") for token in tokens[: self.max_length]]
