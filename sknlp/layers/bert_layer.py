@@ -284,9 +284,7 @@ class BertLayer(tf.keras.layers.Layer):
                 data = layer([data, attention_mask])
                 encoder_outputs.append(data)
 
-        first_token_tensor = tf.keras.layers.Lambda(
-            lambda x: tf.squeeze(x[:, 0:1, :], axis=1)
-        )(encoder_outputs[-1])
+        first_token_tensor = encoder_outputs[-1][:, 0, :]
         cls_output = first_token_tensor
         if self.cls_pooling:
             cls_output = self.cls_output_layer(cls_output)
