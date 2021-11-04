@@ -66,9 +66,10 @@ class BertTagger(DeepTagger):
             self.dropout, attention_dropout=self.attention_dropout
         )
 
-        mask = tf.keras.layers.Lambda(
-            lambda x: tf.cast(x != 0, tf.int32), name="mask_layer"
-        )(token_ids)
+        mask_layer = tf.keras.layers.Lambda(
+            lambda ids: tf.not_equal(ids, 0), name="mask_layer"
+        )
+        mask = mask_layer(token_ids)
 
         outputs = [
             self.text2vec(

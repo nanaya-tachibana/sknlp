@@ -2,7 +2,6 @@ from __future__ import annotations
 from typing import Any
 
 import tensorflow as tf
-from tensorflow.python.keras import activations
 
 from sknlp.layers import DilatedConvBlock
 from sknlp.module.text2vec import Text2vec
@@ -60,9 +59,10 @@ class CNNTagger(DeepTagger):
             token_ids, tag_ids = inputs
         else:
             token_ids = inputs
-        mask = tf.keras.layers.Lambda(
-            lambda x: tf.cast(x != 0, tf.int32), name="mask_layer"
-        )(token_ids)
+        mask_layer = tf.keras.layers.Lambda(
+            lambda ids: tf.not_equal(ids, 0), name="mask_layer"
+        )
+        mask = mask_layer(token_ids)
 
         embeddings = self.text2vec(token_ids)
         outputs = [

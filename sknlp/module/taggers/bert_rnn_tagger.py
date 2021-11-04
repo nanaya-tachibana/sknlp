@@ -19,10 +19,7 @@ class BertRNNTagger(BertTagger):
         max_sequence_length: int = 120,
         num_rnn_layers: int = 1,
         rnn_hidden_size: int = 512,
-        rnn_projection_size: int = 128,
         rnn_recurrent_dropout: float = 0.0,
-        rnn_recurrent_clip: float = 3.0,
-        rnn_projection_clip: float = 3.0,
         num_fc_layers: int = 2,
         fc_hidden_size: int = 256,
         fc_activation: str = "tanh",
@@ -46,9 +43,6 @@ class BertRNNTagger(BertTagger):
         self.algorithm = "bert-rnn"
         self.num_rnn_layers = num_rnn_layers
         self.rnn_hidden_size = rnn_hidden_size
-        self.rnn_projection_size = rnn_projection_size
-        self.rnn_recurrent_clip = rnn_recurrent_clip
-        self.rnn_projection_clip = rnn_projection_clip
         self.rnn_recurrent_dropout = rnn_recurrent_dropout
         self.rnn_learning_rate_multiplier = rnn_learning_rate_multiplier
 
@@ -58,9 +52,6 @@ class BertRNNTagger(BertTagger):
         rnn_layer = BiLSTM(
             self.num_rnn_layers,
             self.rnn_hidden_size,
-            projection_size=self.rnn_projection_size,
-            recurrent_clip=self.rnn_recurrent_clip,
-            projection_clip=self.rnn_projection_clip,
             dropout=self.dropout,
             recurrent_dropout=self.rnn_recurrent_dropout,
             return_sequences=True,
@@ -71,7 +62,7 @@ class BertRNNTagger(BertTagger):
             )
         encodings = rnn_layer(encodings, mask)
         if self.dropout:
-            noise_shape = (None, 1, self.rnn_projection_size * 2)
+            noise_shape = (None, 1, self.rnn_hidden_size * 2)
             encodings = tf.keras.layers.Dropout(
                 self.dropout,
                 noise_shape=noise_shape,
