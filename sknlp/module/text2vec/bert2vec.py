@@ -104,7 +104,7 @@ class ModelCheckpoint:
         for filename in os.listdir(directory):
             if filename.endswith("index"):
                 model_checkpoint = ".".join(filename.split(".")[:-1])
-                with open(checkpoint_filename, "w") as f:
+                with open(checkpoint_filename, "w", encoding="UTF-8") as f:
                     f.write(f'model_checkpoint_path: "{model_checkpoint}"\n')
                     f.write(f'all_model_checkpoint_paths: "{model_checkpoint}"')
                 return
@@ -119,7 +119,9 @@ class ModelCheckpoint:
         config_filename: Optional[str] = None,
     ) -> "ModelCheckpoint":
         cls.create_checkpoint_file(checkpoint_directory)
-        with open(os.path.join(checkpoint_directory, "vocab.txt")) as f:
+        with open(
+            os.path.join(checkpoint_directory, "vocab.txt"), encoding="UTF-8"
+        ) as f:
             token_list = f.read().strip("\n").split("\n")
             vocab = Vocab(
                 token_list,
@@ -140,7 +142,7 @@ class Bert2vec(Text2vec):
     def __init__(
         self,
         vocab: Vocab,
-        segmenter: Optional[str] = None,
+        segmenter: Optional[str] = "bert",
         hidden_size: int = 768,
         embedding_size: Optional[int] = 768,
         num_layers: int = 12,
@@ -195,7 +197,8 @@ class Bert2vec(Text2vec):
             name=self.name,
         )
         self.inputs = [
-            tf.keras.Input(shape=(), dtype=tf.string, name="text_input"),
+            tf.keras.Input(shape=(None,), dtype=tf.int64, name="token_ids"),
+            tf.keras.Input(shape=(None,), dtype=tf.int64, name="type_ids"),
             tf.keras.Input(
                 shape=(sequence_length,), dtype=tf.int64, name="lm_logits_mask"
             ),
@@ -204,12 +207,6 @@ class Bert2vec(Text2vec):
             self.inputs.insert(
                 1, tf.keras.Input(shape=(), dtype=tf.string, name="relation_text_input")
             )
-
-    def build_preprocessing_layer(self, inputs: list[tf.Tensor]) -> list[tf.Tensor]:
-        return [
-            *BertPreprocessingLayer(self.vocab.sorted_tokens)(inputs[:-1]),
-            inputs[-1],
-        ]
 
     def build_encoding_layer(self, inputs: list[tf.Tensor]) -> list[tf.Tensor]:
         token_ids, type_ids, logits_mask = inputs
@@ -238,7 +235,9 @@ class Bert2vec(Text2vec):
             return [outputs[0], outputs[1][-1], *outputs[2:]]
         return outputs
 
-    def update_dropout(self, dropout: float) -> None:
+    def update_dropout(
+        self, dropout: float, attention_dropout: Optional[float] = None
+    ) -> None:
         bert_layer = self.pretrain_layer
         bert_layer.embedding_dropout_layer.rate = dropout
         transformer_layers = []
@@ -248,7 +247,8 @@ class Bert2vec(Text2vec):
         else:
             transformer_layers.extend(getattr(bert_layer, "transformer_layers", []))
         for layer in transformer_layers:
-            layer._attention_dropout.rate = dropout
+            if attention_dropout is not None:
+                layer._attention_dropout.rate = attention_dropout
             layer._output_dropout.rate = dropout
 
     @classmethod
@@ -308,6 +308,9 @@ class Bert2vec(Text2vec):
         bert_layer_config: dict[str, Any],
         vocab: Vocab,
     ) -> None:
+        hidden_act = bert_layer_config["activation"]
+        if not isinstance(hidden_act, str):
+            hidden_act = tf.keras.activations.serialize(hidden_act)
         config = BertConfig(
             bert_layer_config["vocab_size"],
             hidden_size=bert_layer_config["hidden_size"],
@@ -315,7 +318,7 @@ class Bert2vec(Text2vec):
             num_attention_heads=bert_layer_config["num_attention_heads"],
             intermediate_size=bert_layer_config["intermediate_size"],
             type_vocab_size=bert_layer_config["type_vocab_size"],
-            hidden_act=tf.keras.activations.serialize(bert_layer_config["activation"]),
+            hidden_act=hidden_act,
             hidden_dropout_prob=bert_layer_config["dropout_rate"],
             attention_probs_dropout_prob=bert_layer_config["attention_dropout_rate"],
             embedding_size=bert_layer_config["embedding_size"],
