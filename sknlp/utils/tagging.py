@@ -20,13 +20,24 @@ class Tag:
         return hash((self.label, self.start, self.end))
 
 
+class IdentityDict(dict):
+    def __getitem__(self, key):
+        return key
+
+
 def convert_ids_to_tags(
     tag_ids: Sequence[int],
     idx2class: Callable[[int], str],
+    itoken2ichar: tuple[dict[int, int], dict[int, int]] | None = None,
     add_start_end_tag: bool = False,
 ) -> list[Tag]:
     if add_start_end_tag:
         tag_ids = tag_ids[1:-1]
+    if itoken2ichar is None:
+        start_mapping = IdentityDict()
+        end_mapping = IdentityDict()
+    else:
+        start_mapping, end_mapping = itoken2ichar
     num_tag_ids = len(tag_ids)
     current_begin_tag = -1
     begin = 0
@@ -43,8 +54,8 @@ def convert_ids_to_tags(
         if i != begin:
             parsed_tags.append(
                 Tag(
-                    begin,
-                    i - (i < num_tag_ids - 1),
+                    start_mapping[begin],
+                    end_mapping[i - (i < num_tag_ids - 1)],
                     idx2class((current_begin_tag + 1) // 2),
                 )
             )
@@ -59,19 +70,25 @@ def convert_ids_to_tags(
 
 
 def convert_global_pointer_to_tags(
-    pointer: np.array,
+    pointer: np.ndarray,
     thresholds: Union[float, list[float]],
     idx2class: Callable[[int], str],
+    itoken2ichar: tuple[dict[int, int], dict[int, int]] | None = None,
     add_start_end_tag: bool = False,
 ) -> list[Tag]:
     thresholds = _validate_thresholds(thresholds, pointer.shape[0])
+    if itoken2ichar is None:
+        start_mapping = IdentityDict()
+        end_mapping = IdentityDict()
+    else:
+        start_mapping, end_mapping = itoken2ichar
     tags: list[Tag] = []
     for i, score_matrix in enumerate(pointer):
         label = idx2class(i)
         for start, end in zip(*np.where(expit(score_matrix) >= thresholds[i])):
             start -= add_start_end_tag
             end -= add_start_end_tag
-            tags.append(Tag(int(start), int(end), label))
+            tags.append(Tag(start_mapping[int(start)], end_mapping[int(end)], label))
     return tags
 
 

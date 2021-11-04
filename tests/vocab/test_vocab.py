@@ -5,12 +5,17 @@ from sknlp.vocab import Vocab
 
 @pytest.fixture
 def tokens():
-    return ["a", "b", "c", "d", "<unk>", "<pad>", "<bos>", "<eos>"]
+    return ["a", "##b", "c", "ddd", "<unk>", "<pad>", "<bos>", "<eos>"]
 
 
 @pytest.fixture
 def frequencies():
     return [100, 10, 4, 5, 1, 1, 1, 1]
+
+
+@pytest.fixture
+def input_tokens():
+    return ["a", "ddd", "ccxx", "a", "##b"]
 
 
 def test_empty_vocab():
@@ -43,19 +48,74 @@ def test_vocab_with_special_token(tokens, frequencies):
     )
     assert len(vocab) == len(tokens) - 1
     assert "c" not in vocab
-    assert "b" in vocab
+    assert "##b" in vocab
     assert vocab["a"] == 2
-    assert vocab.token2idx(["a", "b", "<unk>"]) == [2, 3, 5]
-    assert vocab.idx2token([2, 3, 5]) == ["a", "b", "<unk>"]
+    assert vocab.token2idx(["a", "##b", "<unk>"]) == [2, 3, 5]
+    assert vocab.idx2token([2, 3, 5]) == ["a", "##b", "<unk>"]
     assert vocab.sorted_tokens == [
         "<s>",
         "</s>",
         "a",
-        "b",
-        "d",
+        "##b",
+        "ddd",
         "<unk>",
         "<pad>",
     ]
+    assert vocab.sorted_token_lengths == [1, 1, 1, 1, 3, 1, 1]
+
+
+@pytest.mark.parametrize(
+    "char_start,char_end,token_start,token_end",
+    [
+        (0, 3, 0, 1),
+        (1, 3, 1, 1),
+        (1, 2, 1, -1),
+        (2, 3, -1, 1),
+        (4, 7, 2, 2),
+        (8, 9, 3, 4),
+    ],
+)
+def test_vocab_ichar2itoken(
+    char_start, char_end, token_start, token_end, input_tokens, tokens, frequencies
+):
+    vocab = Vocab(
+        tokens,
+        frequencies=frequencies,
+        min_frequency=5,
+        unk_token="<unk>",
+        pad_token="<pad>",
+        bos_token="<s>",
+        eos_token="</s>",
+    )
+    start_mapping, end_mapping = vocab.create_ichar2itoken_mapping(input_tokens)
+    assert start_mapping[char_start] == token_start
+    assert end_mapping[char_end] == token_end
+
+
+@pytest.mark.parametrize(
+    "token_start,token_end,char_start,char_end",
+    [
+        (0, 1, 0, 3),
+        (1, 1, 1, 3),
+        (1, 2, 1, 7),
+        (1, 3, 1, 8),
+    ],
+)
+def test_vocab_itoken2ichar(
+    token_start, token_end, char_start, char_end, input_tokens, tokens, frequencies
+):
+    vocab = Vocab(
+        tokens,
+        frequencies=frequencies,
+        min_frequency=5,
+        unk_token="<unk>",
+        pad_token="<pad>",
+        bos_token="<s>",
+        eos_token="</s>",
+    )
+    start_mapping, end_mapping = vocab.create_itoken2ichar_mapping(input_tokens)
+    assert start_mapping[token_start] == char_start
+    assert end_mapping[token_end] == char_end
 
 
 def test_vocab_serialization(tokens, frequencies):
