@@ -14,6 +14,10 @@ def test_rnn_classifier(
 ):
     labels = raw_data[0]
     model = RNNClassifier(
-        labels, is_multilabel=is_multilabel, dropout=0.2, text2vec=word2vec
+        labels,
+        is_multilabel=is_multilabel,
+        dropout=0.0,
+        rnn_recurrent_dropout=0.1,
+        text2vec=word2vec,
     )
     model_common_test(RNNClassifier, model, raw_data[1:], file_data, use_raw_data, 5e-3)

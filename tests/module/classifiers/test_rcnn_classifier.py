@@ -9,7 +9,7 @@ from sknlp.module.classifiers import RCNNClassifier
         pytest.param(False, False, id="singlelabel"),
     ],
 )
-def test_rnn_classifier(
+def test_rcnn_classifier(
     is_multilabel, use_raw_data, model_common_test, raw_data, file_data, word2vec
 ):
     labels = raw_data[0]
