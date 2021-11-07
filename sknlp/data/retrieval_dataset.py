@@ -1,36 +1,19 @@
 from __future__ import annotations
-from typing import Any, Sequence, Optional
+from typing import Any, Sequence, Optional, Callable
 
 import tensorflow as tf
+import numpy as np
 
 from sknlp.vocab import Vocab
-from sknlp.utils.tensor import pad2shape
 from .nlp_dataset import NLPDataset
+from .bert_mixin import BertDatasetMixin
 
 
-def _combine_xy(text, context, label):
-    return tf.cond(
-        tf.shape(text)[1] > tf.shape(context)[1],
-        lambda: (
-            tf.concat([text, pad2shape(context, tf.shape(text))], 0),
-            tf.squeeze(label),
-        ),
-        lambda: (
-            tf.concat([pad2shape(text, tf.shape(context)), context], 0),
-            tf.squeeze(label),
-        ),
-    )
+def _generate_y(x):
+    return tf.reshape(x, (-1, tf.shape(x)[-1])), tf.range(tf.shape(x)[0])
 
 
-def _combine_x(text, context):
-    return tf.cond(
-        tf.shape(text)[1] > tf.shape(context)[1],
-        lambda: tf.concat([text, pad2shape(context, tf.shape(text))], 0),
-        lambda: tf.concat([pad2shape(text, tf.shape(context)), context], 0),
-    )
-
-
-class SimilarityDataset(NLPDataset):
+class RetrievalDataset(NLPDataset):
     def __init__(
         self,
         vocab: Vocab,
@@ -43,7 +26,8 @@ class SimilarityDataset(NLPDataset):
         has_label: bool = True,
         max_length: Optional[int] = None,
         text_dtype: tf.DType = tf.int64,
-        label_dtype: tf.DType = tf.float32,
+        label_dtype: tf.DType = tf.int64,
+        **kwargs,
     ):
         super().__init__(
             vocab,
@@ -54,44 +38,34 @@ class SimilarityDataset(NLPDataset):
             in_memory=in_memory,
             has_label=has_label,
             max_length=max_length,
-            na_value=0.0,
-            column_dtypes=["str", "str", "float32"],
+            na_value="",
+            column_dtypes=["str", "str", "str"],
             text_dtype=text_dtype,
             label_dtype=label_dtype,
         )
 
     @property
     def y(self) -> list[float]:
-        if not self.has_label:
-            return []
-        return [float(data[-1]) for data in self._original_dataset.as_numpy_iterator()]
+        return []
 
     @property
-    def batch_padding_shapes(self) -> list[tuple]:
-        return ((None,), (None,), ())[: None if self.has_label else -1]
+    def batch_padding_shapes(self) -> tuple:
+        return (None, None)
 
-    def _label_transform(self, label: tf.Tensor) -> float:
-        return label
-
-    def _transform_func(self, *data) -> list[Any]:
-        text = data[0]
-        context = data[1]
-        if not self.has_label:
-            return (
-                self._text_transform(text),
-                self._text_transform(context),
-            )
-        label = data[2]
-        return (
-            self._text_transform(text),
-            self._text_transform(context),
-            self._label_transform(label),
+    def py_transform(self, *data: Sequence[tf.Tensor]) -> list[Any]:
+        token_ids_list = self.vocab.token2idx(self.py_text_transform(data))
+        return tf.keras.preprocessing.sequence.pad_sequences(
+            token_ids_list, padding="post"
         )
 
-    def _transform_func_out_dtype(self) -> list[tf.DType]:
-        dtypes = super()._transform_func_out_dtype()
-        dtypes.insert(0, self.text_dtype)
-        return dtypes
+    def tf_transform_after_py_transform(self, data: tf.Tensor) -> tf.Tensor:
+        if self.has_label:
+            return data
+        else:
+            return tf.concat([data, data], 0)
+
+    def py_transform_out_dtype(self) -> tf.DType:
+        return self.text_dtype
 
     def batchify(
         self,
@@ -99,58 +73,57 @@ class SimilarityDataset(NLPDataset):
         shuffle: bool = True,
         training: bool = True,
         shuffle_buffer_size: Optional[int] = None,
+        after_batch: Optional[Callable] = None,
     ) -> tf.data.Dataset:
+        if after_batch is None:
+            after_batch = _generate_y
         return super().batchify(
             batch_size,
             shuffle=shuffle,
             shuffle_buffer_size=shuffle_buffer_size,
-            after_batch=_combine_xy if self.has_label else _combine_x,
+            after_batch=after_batch,
         )
 
 
-def _combine_string_xy(text, context, label):
-    return tf.concat([text, context], 0), tf.squeeze(label)
+def _bert_generate_y(x):
+    reshaped_x = tf.reshape(x, (-1, tf.shape(x)[-1]))
+    return (
+        reshaped_x,
+        tf.zeros_like(reshaped_x, dtype=tf.int64),
+        tf.range(tf.shape(x)[0]),
+    )
 
 
-def _combine_string_x(text, context):
-    return tf.concat([text, context], 0)
-
-
-class BertSimilarityDataset(SimilarityDataset):
-    def __init__(
-        self,
-        vocab: Vocab,
-        labels: Sequence[str],
-        segmenter: Optional[str] = None,
-        X: Optional[Sequence[Any]] = None,
-        y: Optional[Sequence[Any]] = None,
-        csv_file: Optional[str] = None,
-        in_memory: bool = True,
-        has_label: bool = True,
-        max_length: Optional[int] = None,
-        **kwargs,
-    ):
-        super().__init__(
-            vocab,
-            labels,
-            segmenter=segmenter,
-            X=X,
-            y=y,
-            csv_file=csv_file,
-            in_memory=in_memory,
-            has_label=has_label,
-            max_length=max_length,
-            text_dtype=tf.string,
-            label_dtype=tf.float32,
-            **kwargs,
-        )
-
+class BertRetrievalDataset(BertDatasetMixin, RetrievalDataset):
     @property
-    def batch_padding_shapes(self) -> Optional[list]:
-        return None
+    def batch_padding_shapes(self) -> tuple:
+        return (None, None)
 
-    def _text_transform(self, text: tf.Tensor) -> str:
-        return text.numpy().decode("UTF-8").lower()[: self.max_length]
+    def tf_transform_before_py_transform(self, *data: Sequence[tf.Tensor]) -> tf.Tensor:
+        return self.tokenize(data)
+
+    def py_transform_out_dtype(self) -> tf.DType:
+        return self.text_dtype
+
+    def py_text_transform(self, tokens_tensor: tf.Tensor) -> list[np.ndarray]:
+        cls_id: int = self.vocab["[CLS]"]
+        sep_id: int = self.vocab["[SEP]"]
+        pad_id: int = self.vocab[self.vocab.pad]
+        token_ids_list = []
+        for _, tokens in enumerate(tokens_tensor.numpy().tolist()):
+            token_ids = self.vocab.token2idx(
+                [token.decode("UTF-8") for token in tokens][: self.max_length]
+            )
+            token_ids = [tid for tid in token_ids if tid != pad_id]
+            token_ids.insert(0, cls_id)
+            token_ids.append(sep_id)
+            token_ids_list.append(token_ids)
+        return tf.keras.preprocessing.sequence.pad_sequences(
+            token_ids_list, padding="post"
+        )
+
+    def py_transform(self, data: tf.Tensor) -> list[Any]:
+        return self.py_text_transform(data)
 
     def batchify(
         self,
@@ -158,11 +131,14 @@ class BertSimilarityDataset(SimilarityDataset):
         shuffle: bool = True,
         training: bool = True,
         shuffle_buffer_size: Optional[int] = None,
+        after_batch: Optional[Callable] = None,
     ) -> tf.data.Dataset:
-        return super(SimilarityDataset, self).batchify(
+        if after_batch is None:
+            after_batch = _bert_generate_y
+        return super().batchify(
             batch_size,
             shuffle=shuffle,
             training=training,
             shuffle_buffer_size=shuffle_buffer_size,
-            after_batch=_combine_string_xy if self.has_label else _combine_string_x,
+            after_batch=after_batch,
         )
