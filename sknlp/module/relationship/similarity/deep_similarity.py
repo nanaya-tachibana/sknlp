@@ -7,7 +7,7 @@ import tensorflow as tf
 
 from sknlp.data import SimilarityDataset
 from sknlp.layers import MLPLayer
-from sknlp.metrics import PrecisionWithLogits, RecallWithLogits, FBetaScoreWithLogits
+from sknlp.metrics import BinaryAccuracyWithLogits
 from sknlp.utils.classification import classification_fscore
 from sknlp.module.supervised_model import SupervisedNLPModel
 from sknlp.module.text2vec import Text2vec
@@ -46,15 +46,10 @@ class DeepSimilarity(SupervisedNLPModel):
         return tf.keras.losses.BinaryCrossentropy(from_logits=True)
 
     def get_metrics(self, *args, **kwargs) -> list[tf.keras.metrics.Metric]:
-        activation = "sigmoid"
-        return [
-            PrecisionWithLogits(activation=activation),
-            RecallWithLogits(activation=activation),
-            FBetaScoreWithLogits(self.num_classes, activation=activation),
-        ]
+        return [BinaryAccuracyWithLogits(activation="sigmoid")]
 
     def get_monitor(cls) -> str:
-        return "val_fbeta_score"
+        return "val_accuracy"
 
     def build_intermediate_layer(self, inputs: tf.Tensor) -> tf.Tensor:
         t1, t2 = tf.split(inputs, 2, axis=0)

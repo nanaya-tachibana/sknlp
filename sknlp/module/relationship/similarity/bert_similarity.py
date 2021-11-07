@@ -23,7 +23,8 @@ class BertSimilarity(DeepSimilarity):
         num_fc_layers: int = 2,
         fc_hidden_size: int = 256,
         fc_activation: str = "tanh",
-        dropout: float = 0.5,
+        dropout: float = 0.1,
+        attention_dropout: float = 0.0,
         text2vec: Optional[Bert2vec] = None,
         **kwargs
     ) -> None:
@@ -38,6 +39,7 @@ class BertSimilarity(DeepSimilarity):
             **kwargs
         )
         self.dropout = dropout
+        self.attention_dropout = attention_dropout
         self.inputs = tf.keras.Input(shape=(), dtype=tf.string, name="text_input")
 
     def build_preprocessing_layer(
@@ -46,8 +48,9 @@ class BertSimilarity(DeepSimilarity):
         return BertPreprocessingLayer(self.text2vec.vocab.sorted_tokens)(inputs)
 
     def build_encoding_layer(self, inputs: list[tf.Tensor]) -> list[tf.Tensor]:
-        if self.dropout:
-            self.text2vec.update_dropout(dropout=self.dropout)
+        self.text2vec.update_dropout(
+            self.dropout, attention_dropout=self.attention_dropout
+        )
         token_ids, type_ids = inputs
         mask = tf.math.not_equal(token_ids, 0)
         return [

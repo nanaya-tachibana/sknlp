@@ -10,31 +10,23 @@ from .nlp_dataset import NLPDataset
 
 def _combine_xy(text, context, label):
     return tf.cond(
-        tf.rank(text) == 1,
-        lambda: (tf.concat([text, context], 0), tf.squeeze(label)),
-        lambda: tf.cond(
-            tf.shape(text)[1] > tf.shape(context)[1],
-            lambda: (
-                tf.concat([text, pad2shape(context, tf.shape(text))], 0),
-                tf.squeeze(label),
-            ),
-            lambda: (
-                tf.concat([pad2shape(text, tf.shape(context)), context], 0),
-                tf.squeeze(label),
-            ),
+        tf.shape(text)[1] > tf.shape(context)[1],
+        lambda: (
+            tf.concat([text, pad2shape(context, tf.shape(text))], 0),
+            tf.squeeze(label),
+        ),
+        lambda: (
+            tf.concat([pad2shape(text, tf.shape(context)), context], 0),
+            tf.squeeze(label),
         ),
     )
 
 
-def _combine_x(text, context, *args):
+def _combine_x(text, context):
     return tf.cond(
-        tf.rank(text) == 1,
-        lambda: tf.concat([text, context], 0),
-        lambda: tf.cond(
-            tf.shape(text)[1] > tf.shape(context)[1],
-            lambda: tf.concat([text, pad2shape(context, tf.shape(text))], 0),
-            lambda: tf.concat([pad2shape(text, tf.shape(context)), context], 0),
-        ),
+        tf.shape(text)[1] > tf.shape(context)[1],
+        lambda: tf.concat([text, pad2shape(context, tf.shape(text))], 0),
+        lambda: tf.concat([pad2shape(text, tf.shape(context)), context], 0),
     )
 
 
@@ -50,7 +42,7 @@ class SimilarityDataset(NLPDataset):
         in_memory: bool = True,
         has_label: bool = True,
         max_length: Optional[int] = None,
-        text_dtype: tf.DType = tf.int32,
+        text_dtype: tf.DType = tf.int64,
         label_dtype: tf.DType = tf.float32,
     ):
         super().__init__(
@@ -113,4 +105,64 @@ class SimilarityDataset(NLPDataset):
             shuffle=shuffle,
             shuffle_buffer_size=shuffle_buffer_size,
             after_batch=_combine_xy if self.has_label else _combine_x,
+        )
+
+
+def _combine_string_xy(text, context, label):
+    return tf.concat([text, context], 0), tf.squeeze(label)
+
+
+def _combine_string_x(text, context):
+    return tf.concat([text, context], 0)
+
+
+class BertSimilarityDataset(SimilarityDataset):
+    def __init__(
+        self,
+        vocab: Vocab,
+        labels: Sequence[str],
+        segmenter: Optional[str] = None,
+        X: Optional[Sequence[Any]] = None,
+        y: Optional[Sequence[Any]] = None,
+        csv_file: Optional[str] = None,
+        in_memory: bool = True,
+        has_label: bool = True,
+        max_length: Optional[int] = None,
+        **kwargs,
+    ):
+        super().__init__(
+            vocab,
+            labels,
+            segmenter=segmenter,
+            X=X,
+            y=y,
+            csv_file=csv_file,
+            in_memory=in_memory,
+            has_label=has_label,
+            max_length=max_length,
+            text_dtype=tf.string,
+            label_dtype=tf.float32,
+            **kwargs,
+        )
+
+    @property
+    def batch_padding_shapes(self) -> Optional[list]:
+        return None
+
+    def _text_transform(self, text: tf.Tensor) -> str:
+        return text.numpy().decode("UTF-8").lower()[: self.max_length]
+
+    def batchify(
+        self,
+        batch_size: int,
+        shuffle: bool = True,
+        training: bool = True,
+        shuffle_buffer_size: Optional[int] = None,
+    ) -> tf.data.Dataset:
+        return super(SimilarityDataset, self).batchify(
+            batch_size,
+            shuffle=shuffle,
+            training=training,
+            shuffle_buffer_size=shuffle_buffer_size,
+            after_batch=_combine_string_xy if self.has_label else _combine_string_x,
         )
