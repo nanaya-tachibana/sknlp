@@ -80,7 +80,7 @@ class NLPDataset:
         ]
 
     @property
-    def batch_padding_shapes(self) -> Optional[list[tuple]]:
+    def batch_padding_shapes(self) -> list[tuple] | tuple | None:
         return None
 
     def normalize_letter_case(self, data: tf.Tensor) -> tf.Tensor:
@@ -141,7 +141,7 @@ class NLPDataset:
             transformed_data.append(self.py_label_transform(data[-1]))
         return transformed_data
 
-    def py_transform_out_dtype(self) -> list[tf.DType]:
+    def py_transform_out_dtype(self) -> list[tf.DType] | tf.DType:
         return [self.text_dtype, self.label_dtype][: None if self.has_label else -1]
 
     def tf_transform_before_py_transform(
@@ -206,12 +206,6 @@ class NLPDataset:
         for dtype, col in zip(column_dtypes, df.columns):
             df[col] = df[col].astype(dtype)
         series = [df[col] for col in df.columns]
-        for i in range(len(series) - self.has_label):
-            letter_case = self.text_normalization["letter_case"]
-            if letter_case == "lowercase":
-                series[i] = series[i].str.lower()
-            elif letter_case == "uppercase":
-                series[i] = series[i].str.upper()
         return tf.data.Dataset.from_tensor_slices(tuple(series))
 
     def load_csv(

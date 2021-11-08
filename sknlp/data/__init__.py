@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from .classification_dataset import ClassificationDataset, BertClassificationDataset
 from .tagging_dataset import TaggingDataset, BertTaggingDataset
-from .similarity_dataset import SimilarityDataset, BertSimilarityDataset
+from .retrieval_dataset import RetrievalDataset, BertRetrievalDataset
 from .generation_dataset import GenerationDataset, BertGenerationDataset
 from .nlp_dataset import NLPDataset
 
@@ -11,9 +11,9 @@ __all__ = [
     "ClassificationDataset",
     "TaggingDataset",
     "GenerationDataset",
-    "SimilarityDataset",
+    "RetrievalDataset",
     "BertClassificationDataset",
     "BertTaggingDataset",
     "BertGenerationDataset",
-    "BertSimilarityDataset",
+    "BertRetrievalDataset",
 ]
