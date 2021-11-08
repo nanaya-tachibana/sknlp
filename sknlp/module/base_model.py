@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Sequence, Optional, Any, Callable
+from typing import Sequence, Optional, Any, Callable, Type
 
 import json
 import os
@@ -54,6 +54,10 @@ class BaseNLPModel:
         self._model: Optional[tf.keras.Model] = None
         self._inference_model: Optional[tf.keras.Model] = None
         self._built = False
+
+    @property
+    def evaluation_dataset_class(self) -> Type[NLPDataset]:
+        return self.dataset_class
 
     @property
     def dataset_kwargs(self) -> dict[str, Any]:
@@ -186,11 +190,15 @@ class BaseNLPModel:
         X: Sequence[Any],
         y: Sequence[Any],
         dataset: NLPDataset,
+        evaluation: bool = False,
     ) -> NLPDataset:
         assert X is not None or dataset is not None
         if dataset is not None:
             return dataset
-        return self.dataset_class(
+        dataset_class = self.dataset_class
+        if evaluation:
+            dataset_class = self.evaluation_dataset_class
+        return dataset_class(
             self.vocab,
             self.classes,
             segmenter=self.segmenter,
@@ -329,7 +337,7 @@ class BaseNLPModel:
         batch_size: int = 128
     ) -> np.ndarray | Sequence[Any]:
         assert self._built
-        dataset = self.prepare_dataset(X, None, dataset)
+        dataset = self.prepare_dataset(X, None, dataset, evaluation=True)
         return self._inference_model.predict(
             dataset.batchify(batch_size, shuffle=False, training=False)
         )

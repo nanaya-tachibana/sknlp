@@ -86,7 +86,7 @@ class DeepGenerator(SupervisedNLPModel):
         thresholds: Union[float, list[float], None] = None,
         batch_size: int = 128,
     ) -> pd.DataFrame:
-        dataset = self.prepare_dataset(X=X, y=y, dataset=dataset)
+        dataset = self.prepare_dataset(X, y, dataset, evaluation=True)
         generations = self.predict(
             dataset=dataset, thresholds=thresholds, batch_size=batch_size
         )

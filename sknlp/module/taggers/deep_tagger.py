@@ -135,7 +135,7 @@ class DeepTagger(SupervisedNLPModel):
         thresholds: float = 0.5,
         batch_size: int = 128,
     ) -> list[list[Tag]]:
-        dataset = self.prepare_dataset(X, None, dataset)
+        dataset = self.prepare_dataset(X, None, dataset, evaluation=True)
         raw_predictions = super().predict(X, dataset=dataset, batch_size=batch_size)
         tokens_list = dataset.tokenize(dataset.X)
         predictions: list[list[Tag]] = []
@@ -173,7 +173,7 @@ class DeepTagger(SupervisedNLPModel):
         thresholds: float = 0.5,
         batch_size: int = 128,
     ) -> pd.DataFrame:
-        dataset = self.prepare_dataset(X, y, dataset)
+        dataset = self.prepare_dataset(X, y, dataset, evaluation=True)
         predictions = self.predict(
             dataset=dataset, batch_size=batch_size, thresholds=thresholds
         )

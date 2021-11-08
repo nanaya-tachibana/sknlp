@@ -164,7 +164,7 @@ class DeepClassifier(SupervisedNLPModel):
         thresholds: Union[float, list[float], None] = None,
         batch_size: int = 128,
     ) -> pd.DataFrame:
-        dataset = self.prepare_dataset(X, y, dataset)
+        dataset = self.prepare_dataset(X, y, dataset, evaluation=True)
         predictions = self.predict(
             dataset=dataset, thresholds=thresholds, batch_size=batch_size
         )
