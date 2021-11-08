@@ -52,6 +52,11 @@ class RetrievalDataset(NLPDataset):
     def batch_padding_shapes(self) -> tuple:
         return (None, None)
 
+    def _format_y(self, y: Sequence[str | Sequence[str]]) -> list[Sequence[str]]:
+        if isinstance(y[0], str):
+            y = [y]
+        return y
+
     def py_transform(self, *data: Sequence[tf.Tensor]) -> list[Any]:
         token_ids_list = self.vocab.token2idx(self.py_text_transform(data))
         return tf.keras.preprocessing.sequence.pad_sequences(
@@ -88,8 +93,7 @@ class RetrievalDataset(NLPDataset):
 def _bert_generate_y(x):
     reshaped_x = tf.reshape(x, (-1, tf.shape(x)[-1]))
     return (
-        reshaped_x,
-        tf.zeros_like(reshaped_x, dtype=tf.int64),
+        (reshaped_x, tf.zeros_like(reshaped_x, dtype=tf.int64)),
         tf.range(tf.shape(x)[0]),
     )
 

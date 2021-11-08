@@ -103,25 +103,25 @@ class NLPDataset:
             normalized.append(self.normalize_label(data[-1]))
         return normalized
 
-    def _format_X(self, *X: Sequence[Sequence[str]]) -> list[Sequence[str]]:
+    def _format_X(self, X: Sequence[Sequence[str]]) -> list[Sequence[str]]:
         if len(X) == 1:
             return list(X)
         return list(zip(*X))
 
-    def _format_y(self, y: Sequence[str | float | int]) -> Sequence[str | float | int]:
-        return y
+    def _format_y(self, y: Sequence[Any]) -> list[Sequence[Any]]:
+        return [y]
 
     def Xy_to_dataframe(
         self,
         X: Sequence[str] | Sequence[Sequence[str]],
-        y: Optional[Sequence[str | float | int]] = None,
+        y: Optional[Sequence[Any]] = None,
     ) -> pd.DataFrame:
         if isinstance(X[0], str):
             X = [X]
-        X = self._format_X(*X)
+        X = self._format_X(X)
         if y is not None:
             y = self._format_y(y)
-        return pd.DataFrame(zip(*X, y) if y is not None else zip(*X))
+        return pd.DataFrame(zip(*X, *y) if y is not None else zip(*X))
 
     def py_text_transform(
         self, text: tf.Tensor | Sequence[tf.Tensor]

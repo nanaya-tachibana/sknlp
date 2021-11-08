@@ -67,10 +67,10 @@ class ClassificationDataset(NLPDataset):
         shapes = [(None,), (None,)]
         return shapes[: None if self.has_label else -1]
 
-    def _format_y(self, y: Sequence[Any]) -> Sequence[Any]:
+    def _format_y(self, y: Sequence[Any]) -> list[Sequence[Any]]:
         if isinstance(y[0], (list, tuple)):
-            return ["|".join(map(str, yi)) for yi in y]
-        return y
+            y = ["|".join(map(str, yi)) for yi in y]
+        return [y]
 
     def py_label_binarizer(self, labels: list[str]) -> np.ndarray:
         label2idx = self.label2idx

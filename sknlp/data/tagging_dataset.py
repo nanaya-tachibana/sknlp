@@ -67,10 +67,10 @@ class TaggingDataset(NLPDataset):
         else:
             return [(None,), (None, None, None)][: None if self.has_label else -1]
 
-    def _format_y(self, y: Sequence[Any]) -> Sequence[Any]:
+    def _format_y(self, y: Sequence[Any]) -> list[Sequence[Any]]:
         if isinstance(y[0], (list, tuple)):
-            return [json.dumps(yi) for yi in y]
-        return y
+            y = [json.dumps(yi) for yi in y]
+        return [y]
 
     def py_label_transform(self, label: tf.Tensor, tokens: Sequence[str]) -> np.ndarray:
         label = super().py_label_transform(label)
