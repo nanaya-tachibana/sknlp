@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Any, Sequence, Optional, Union
+from typing import Any, Sequence, Optional
 
 import tensorflow as tf
 from tensorflow.keras.layers import Dropout
@@ -8,44 +8,42 @@ from sknlp.layers import (
     BertPreprocessingLayer,
     BertAttentionMaskLayer,
 )
-from sknlp.data import BertSimilarityDataset
+from sknlp.data import BertRetrievalDataset
 from sknlp.module.text2vec import Bert2vec
-from .deep_similarity import DeepSimilarity
+from .deep_retriever import DeepRetriever
 
 
-class BertSimilarity(DeepSimilarity):
-    dataset_class = BertSimilarityDataset
+class BertRetriever(DeepRetriever):
+    dataset_class = BertRetrievalDataset
 
     def __init__(
         self,
         classes: Sequence[int] = (0, 1),
         max_sequence_length: int = 120,
-        num_fc_layers: int = 2,
-        fc_hidden_size: int = 256,
-        fc_activation: str = "tanh",
+        projection_size: Optional[int] = None,
+        has_negative: bool = False,
         dropout: float = 0.1,
-        attention_dropout: float = 0.0,
+        attention_dropout: float = 0.1,
         text2vec: Optional[Bert2vec] = None,
+        text_normalization: dict[str, str] = {"letter_case": "lowercase"},
         **kwargs
     ) -> None:
         super().__init__(
             classes,
             algorithm="bert",
-            num_fc_layers=num_fc_layers,
-            fc_hidden_size=fc_hidden_size,
-            fc_activation=fc_activation,
+            projection_size=projection_size,
+            has_negative=has_negative,
             max_sequence_length=max_sequence_length,
             text2vec=text2vec,
+            text_normalization=text_normalization,
             **kwargs
         )
         self.dropout = dropout
         self.attention_dropout = attention_dropout
-        self.inputs = tf.keras.Input(shape=(), dtype=tf.string, name="text_input")
-
-    def build_preprocessing_layer(
-        self, inputs: Union[tf.Tensor, list[tf.Tensor]]
-    ) -> Union[tf.Tensor, list[tf.Tensor]]:
-        return BertPreprocessingLayer(self.text2vec.vocab.sorted_tokens)(inputs)
+        self.inputs = [
+            tf.keras.Input(shape=(None,), dtype=tf.int64, name="token_ids"),
+            tf.keras.Input(shape=(None,), dtype=tf.int64, name="type_ids"),
+        ]
 
     def build_encoding_layer(self, inputs: list[tf.Tensor]) -> list[tf.Tensor]:
         self.text2vec.update_dropout(
@@ -61,16 +59,21 @@ class BertSimilarity(DeepSimilarity):
         ]
 
     def build_intermediate_layer(self, inputs: list[tf.Tensor]) -> tf.Tensor:
-        cls = tf.keras.layers.Lambda(lambda x: x[0], name="cls_output")(inputs)
+        cls = inputs[0]
         if self.dropout:
             cls = Dropout(self.dropout, name="cls_dropout")(cls)
         return super().build_intermediate_layer(cls)
 
-    def build_inference_model(self) -> tf.keras.Model:
-        return tf.keras.Model(
-            inputs=self._model.inputs,
-            outputs=self._model.get_layer("cls_output").output,
+    def export(self, directory: str, name: str, version: str = "0") -> None:
+        inputs = tf.keras.Input(shape=(), dtype=tf.string, name="text_input")
+        preprocessing_layer = BertPreprocessingLayer(self.text2vec.vocab.sorted_tokens)
+        token_ids, type_ids = preprocessing_layer(inputs)
+        original_model = self._inference_model
+        self._inference_model = tf.keras.Model(
+            inputs=inputs, outputs=self._inference_model([token_ids, type_ids])
         )
+        super().export(directory, name, version=version)
+        self._inference_model = original_model
 
     def get_config(self) -> dict[str, Any]:
         return {**super().get_config(), "dropout": self.dropout}
