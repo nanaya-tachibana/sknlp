@@ -10,7 +10,7 @@ def pad2shape(
     tensor_shape: tf.Tensor = tf.shape(tensor)
     paddings = shape - tensor_shape
     return tf.cond(
-        tf.reduce_any(tf.not_equal(paddings, 0)),
+        tf.reduce_any(tf.greater(paddings, 0)),
         lambda: tf.pad(
             tensor,
             tf.concat([tf.zeros_like(paddings)[:, None], paddings[:, None]], 1),
