@@ -173,9 +173,12 @@ class BaseNLPModel:
             layer.trainable = False
 
     def create_dataset_from_csv(
-        self, filename: str, has_label: bool = True
+        self, filename: str, has_label: bool = True, evaluation: bool = False
     ) -> NLPDataset:
-        return self.dataset_class(
+        dataset_class = self.dataset_class
+        if evaluation:
+            dataset_class = self.evaluation_dataset_class
+        return dataset_class(
             self.vocab,
             self.classes,
             segmenter=self.segmenter,
