@@ -104,8 +104,8 @@ class NLPDataset:
         return normalized
 
     def _format_X(self, X: Sequence[Sequence[str]]) -> list[Sequence[str]]:
-        if len(X) == 1:
-            return list(X)
+        if isinstance(X[0], str):
+            return [X]
         return list(zip(*X))
 
     def _format_y(self, y: Sequence[Any]) -> list[Sequence[Any]]:
@@ -116,8 +116,6 @@ class NLPDataset:
         X: Sequence[str] | Sequence[Sequence[str]],
         y: Optional[Sequence[Any]] = None,
     ) -> pd.DataFrame:
-        if isinstance(X[0], str):
-            X = [X]
         X = self._format_X(X)
         if y is not None:
             y = self._format_y(y)
