@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Sequence, Optional, Any, Callable, Type
+from typing import Sequence, Optional, Any, Callable
 
 import json
 import os
@@ -51,13 +51,12 @@ class BaseNLPModel:
         self._kwargs = kwargs
 
         self._name = name
+        if getattr(self, "evaluation_dataset_class", None) is None:
+            self.evaluation_dataset_class = self.dataset_class
+
         self._model: Optional[tf.keras.Model] = None
         self._inference_model: Optional[tf.keras.Model] = None
         self._built = False
-
-    @property
-    def evaluation_dataset_class(self) -> Type[NLPDataset]:
-        return self.dataset_class
 
     @property
     def dataset_kwargs(self) -> dict[str, Any]:
