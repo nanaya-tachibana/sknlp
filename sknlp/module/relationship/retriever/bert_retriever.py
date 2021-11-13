@@ -8,19 +8,21 @@ from sknlp.layers import (
     BertPreprocessingLayer,
     BertAttentionMaskLayer,
 )
-from sknlp.data import BertRetrievalDataset
+from sknlp.data import BertRetrievalDataset, BertRetrievalEvaluationDataset
 from sknlp.module.text2vec import Bert2vec
 from .deep_retriever import DeepRetriever
 
 
 class BertRetriever(DeepRetriever):
     dataset_class = BertRetrievalDataset
+    evaluation_dataset_class = BertRetrievalEvaluationDataset
 
     def __init__(
         self,
         classes: Sequence[int] = (0, 1),
         max_sequence_length: int = 120,
         projection_size: Optional[int] = None,
+        temperature: float = 0.05,
         has_negative: bool = False,
         dropout: float = 0.1,
         attention_dropout: float = 0.1,
@@ -32,6 +34,7 @@ class BertRetriever(DeepRetriever):
             classes,
             algorithm="bert",
             projection_size=projection_size,
+            temperature=temperature,
             has_negative=has_negative,
             max_sequence_length=max_sequence_length,
             text2vec=text2vec,
