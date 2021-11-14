@@ -291,9 +291,7 @@ class BertLayer(tf.keras.layers.Layer):
         position_embeddings = self.position_embedding_layer(position_ids)
         # (batch_size, seq_len, embedding_size)
         type_embeddings = self.type_embedding_layer(type_ids)
-        embeddings = tf.keras.layers.Add()(
-            [word_embeddings, position_embeddings, type_embeddings]
-        )
+        embeddings = word_embeddings + position_embeddings + type_embeddings
         embeddings = self.embedding_normalize_layer(embeddings)
         embeddings = self.embedding_dropout_layer(embeddings)
         if self.embedding_projection is not None:
