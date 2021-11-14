@@ -1,5 +1,5 @@
 from .mlp import MLPLayer
-from .lstmp import BiLSTM
+from .bilstm import BiLSTM
 from .bert_layer import BertLayer, BertPreprocessingLayer
 from .bert_attention_mask import BertAttentionMaskLayer
 from .bert_lm import BertLMLossLayer

@@ -3,7 +3,7 @@ from typing import Any
 
 import tensorflow as tf
 
-from .embedding_layer import SinusoidalPositionEmbedding
+from .sinusoidal_position_embedding import SinusoidalPositionEmbedding
 
 
 @tf.keras.utils.register_keras_serializable(package="sknlp")
