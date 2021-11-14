@@ -159,6 +159,7 @@ class Bert2vec(Text2vec):
         share_layer: bool = False,
         cls_pooling: bool = True,
         add_relationship_loss: bool = False,
+        enable_recompute_grad: bool = False,
         model_type: BertFamily = BertFamily.BERT,
         name: str = "bert2vec",
         **kwargs,
@@ -194,6 +195,7 @@ class Bert2vec(Text2vec):
             initializer=initializer,
             share_layer=share_layer,
             cls_pooling=cls_pooling,
+            enable_recompute_grad=enable_recompute_grad,
             name=self.name,
         )
         self.inputs = [
@@ -258,6 +260,7 @@ class Bert2vec(Text2vec):
         checkpoint_directory: str,
         config_filename: Optional[str] = None,
         sequence_length: Optional[int] = None,
+        enable_recompute_grad: bool = False,
         name: str = "bert2vec",
     ):
         checkpoint = ModelCheckpoint.from_checkpoint_file(
@@ -283,6 +286,7 @@ class Bert2vec(Text2vec):
             initializer=TruncatedNormal(stddev=config.initializer_range),
             share_layer=config.share_layer,
             cls_pooling=config.cls_pooling,
+            enable_recompute_grad=enable_recompute_grad,
             model_type=model_type,
             name=name,
         )

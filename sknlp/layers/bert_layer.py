@@ -1,3 +1,17 @@
+# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# =============================================================================
 from __future__ import annotations
 from typing import Sequence, Any, Optional, Callable
 
@@ -8,6 +22,8 @@ from official.nlp.keras_nlp import layers
 import tensorflow_text as tftext
 
 from sknlp.activations import gelu
+
+from .transformer_encoder_block import TransformerEncoderBlock
 
 
 @tf.keras.utils.register_keras_serializable(package="sknlp")
@@ -146,6 +162,7 @@ class BertLayer(tf.keras.layers.Layer):
         initializer: tf.keras.initializers.Initializer = TruncatedNormal(stddev=0.02),
         share_layer: bool = False,
         cls_pooling: bool = True,
+        enable_recompute_grad: bool = False,
         name: str = "bert_layer",
         **kwargs,
     ) -> None:
@@ -167,6 +184,7 @@ class BertLayer(tf.keras.layers.Layer):
         self.initializer = initializer
         self.share_layer = share_layer
         self.cls_pooling = cls_pooling
+        self.enable_recompute_grad = enable_recompute_grad
         super().__init__(name=name, **kwargs)
 
     def build(self, input_shape: tf.TensorShape) -> None:
@@ -207,25 +225,27 @@ class BertLayer(tf.keras.layers.Layer):
             self.embedding_projection = None
 
         if self.share_layer:
-            self.shared_layer = layers.TransformerEncoderBlock(
+            self.shared_layer = TransformerEncoderBlock(
                 self.num_attention_heads,
                 self.intermediate_size,
                 self.activation,
                 output_dropout=self.dropout_rate,
                 attention_dropout=self.attention_dropout_rate,
                 kernel_initializer=self.initializer,
+                enable_recompute_grad=self.enable_recompute_grad,
                 name="transformer",
             )
         else:
             self.transformer_layers = []
             for i in range(self.num_layers):
-                layer = layers.TransformerEncoderBlock(
+                layer = TransformerEncoderBlock(
                     self.num_attention_heads,
                     self.intermediate_size,
                     self.activation,
                     output_dropout=self.dropout_rate,
                     attention_dropout=self.attention_dropout_rate,
                     kernel_initializer=self.initializer,
+                    enable_recompute_grad=self.enable_recompute_grad,
                     name="transformer/layer_%d" % i,
                 )
                 self.transformer_layers.append(layer)
@@ -321,4 +341,5 @@ class BertLayer(tf.keras.layers.Layer):
             "initializer": self.initializer,
             "share_layer": self.share_layer,
             "cls_pooling": self.cls_pooling,
+            "enable_recompute_grad": self.enable_recompute_grad,
         }
