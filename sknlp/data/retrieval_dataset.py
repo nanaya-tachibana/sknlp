@@ -65,6 +65,9 @@ class RetrievalDataset(NLPDataset):
     def batch_padding_shapes(self) -> tuple:
         return (None, None)
 
+    def normalize(self, *data: list[tf.Tensor]) -> list[tf.Tensor]:
+        return self.normalize_text(*data)
+
     def _format_y(self, y: Sequence[str | Sequence[str]]) -> list[Sequence[str]]:
         return self._format_X(y)
 
@@ -152,6 +155,12 @@ class RetrievalEvaluationDataset(RetrievalDataset):
     @property
     def batch_padding_shapes(self) -> tuple:
         return [(None, None), ()][: None if self.has_label else -1]
+
+    def normalize(self, *data: list[tf.Tensor]) -> list[tf.Tensor]:
+        return super(RetrievalDataset, self).normalize(*data)
+
+    def _format_y(self, y: Sequence[int]) -> list[Sequence[int]]:
+        return super(RetrievalDataset, self)._format_y(y)
 
     def py_label_transform(self, label: tf.Tensor) -> tf.Tensor:
         return label

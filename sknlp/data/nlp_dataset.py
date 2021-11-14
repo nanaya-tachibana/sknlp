@@ -106,6 +106,7 @@ class NLPDataset:
     def _format_X(self, X: Sequence[Sequence[str]]) -> list[Sequence[str]]:
         if isinstance(X[0], str):
             return [X]
+
         return list(zip(*X))
 
     def _format_y(self, y: Sequence[Any]) -> list[Sequence[Any]]:
