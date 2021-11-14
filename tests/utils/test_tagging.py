@@ -1,35 +1,7 @@
 import pytest
 import numpy as np
 
-from sknlp.module.taggers.utils import (
-    parse_tagged_text,
-    Tag,
-    tagging_fscore,
-    _compute_counts,
-)
-
-
-@pytest.mark.parametrize(
-    "text,tag_names,expected",
-    [
-        (
-            "你我他",
-            ["S-代词", "S-代词", "S-代词"],
-            [Tag("代词", 0, 1, "你"), Tag("代词", 1, 2, "我"), Tag("代词", 2, 3, "他")],
-        ),
-        (
-            "你我他",
-            ["B-代词", "S-代词", "B-代词"],
-            [Tag("代词", 0, 1, "你"), Tag("代词", 1, 2, "我"), Tag("代词", 2, 3, "他")],
-        ),
-        ("你我他", ["O", "B-代词", "E-代词"], [Tag("代词", 1, 3, "我他")]),
-        ("你我他", ["O", "O", "O"], []),
-        ("你我他", ["B-代词", "I-代词", "O"], [Tag("代词", 0, 2, "你我")]),
-        ("你我他", ["I-代词", "B-代词", "O"], [Tag("代词", 1, 2, "我")]),
-    ],
-)
-def test_parse_tagged_text(text, tag_names, expected):
-    assert parse_tagged_text(text, tag_names) == expected
+from sknlp.utils.tagging import tagging_fscore, _compute_counts
 
 
 @pytest.mark.parametrize(
@@ -70,7 +42,13 @@ def test_parse_tagged_text(text, tag_names, expected):
                 "I-详细",
             ],
             ["省", "市", "区", "详细"],
-            {"省": (1, 1, 1), "市": (1, 1, 1), "区": (1, 1, 1), "详细": (1, 2, 1), "avg": (4, 5, 4)},
+            {
+                "省": (1, 1, 1),
+                "市": (1, 1, 1),
+                "区": (1, 1, 1),
+                "详细": (1, 2, 1),
+                "avg": (4, 5, 4),
+            },
         )
     ],
 )

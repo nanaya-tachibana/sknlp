@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 
-from .bert_attention_mask import BertAttentionMaskLayer
+from sknlp.layers import BertAttentionMaskLayer
 
 
 @pytest.fixture
