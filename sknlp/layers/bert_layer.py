@@ -207,10 +207,10 @@ class BertLayer(tf.keras.layers.Layer):
             embeddings_initializer=self.initializer,
             name="type_embeddings",
         )
-        self.embedding_normalize_layer = tf.keras.layers.LayerNormalization(
+        self.embedding_normalize_layer = LayerNormalization(
             name="embeddings/layer_norm", axis=-1, epsilon=1e-12, dtype=tf.float32
         )
-        self.embedding_dropout_layer = tf.keras.layers.Dropout(
+        self.embedding_dropout_layer = Dropout(
             rate=self.dropout_rate, name="embeddings/dropout"
         )
         if self.embedding_size != self.hidden_size:
@@ -251,19 +251,19 @@ class BertLayer(tf.keras.layers.Layer):
                 self.transformer_layers.append(layer)
 
         if self.cls_pooling:
-            self.cls_output_layer = tf.keras.layers.Dense(
+            self.cls_output_layer = Dense(
                 units=self.hidden_size,
                 activation="tanh",
                 kernel_initializer=self.initializer,
                 name="cls_pooler",
             )
-        self.lm_dense = tf.keras.layers.Dense(
+        self.lm_dense = Dense(
             self.embedding_size,
             activation=self.activation,
             kernel_initializer=self.initializer,
             name="lm/transform/dense",
         )
-        self.lm_normalize_layer = tf.keras.layers.LayerNormalization(
+        self.lm_normalize_layer = LayerNormalization(
             axis=-1, epsilon=1e-12, name="lm/transform/layer_norm"
         )
         self.lm_bias = self.add_weight(
@@ -271,7 +271,7 @@ class BertLayer(tf.keras.layers.Layer):
             shape=(self.vocab_size,),
             initializer="zeros",
         )
-        self.relationship_dense = tf.keras.layers.Dense(
+        self.relationship_dense = Dense(
             2, kernel_initializer=self.initializer, name="relationship"
         )
         super().build(input_shape)
