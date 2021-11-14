@@ -42,7 +42,12 @@ class NLPDataset:
         self._has_label = has_label
         if csv_file is not None:
             self._original_dataset, self.size = self.load_csv(
-                csv_file, "\t", in_memory, column_dtypes, na_value
+                csv_file,
+                "\t",
+                in_memory,
+                column_dtypes,
+                na_value,
+                has_label=self._has_label,
             )
         else:
             self._has_label = has_label and y is not None
@@ -198,8 +203,9 @@ class NLPDataset:
             )
         return dataset.prefetch(buffer_size=tf.data.AUTOTUNE)
 
+    @classmethod
     def dataframe_to_dataset(
-        self, df: pd.DataFrame, column_dtypes: list[str], na_value: str
+        cls, df: pd.DataFrame, column_dtypes: list[str], na_value: str
     ) -> tf.data.Dataset:
         df.fillna(na_value, inplace=True)
         for dtype, col in zip(column_dtypes, df.columns):
@@ -207,24 +213,26 @@ class NLPDataset:
         series = [df[col] for col in df.columns]
         return tf.data.Dataset.from_tensor_slices(tuple(series))
 
+    @classmethod
     def load_csv(
-        self,
+        cls,
         filename: str,
         sep: str,
         in_memory: bool,
         column_dtypes: list[str],
         na_value: str,
+        has_label: bool = True,
     ) -> tuple[tf.data.Dataset, Optional[int]]:
         if in_memory:
             df = pd.read_csv(filename, sep=sep, quoting=3, escapechar="\\")
-            return self.dataframe_to_dataset(df, column_dtypes, na_value), df.shape[0]
+            return cls.dataframe_to_dataset(df, column_dtypes, na_value), df.shape[0]
         tf_dtype_mapping = {"str": tf.string, "int": tf.int32, "float": tf.float32}
         return (
             tf.data.experimental.CsvDataset(
                 filename,
                 [
                     tf_dtype_mapping.get(dtype.rstrip(string.digits), "str")
-                    for dtype in column_dtypes[: None if self.has_label else -1]
+                    for dtype in column_dtypes[: None if has_label else -1]
                 ],
                 header=True,
                 field_delim=sep,
