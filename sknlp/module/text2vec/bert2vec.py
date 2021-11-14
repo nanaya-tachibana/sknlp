@@ -6,8 +6,6 @@ from enum import Enum
 import tensorflow as tf
 from tensorflow.keras.initializers import TruncatedNormal
 
-from official.nlp.bert.configs import BertConfig
-
 from sknlp.vocab import Vocab
 from sknlp.activations import gelu
 from sknlp.layers import (
@@ -21,6 +19,7 @@ from sknlp.layers.utils import (
     ElectraCheckpointConverter,
 )
 from .text2vec import Text2vec
+from .bert_config import BertConfig
 
 
 class BertFamily(Enum):
