@@ -16,9 +16,9 @@ from __future__ import annotations
 from typing import Sequence, Any, Optional, Callable
 
 import tensorflow as tf
+from tensorflow.keras.layers import Embedding, Dense, LayerNormalization, Dropout
 from tensorflow.keras.initializers import TruncatedNormal
 
-from official.nlp.keras_nlp import layers
 import tensorflow_text as tftext
 
 from sknlp.activations import gelu
@@ -189,22 +189,22 @@ class BertLayer(tf.keras.layers.Layer):
 
     def build(self, input_shape: tf.TensorShape) -> None:
         input_shape = input_shape[0]
-        self.embedding_layer = layers.OnDeviceEmbedding(
+        self.embedding_layer = Embedding(
             self.vocab_size,
             self.embedding_size,
-            initializer=self.initializer,
+            embeddings_initializer=self.initializer,
             name="word_embeddings",
         )
-        self.position_embedding_layer = layers.PositionEmbedding(
+        self.position_embedding_layer = Embedding(
             self.max_sequence_length,
-            initializer=self.initializer,
+            self.embedding_size,
+            embeddings_initializer=self.initializer,
             name="position_embedding",
         )
-        self.type_embedding_layer = layers.OnDeviceEmbedding(
+        self.type_embedding_layer = Embedding(
             self.type_vocab_size,
             self.embedding_size,
-            initializer=self.initializer,
-            use_one_hot=True,
+            embeddings_initializer=self.initializer,
             name="type_embeddings",
         )
         self.embedding_normalize_layer = tf.keras.layers.LayerNormalization(
@@ -283,8 +283,13 @@ class BertLayer(tf.keras.layers.Layer):
 
     def call(self, inputs: list[tf.Tensor]) -> list[tf.Tensor]:
         token_ids, type_ids, attention_mask, logits_mask = inputs
+        # (batch_size, seq_len, embedding_size)
         word_embeddings = self.embedding_layer(token_ids)
-        position_embeddings = self.position_embedding_layer(word_embeddings)
+        # (1, seq_len)
+        position_ids = tf.range(tf.shape(token_ids)[-1])[None, ...]
+        # (1, seq_len, embedding_size)
+        position_embeddings = self.position_embedding_layer(position_ids)
+        # (batch_size, seq_len, embedding_size)
         type_embeddings = self.type_embedding_layer(type_ids)
         embeddings = tf.keras.layers.Add()(
             [word_embeddings, position_embeddings, type_embeddings]
