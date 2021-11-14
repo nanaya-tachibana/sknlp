@@ -1,46 +1,21 @@
 import pytest
 import numpy as np
 
-from sknlp.utils.tagging import tagging_fscore, _compute_counts
+from sknlp.utils.tagging import tagging_fscore, _compute_counts, Tag
 
 
 @pytest.mark.parametrize(
-    "text,label,prediction,classes,expected",
+    "label,prediction,classes,expected",
     [
         (
-            "江苏苏州吴中区和平路同心家园",
             [
-                "B-省",
-                "I-省",
-                "B-市",
-                "I-市",
-                "B-区",
-                "I-区",
-                "I-区",
-                "B-详细",
-                "I-详细",
-                "I-详细",
-                "B-详细",
-                "I-详细",
-                "I-详细",
-                "I-详细",
+                Tag(0, 1, "省"),
+                Tag(2, 3, "市"),
+                Tag(4, 6, "区"),
+                Tag(7, 9, "详细"),
+                Tag(10, 13, "详细"),
             ],
-            [
-                "B-省",
-                "I-省",
-                "B-市",
-                "I-市",
-                "B-区",
-                "I-区",
-                "I-区",
-                "O",
-                "O",
-                "O",
-                "B-详细",
-                "I-详细",
-                "I-详细",
-                "I-详细",
-            ],
+            [Tag(0, 1, "省"), Tag(2, 3, "市"), Tag(4, 6, "区"), Tag(10, 13, "详细")],
             ["省", "市", "区", "详细"],
             {
                 "省": (1, 1, 1),
@@ -52,56 +27,31 @@ from sknlp.utils.tagging import tagging_fscore, _compute_counts
         )
     ],
 )
-def test_compute_counts(text, label, prediction, classes, expected):
-    counts = _compute_counts(text, label, prediction, classes)
+def test_compute_counts(label, prediction, classes, expected):
+    counts = _compute_counts(label, prediction, classes)
     for count in counts:
         assert expected[count[0]] == count[1:]
 
 
 @pytest.mark.parametrize(
-    "texts,labels,predictions,classes,expected",
+    "labels,predictions,classes,expected",
     [
         (
-            ["江苏苏州吴中区和平路同心家园", "你我他", "北京市通州区"],
             [
                 [
-                    "B-省",
-                    "I-省",
-                    "B-市",
-                    "I-市",
-                    "B-区",
-                    "I-区",
-                    "I-区",
-                    "B-详细",
-                    "I-详细",
-                    "I-详细",
-                    "B-详细",
-                    "I-详细",
-                    "I-详细",
-                    "I-详细",
+                    Tag(0, 1, "省"),
+                    Tag(2, 3, "市"),
+                    Tag(4, 6, "区"),
+                    Tag(7, 9, "详细"),
+                    Tag(10, 13, "详细"),
                 ],
-                ["O", "O", "O"],
-                ["B-市", "I-市", "I-市", "B-区", "I-区", "I-区"],
+                [],
+                [Tag(0, 2, "市"), Tag(3, 5, "区")],
             ],
             [
-                [
-                    "B-省",
-                    "I-省",
-                    "B-市",
-                    "I-市",
-                    "B-区",
-                    "I-区",
-                    "I-区",
-                    "O",
-                    "O",
-                    "O",
-                    "B-详细",
-                    "I-详细",
-                    "I-详细",
-                    "I-详细",
-                ],
-                ["B-省", "I-省", "I-省"],
-                ["O", "O", "O", "B-区", "I-区", "I-区"],
+                [Tag(0, 1, "省"), Tag(2, 3, "市"), Tag(4, 6, "区"), Tag(10, 13, "详细")],
+                [Tag(0, 2, "省")],
+                [Tag(3, 5, "区")],
             ],
             ["省", "市", "区", "详细"],
             {
@@ -113,15 +63,8 @@ def test_compute_counts(text, label, prediction, classes, expected):
             },
         ),
         (
-            ["你我他", "北京市通州区"],
-            [
-                ["O", "O", "O"],
-                ["B-市", "I-市", "I-市", "B-区", "I-区", "I-区"],
-            ],
-            [
-                ["B-省", "I-省", "I-省"],
-                ["O", "O", "O", "B-区", "I-区", "I-区"],
-            ],
+            [[], [Tag(0, 2, "市"), Tag(3, 5, "区")]],
+            [[Tag(0, 2, "省")], [Tag(3, 5, "区")]],
             ["省", "市", "区", "详细"],
             {
                 "省": (0, 0, 0),
@@ -133,8 +76,8 @@ def test_compute_counts(text, label, prediction, classes, expected):
         ),
     ],
 )
-def test_tagging_fscore(texts, labels, predictions, classes, expected):
-    score_df = tagging_fscore(texts, labels, predictions, classes)
+def test_tagging_fscore(labels, predictions, classes, expected):
+    score_df = tagging_fscore(labels, predictions, classes)
     classes.append("avg")
     for cls in classes:
         df = score_df[score_df["class"] == cls].iloc[0]
