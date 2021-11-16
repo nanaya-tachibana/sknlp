@@ -38,7 +38,7 @@ jobs:
           source .venv/bin/activate
           python -m pip install -q gdown
           bash .github/scripts/download_pretrain.sh
-     - name: LS
+      - name: LS
         run: ls pretrain/electra_180g_small
 
       - name: Test
