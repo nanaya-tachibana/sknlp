@@ -40,4 +40,15 @@ jobs:
           bash .github/scripts/download_pretrain.sh
 
       - name: Test
-        run: poetry run python -m pytest -sv tests/module/text2vec/test_bert2vec.py
+        run: poetry run python -m pytest --cov=sknlp --cov-report=xml tests
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v2
+        with:
+          directory: ./coverage/reports/
+          env_vars: OS,PYTHON
+          fail_ci_if_error: true
+          files: ./coverage1.xml,./coverage2.xml
+          flags: unittests
+          name: codecov-umbrella
+          path_to_write_report: ./coverage/codecov_report.txt
