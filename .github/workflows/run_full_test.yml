@@ -17,7 +17,7 @@ jobs:
       - name: Virtualenv
         run: |
           python -m venv $POETRY_VIRTUALENVS_PATH
-          export PATH=$POETRY_VIRTUALENVS_PATH/bin:$PATH
+          source $POETRY_VIRTUALENVS_PATH/bin/activate
       - name: Python path
         run: which python
       # - name: Install dependencies
