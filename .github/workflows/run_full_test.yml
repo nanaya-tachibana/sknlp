@@ -11,21 +11,26 @@ jobs:
       - uses: actions/setup-python@v2
         with:
           python-version: 3.8
-      - uses: abatilo/actions-poetry@v2.0.0
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
         with:
-          poetry-version: 1.1.11
-      - name: Virtualenv
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+          installer-parallel: true
+      - name: Load cached venv
+        id: cached-poetry-dependencies
+        uses: actions/cache@v2
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
+      - name: Install dependencies
+        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+        run: poetry install --no-interaction
+      - name: Install gdown
+        run: poetry run python -m pip install gdown
+      - name: Download data
         run: |
-          python -m venv $POETRY_VIRTUALENVS_PATH
-          source $POETRY_VIRTUALENVS_PATH/bin/activate
-      - name: Python path
-        run: which python
-      # - name: Install dependencies
-      #   run: poetry install
-      # - name: Install gdown
-      #   run: python -m pip install gdown
-      # - name: Download data
-      #   run: ./github/scripts/prepare_data.sh
-      #   shell: bash
-      # - name: Test
-      #   run: ls pretrain
+          source .venv/bin/activate
+          ./github/scripts/prepare_data.sh
+      - name: Test
+        run: ls pretrain
