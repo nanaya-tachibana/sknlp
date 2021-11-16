@@ -40,4 +40,6 @@ jobs:
           bash .github/scripts/download_pretrain.sh
 
       - name: Test
-        run: poetry run python -m pytest --conv=sknlp tests
+        run: |
+          source .venv/bin/activate
+          pytest --conv=sknlp tests
