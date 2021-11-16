@@ -92,9 +92,10 @@ class BertConfig(object):
     @classmethod
     def from_json_file(cls, json_file):
         """Constructs a `BertConfig` from a json file of parameters."""
-        with tf.io.gfile.GFile(json_file, "r") as reader:
-            text = reader.read()
-        return cls.from_dict(json.loads(text))
+        # with tf.io.gfile.GFile(json_file, "r") as reader:
+        #     text = reader.read()
+        with open(json_file, encoding="UTF-8") as f:
+            return cls.from_dict(json.loads(f.read()))
 
     def to_dict(self):
         """Serializes this instance to a Python dictionary."""
