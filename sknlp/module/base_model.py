@@ -403,7 +403,8 @@ class BaseNLPModel:
         self._inference_kwargs["input_names"] = model.input_names
         self._inference_kwargs["output_names"] = model.output_names
         model.set_weights(self._inference_model.get_weights())
-        model.save(d, include_optimizer=False, save_format="tf")
+        save_options = tf.saved_model.SaveOptions(namespace_whitelist=["Addons"])
+        model.save(d, include_optimizer=False, save_format="tf", options=save_options)
         self.save_config(d)
         self.save_vocab(d)
 
