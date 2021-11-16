@@ -16,6 +16,10 @@ jobs:
         run: poetry self -V
       - name: Install dependencies
         run: poetry install
+      - name: Python path
+        run: which python
+      - name: Install gdown
+        run: python -m pip install gdown
       - name: Download data
         run: ./github/scripts/prepare_data.sh
         shell: bash
