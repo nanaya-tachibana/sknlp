@@ -33,10 +33,11 @@ jobs:
           path: pretrain
           key: pretrain-$
       - name: Download pretrain
+        if: steps.cached-pretrain.outputs.cache-hit != 'true'
         run: |
           source .venv/bin/activate
-          python -m pip install gdown
+          python -m pip install -q gdown
           bash .github/scripts/download_pretrain.sh
 
       - name: Test
-        run: ls pretrain
+        run: poetry run python -m pytest --conv sknlp tests
