@@ -1,5 +1,8 @@
 name: CI
 on: push
+env:
+  POETRY_VIRTUALENVS_PATH: /home/runner/.cache/pypoetry/virtualenvs/env
+  PATH: $POETRY_VIRTUALENVS_PATH/bin:$PATH
 
 jobs:
   ci:
@@ -12,16 +15,16 @@ jobs:
       - uses: abatilo/actions-poetry@v2.0.0
         with:
           poetry-version: 1.1.11
-      - name: View poetry version
-        run: poetry self -V
-      - name: Install dependencies
-        run: poetry install
+      - name: Virtualenv
+        run: python -m venv $POETRY_VIRTUALENVS_PATH
       - name: Python path
         run: which python
-      - name: Install gdown
-        run: python -m pip install gdown
-      - name: Download data
-        run: ./github/scripts/prepare_data.sh
-        shell: bash
-      - name: Test
-        run: ls pretrain
+      # - name: Install dependencies
+      #   run: poetry install
+      # - name: Install gdown
+      #   run: python -m pip install gdown
+      # - name: Download data
+      #   run: ./github/scripts/prepare_data.sh
+      #   shell: bash
+      # - name: Test
+      #   run: ls pretrain
