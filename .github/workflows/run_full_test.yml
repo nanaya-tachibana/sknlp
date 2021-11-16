@@ -40,4 +40,4 @@ jobs:
           bash .github/scripts/download_pretrain.sh
 
       - name: Test
-        run: poetry run python -m pytest --conv sknlp tests
+        run: poetry run python -m pytest --conv=sknlp tests
