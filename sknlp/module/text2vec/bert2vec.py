@@ -131,6 +131,7 @@ class ModelCheckpoint:
             )
         if not config_filename:
             config_filename = cls.search_config_file(checkpoint_directory)
+        print(config_filename)
         config = BertConfig.from_json_file(
             os.path.join(checkpoint_directory, config_filename)
         )

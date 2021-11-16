@@ -38,6 +38,8 @@ jobs:
           source .venv/bin/activate
           python -m pip install -q gdown
           bash .github/scripts/download_pretrain.sh
+     - name: LS
+        run: ls pretrain/electra_180g_small
 
       - name: Test
-        run: poetry run python -m pytest --cov=sknlp tests
+        run: poetry run python -m pytest -sv tests/module/text2vec/test_bert2vec.py
