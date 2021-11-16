@@ -84,9 +84,9 @@ def model_common_test(tmp_path):
 
 @pytest.fixture
 def bert2vec():
-    return Bert2vec.from_tfv1_checkpoint(1, "data/bert_3l")
+    return Bert2vec.from_tfv1_checkpoint(1, "pretrain/RoBERTa-tiny-clue")
 
 
 @pytest.fixture
 def word2vec():
-    return Word2vec.from_word2vec_format("data/char/vec.txt", segmenter="char")
+    return Word2vec.from_word2vec_format("pretrain/char/vec.txt", segmenter="char")

@@ -1,0 +1,23 @@
+name: CI
+on: push
+
+jobs:
+  ci:
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+      - uses: abatilo/actions-poetry@v2.0.0
+        with:
+          poetry-version: 1.1.11
+      - name: View poetry version
+        run: poetry self -V
+      - name: Install dependencies
+        run: poetry install
+      - name: Download data
+        run: ./github/scripts/prepare_data.sh
+        shell: bash
+      - name: Test
+        run: ls pretrain

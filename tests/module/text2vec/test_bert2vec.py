@@ -19,19 +19,19 @@ def inputs():
 
 
 def test_from_bert_checkpoint():
-    Bert2vec.from_tfv1_checkpoint(BertFamily.BERT, "data/bert_3l")
+    Bert2vec.from_tfv1_checkpoint(BertFamily.BERT, "pretrain/RoBERTa-tiny-clue")
 
 
 def test_from_albert_checkpoint():
-    Bert2vec.from_tfv1_checkpoint(BertFamily.ALBERT, "data/albert_tiny_zh_google")
+    Bert2vec.from_tfv1_checkpoint(BertFamily.ALBERT, "pretrain/albert_tiny_zh_google")
 
 
 def test_from_electra_checkpoint():
-    Bert2vec.from_tfv1_checkpoint(BertFamily.ELECTRA, "data/electra_180g_small")
+    Bert2vec.from_tfv1_checkpoint(BertFamily.ELECTRA, "pretrain/electra_180g_small")
 
 
 def test_bert2vec(inputs):
-    bv = Bert2vec.from_tfv1_checkpoint(BertFamily.BERT, "data/bert_3l")
+    bv = Bert2vec.from_tfv1_checkpoint(BertFamily.BERT, "pretrain/RoBERTa-tiny-clue")
     outputs = bv(inputs[:3])
     assert len(outputs) == 4
     assert outputs[0].ndim == 2
@@ -47,7 +47,9 @@ def test_bert2vec(inputs):
 
 
 def test_bert2vec_save_load(tmp_path, inputs):
-    bv = Bert2vec.from_tfv1_checkpoint(BertFamily.ELECTRA, "data/electra_180g_small")
+    bv = Bert2vec.from_tfv1_checkpoint(
+        BertFamily.ELECTRA, "pretrain/electra_180g_small"
+    )
     outputs = bv(inputs[:3])
     bv.save(str(tmp_path))
     new_bv = Bert2vec.load(str(tmp_path))
@@ -58,7 +60,9 @@ def test_bert2vec_save_load(tmp_path, inputs):
 
 
 def test_bert2vec_save_load_archive(tmp_path, inputs):
-    bv = Bert2vec.from_tfv1_checkpoint(BertFamily.ELECTRA, "data/electra_180g_small")
+    bv = Bert2vec.from_tfv1_checkpoint(
+        BertFamily.ELECTRA, "pretrain/electra_180g_small"
+    )
     outputs = bv(inputs[:3])
     filename = tmp_path / "archive.tar"
     bv.save_archive(str(filename))
@@ -70,7 +74,9 @@ def test_bert2vec_save_load_archive(tmp_path, inputs):
 
 
 def test_bert2vec_from_to_checkpoint(tmp_path, inputs):
-    bv = Bert2vec.from_tfv1_checkpoint(BertFamily.ELECTRA, "data/electra_180g_small")
+    bv = Bert2vec.from_tfv1_checkpoint(
+        BertFamily.ELECTRA, "pretrain/electra_180g_small"
+    )
     outputs = bv(inputs[:3])
     checkpoint_directory = str(tmp_path / "checkpoint")
     bv.to_tfv1_checkpoint(checkpoint_directory)
@@ -82,7 +88,9 @@ def test_bert2vec_from_to_checkpoint(tmp_path, inputs):
 
 
 def test_bert2vec_export(tmp_path):
-    bv = Bert2vec.from_tfv1_checkpoint(BertFamily.ELECTRA, "data/electra_180g_small")
+    bv = Bert2vec.from_tfv1_checkpoint(
+        BertFamily.ELECTRA, "pretrain/electra_180g_small"
+    )
     bv.export(str(tmp_path), "bert2vec")
     directory = tmp_path / "bert2vec" / "0"
     meta_graph_def = saved_model_utils.get_meta_graph_def(str(directory), "serve")
@@ -93,7 +101,9 @@ def test_bert2vec_export(tmp_path):
 
 
 def test_bert2vec_export_cls(tmp_path):
-    bv = Bert2vec.from_tfv1_checkpoint(BertFamily.ELECTRA, "data/electra_180g_small")
+    bv = Bert2vec.from_tfv1_checkpoint(
+        BertFamily.ELECTRA, "pretrain/electra_180g_small"
+    )
     bv.export(str(tmp_path), "bert2vec", only_output_cls=True)
     directory = tmp_path / "bert2vec" / "0"
     meta_graph_def = saved_model_utils.get_meta_graph_def(str(directory), "serve")
