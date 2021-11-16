@@ -2,7 +2,6 @@ name: CI
 on: push
 env:
   POETRY_VIRTUALENVS_PATH: /home/runner/.cache/pypoetry/virtualenvs/env
-  PATH: $POETRY_VIRTUALENVS_PATH/bin:$PATH
 
 jobs:
   ci:
@@ -16,7 +15,9 @@ jobs:
         with:
           poetry-version: 1.1.11
       - name: Virtualenv
-        run: python -m venv $POETRY_VIRTUALENVS_PATH
+        run: |
+          python -m venv $POETRY_VIRTUALENVS_PATH
+          export PATH=$POETRY_VIRTUALENVS_PATH/bin:$PATH
       - name: Python path
         run: which python
       # - name: Install dependencies
