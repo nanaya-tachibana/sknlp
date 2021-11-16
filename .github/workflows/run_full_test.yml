@@ -31,15 +31,13 @@ jobs:
         uses: actions/cache@v2
         with:
           path: pretrain
-          key: pretrain-$
+          key: pretrain-20211116
       - name: Download pretrain
         if: steps.cached-pretrain.outputs.cache-hit != 'true'
         run: |
           source .venv/bin/activate
           python -m pip install -q gdown
           bash .github/scripts/download_pretrain.sh
-      - name: LS
-        run: ls -Ah pretrain/electra_180g_small
 
       - name: Test
         run: poetry run python -m pytest -sv tests/module/text2vec/test_bert2vec.py
