@@ -249,7 +249,8 @@ class Bert2vec(Text2vec):
             transformer_layers.extend(getattr(bert_layer, "transformer_layers", []))
         for layer in transformer_layers:
             if attention_dropout is not None:
-                layer._attention_dropout.rate = attention_dropout
+                layer._attention_layer._dropout_layer.rate = attention_dropout
+            layer._attention_dropout.rate = dropout
             layer._output_dropout.rate = dropout
 
     @classmethod
