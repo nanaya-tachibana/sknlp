@@ -163,14 +163,12 @@ class Bert2vec(Text2vec):
         name: str = "bert2vec",
         **kwargs,
     ) -> None:
-        if embedding_size is None:
-            embedding_size = hidden_size
         super().__init__(
             vocab,
             segmenter=segmenter,
             sequence_length=sequence_length,
             max_sequence_length=max_sequence_length,
-            embedding_size=embedding_size,
+            embedding_size=hidden_size,
             algorithm="bert",
             name=name,
             **kwargs,

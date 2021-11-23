@@ -19,7 +19,6 @@ class RNNRetriever(DeepRetriever):
         dropout: float = 0.5,
         num_rnn_layers: int = 1,
         rnn_hidden_size: int = 512,
-        rnn_projection_size: int = 128,
         rnn_recurrent_dropout: float = 0.0,
         text2vec: Optional[Text2vec] = None,
         **kwargs
@@ -34,10 +33,11 @@ class RNNRetriever(DeepRetriever):
             algorithm="rnn",
             **kwargs
         )
+        if self.projection_size is None:
+            self.projection_size = rnn_hidden_size * 2
         self.dropout = dropout
         self.num_rnn_layers = num_rnn_layers
         self.rnn_hidden_size = rnn_hidden_size
-        self.rnn_projection_size = rnn_projection_size
         self.rnn_recurrent_dropout = rnn_recurrent_dropout
 
     def build_encoding_layer(self, inputs: tf.Tensor) -> tf.Tensor:

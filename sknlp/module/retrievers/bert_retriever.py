@@ -41,6 +41,8 @@ class BertRetriever(DeepRetriever):
             text_normalization=text_normalization,
             **kwargs
         )
+        if self.projection_size is None:
+            self.projection_size = self.text2vec.embedding_size
         self.dropout = dropout
         self.attention_dropout = attention_dropout
         self.inputs = [

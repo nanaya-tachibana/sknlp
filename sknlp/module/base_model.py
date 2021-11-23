@@ -247,14 +247,14 @@ class BaseNLPModel:
         optimizer_kwargs: Optional[dict[str, Any]] = None,
         learning_rate: float = 1e-3,
         weight_decay: float = 0.0,
-        clip: Optional[float] = 1.0,
+        clip: Optional[float] = 5.0,
         learning_rate_update_factor: float = 0.5,
         learning_rate_update_epochs: int = 10,
         learning_rate_warmup_steps: int = 0,
         enable_early_stopping: bool = False,
         early_stopping_patience: Optional[int] = None,
         early_stopping_min_delta: float = 0.0,
-        early_stopping_use_best_epoch: bool = False,
+        early_stopping_use_best_epoch: bool = True,
         early_stopping_monitor: int = 2,  # 1 for loss, 2 for metric
         checkpoint: Optional[str] = None,
         log_file: Optional[str] = None,
@@ -283,7 +283,7 @@ class BaseNLPModel:
             **optimizer_kwargs,
         }
         if clip is not None:
-            optimizer_kwargs["clipnorm"] = clip
+            optimizer_kwargs["global_clipnorm"] = clip
         self.compile_optimizer(optimizer, **optimizer_kwargs)
 
         monitor = "val_loss"
@@ -304,7 +304,6 @@ class BaseNLPModel:
             learning_rate_update_factor=learning_rate_update_factor,
             learning_rate_update_epochs=learning_rate_update_epochs,
             learning_rate_warmup_steps=learning_rate_warmup_steps,
-            use_weight_decay=weight_decay > 0,
             has_validation_dataset=has_validation_dataset,
             enable_early_stopping=enable_early_stopping,
             early_stopping_monitor=monitor,
