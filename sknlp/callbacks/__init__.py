@@ -3,7 +3,6 @@ from typing import Optional, Callable
 
 import tensorflow as tf
 
-from .weight_decay_scheduler import WeightDecayScheduler
 from .learning_rate_scheduler import LearningRateScheduler
 
 from .tagging_fscore_metric import TaggingFScoreMetric
@@ -34,7 +33,6 @@ def default_supervised_model_callbacks(
     learning_rate_update_factor: float,
     learning_rate_update_epochs: int,
     learning_rate_warmup_steps: int,
-    use_weight_decay: bool = False,
     has_validation_dataset: bool = False,
     enable_early_stopping: bool = False,
     early_stopping_monitor: str = "val_loss",
@@ -55,10 +53,6 @@ def default_supervised_model_callbacks(
         warmup_scheduler, decay_scheduler, verbose=verbose
     )
     callbacks = [learning_rate_decay]
-    if use_weight_decay > 0:
-        callbacks.append(
-            WeightDecayScheduler(warmup_scheduler, decay_scheduler, verbose=verbose)
-        )
 
     if enable_early_stopping and has_validation_dataset:
         callbacks.append(
@@ -87,7 +81,6 @@ def default_supervised_model_callbacks(
 
 
 __all__ = [
-    "WeightDecayScheduler",
     "LearningRateSchduler",
     "TaggingFScoreMetric",
     "default_supervised_model_callbacks",
