@@ -26,6 +26,7 @@ class BertRetriever(DeepRetriever):
         has_negative: bool = False,
         dropout: float = 0.1,
         attention_dropout: float = 0.1,
+        add_cls_dropout: bool = True,
         text2vec: Optional[Bert2vec] = None,
         text_normalization: dict[str, str] = {"letter_case": "lowercase"},
         **kwargs
@@ -41,10 +42,9 @@ class BertRetriever(DeepRetriever):
             text_normalization=text_normalization,
             **kwargs
         )
-        if self.projection_size is None:
-            self.projection_size = self.text2vec.embedding_size
         self.dropout = dropout
         self.attention_dropout = attention_dropout
+        self.add_cls_dropout = add_cls_dropout
         self.inputs = [
             tf.keras.Input(shape=(None,), dtype=tf.int64, name="token_ids"),
             tf.keras.Input(shape=(None,), dtype=tf.int64, name="type_ids"),
@@ -65,7 +65,7 @@ class BertRetriever(DeepRetriever):
 
     def build_intermediate_layer(self, inputs: list[tf.Tensor]) -> tf.Tensor:
         cls = inputs[0]
-        if self.dropout:
+        if self.dropout and self.add_cls_dropout:
             cls = Dropout(self.dropout, name="cls_dropout")(cls)
         return super().build_intermediate_layer(cls)
 

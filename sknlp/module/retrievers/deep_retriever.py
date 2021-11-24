@@ -111,7 +111,10 @@ class DeepRetriever(SupervisedNLPModel):
         return None
 
     def build_intermediate_layer(self, inputs: tf.Tensor) -> tf.Tensor:
-        return tf.keras.layers.Dense(self.projection_size, name="projection")(inputs)
+        pooling_layer = tf.keras.layers.Lambda(lambda x: x, name="pooling")
+        if self.projection_size is not None:
+            pooling_layer = tf.keras.layers.Dense(self.projection_size, name="pooling")
+        return pooling_layer(inputs)
 
     def build_output_layer(self, inputs: tf.Tensor) -> tf.Tensor:
         num_inputs = 2 + self.has_negative

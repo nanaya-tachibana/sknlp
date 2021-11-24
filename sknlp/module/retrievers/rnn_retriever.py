@@ -33,8 +33,6 @@ class RNNRetriever(DeepRetriever):
             algorithm="rnn",
             **kwargs
         )
-        if self.projection_size is None:
-            self.projection_size = rnn_hidden_size * 2
         self.dropout = dropout
         self.num_rnn_layers = num_rnn_layers
         self.rnn_hidden_size = rnn_hidden_size
