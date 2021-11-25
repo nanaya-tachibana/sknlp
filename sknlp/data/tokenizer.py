@@ -1,5 +1,7 @@
 from __future__ import annotations
 from typing import Sequence, Optional
+import tempfile
+from functools import partial
 
 try:
     import jieba_fast as jieba
@@ -21,9 +23,19 @@ class Tokenizer:
 
 
 class JiebaTokenizer(Tokenizer):
+    def __init__(self, vocab: Vocab, max_length: Optional[int] = None) -> None:
+        super().__init__(vocab, max_length=max_length)
+        with tempfile.NamedTemporaryFile("w+") as f:
+            for token in vocab.sorted_tokens[len(vocab.special_tokens) :]:
+                f.write(f"{token} {vocab._token_frequency.get(token, 1)}\n")
+            f.flush()
+            tokenizer = jieba.Tokenizer(dictionary=f.name)
+            tokenizer.initialize()
+            self.tokenizer = partial(tokenizer.lcut, HMM=False)
+
     def tokenize(self, text: str | Sequence[str]) -> list[list[str]] | list[str]:
         if isinstance(text, str):
-            return jieba.lcut(text, HMM=False)[: self.max_length]
+            return self.tokenizer(text)[: self.max_length]
         return [self.tokenize(t) for t in text]
 
 
