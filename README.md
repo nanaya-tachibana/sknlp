@@ -270,6 +270,10 @@ b2v = Bert2vec.from_tfv1_checkpoint(BertFamily.ELECTRA, "electra_180g_base")
 3. ELECTRA
    - [Chinese-ELECTRA](https://github.com/ymcui/Chinese-ELECTRA)
 
+## 具体示例
+
+参考 examples
+
 # 部署
 
 每个模型类都提供了一个 export 方法, 可以导出一个可用 tensorflow serving 部署的模型 pb 文件及相关辅助文件.
