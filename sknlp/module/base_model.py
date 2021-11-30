@@ -11,7 +11,6 @@ import pandas as pd
 from tabulate import tabulate
 
 import tensorflow as tf
-from tensorflow.python.keras.utils.generic_utils import DisableSharedObjectScope
 
 import sknlp
 from sknlp.callbacks import default_supervised_model_callbacks
@@ -380,11 +379,10 @@ class BaseNLPModel:
         with open(os.path.join(directory, "vocab.json")) as f:
             vocab = Vocab.from_json(f.read())
         module = cls.from_config({"vocab": vocab, **meta})
-        with DisableSharedObjectScope():
-            module._model = tf.keras.models.load_model(
-                os.path.join(directory, cls._get_model_filename(epoch=epoch))
-            )
-            module._built = True
+        module._model = tf.keras.models.load_model(
+            os.path.join(directory, cls._get_model_filename(epoch=epoch))
+        )
+        module._built = True
         return module
 
     def export(self, directory: str, name: str, version: str = "0") -> None:
