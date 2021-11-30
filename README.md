@@ -39,7 +39,7 @@ from sknlp.module.classifiers import BertClassifier
 from sknlp.moduel.text2vec import Bert2vec, BertFamily
 
 b2v = Bert2vec.from_tfv1_checkpoint(BertFamily.BERT, "RoBERTa-tiny3L768-clue")
-clf = BertClassifier(["letter", "digit"], text2vec=b2v)
+clf = BertClassifier(["letter", "digit"], is_multilabel=False, text2vec=b2v)
 clf.fit(
     X=["aa", "bb", "cc", "dd", "11", "22", "33", "44"],
     y=["letter", "letter", "letter", "letter"],
@@ -57,7 +57,7 @@ from sknlp.module.classifiers import RNNClassifier
 from sknlp.moduel.text2vec import Word2vec
 
 t2v = Word2vec.from_word2vec_format("data/jieba/vec.txt", segmenter="jieba")
-clf = RNNClassifier(["letter", "digit"], text2vec=t2v)
+clf = RNNClassifier(["letter", "digit"], is_multilabel=False, text2vec=t2v)
 training_dataset = clf.create_dataset_from_csv("data/train.txt")
 clf.fit(
     dataset=training_dataset,
