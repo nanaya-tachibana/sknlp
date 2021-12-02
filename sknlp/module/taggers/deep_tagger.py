@@ -198,7 +198,7 @@ class DeepTagger(SupervisedNLPModel):
             )
         else:
             model = self._model
-        return model
+        self._inference_model = model
 
     def export(self, directory: str, name: str, version: str = "0") -> None:
         original_model = self._inference_model

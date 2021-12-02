@@ -133,7 +133,7 @@ class DeepRetriever(SupervisedNLPModel):
         return cos_sim / self.temperature
 
     def build_inference_model(self) -> tf.keras.Model:
-        return tf.keras.Model(
+        self._inference_model = tf.keras.Model(
             inputs=self._model.inputs,
             outputs=self._model.get_layer("pooling").output,
         )

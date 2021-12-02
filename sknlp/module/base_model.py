@@ -115,9 +115,10 @@ class BaseNLPModel:
             inputs=self.get_inputs(), outputs=self.get_outputs(), name=self.name
         )
         self._built = True
+        self.build_inference_model()
 
     def build_inference_model(self) -> tf.keras.Model:
-        return self._model
+        self._inference_model = self._model
 
     def build_encoding_layer(
         self, inputs: tf.Tensor | list[tf.Tensor]
@@ -326,7 +327,7 @@ class BaseNLPModel:
             callbacks=callbacks,
             verbose=verbose,
         )
-        self._inference_model = self.build_inference_model()
+        self.build_inference_model()
 
     def predict(
         self,

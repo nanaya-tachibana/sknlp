@@ -96,5 +96,5 @@ class SupervisedNLPModel(BaseNLPModel):
             sequence_length=module.sequence_length,
             name=module._text2vec_name,
         )
-        module._inference_model = module.build_inference_model()
+        module.build_inference_model()
         return module

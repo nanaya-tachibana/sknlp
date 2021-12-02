@@ -110,7 +110,9 @@ class BertGenerator(DeepGenerator):
         state = tf.zeros_like(token_ids[..., 0, None], dtype=tf.float32)
         predicted_ids = decoder([token_ids, type_ids], state)[0].predicted_ids
         ragged_predicted_ids = tf.RaggedTensor.from_tensor(predicted_ids[..., 0])
-        return tf.keras.Model(inputs=self._model.inputs, outputs=ragged_predicted_ids)
+        self._inference_model = tf.keras.Model(
+            inputs=self._model.inputs, outputs=ragged_predicted_ids
+        )
 
     def export(self, directory: str, name: str, version: str = "0") -> None:
         original_model = self._inference_model
