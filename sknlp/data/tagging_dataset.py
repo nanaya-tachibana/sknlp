@@ -74,7 +74,7 @@ class TaggingDataset(NLPDataset):
 
     def py_label_transform(self, label: tf.Tensor, tokens: Sequence[str]) -> np.ndarray:
         label = super().py_label_transform(label)
-        length = len(tokens)
+        length = min(len(tokens), self.max_length)
         length += 2 * self.add_start_end_tag
 
         start_mapping, end_mapping = self.vocab.create_ichar2itoken_mapping(tokens)
