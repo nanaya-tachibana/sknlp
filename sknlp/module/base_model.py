@@ -367,8 +367,11 @@ class BaseNLPModel:
             f.write(self.vocab.to_json())
 
     def save(self, directory: str) -> None:
+        options = tf.saved_model.SaveOptions(experimental_custom_gradients=False)
         self._model.save(
-            os.path.join(directory, self._get_model_filename()), save_format="tf"
+            os.path.join(directory, self._get_model_filename()),
+            save_format="tf",
+            options=options,
         )
         self.save_config(directory)
         self.save_vocab(directory)
@@ -401,8 +404,10 @@ class BaseNLPModel:
         self._inference_kwargs["input_names"] = model.input_names
         self._inference_kwargs["output_names"] = model.output_names
         model.set_weights(self._inference_model.get_weights())
-        save_options = tf.saved_model.SaveOptions(namespace_whitelist=["Addons"])
-        model.save(d, include_optimizer=False, save_format="tf", options=save_options)
+        options = tf.saved_model.SaveOptions(
+            namespace_whitelist=["Addons"], experimental_custom_gradients=False
+        )
+        model.save(d, include_optimizer=False, save_format="tf", options=options)
         self.save_config(d)
         self.save_vocab(d)
 

@@ -66,12 +66,14 @@ def default_supervised_model_callbacks(
             )
         )
     if checkpoint is not None:
+        options = tf.saved_model.SaveOptions(experimental_custom_gradients=False)
         callbacks.append(
             tf.keras.callbacks.ModelCheckpoint(
                 checkpoint,
                 monitor=early_stopping_monitor,
                 mode=early_stopping_monitor_direction,
                 save_best_only=has_validation_dataset,
+                options=options,
                 verbose=verbose,
             )
         )

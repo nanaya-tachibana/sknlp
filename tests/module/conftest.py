@@ -88,5 +88,12 @@ def bert2vec():
 
 
 @pytest.fixture
+def recompute_bert2vec():
+    return Bert2vec.from_tfv1_checkpoint(
+        1, "pretrain/RoBERTa-tiny-clue", enable_recompute_grad=True
+    )
+
+
+@pytest.fixture
 def word2vec():
     return Word2vec.from_word2vec_format("pretrain/char/vec.txt", segmenter="char")
