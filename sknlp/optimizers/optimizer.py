@@ -45,8 +45,9 @@ class OptimizerExtension(DecoupledWeightDecayExtension):
                 (var_device, var_dtype)
             ) or self._fallback_apply_state(var_device, var_dtype)
 
+            m = self.learning_rate_multiplier.get(var.name, 1)
             return var.assign_sub(
-                coefficients["lr_t"] * coefficients["wd_t"] * var, self._use_locking
+                coefficients["lr_t"] / m * coefficients["wd_t"] * var, self._use_locking
             )
         return tf.no_op()
 
@@ -62,8 +63,12 @@ class OptimizerExtension(DecoupledWeightDecayExtension):
                 (var_device, var_dtype)
             ) or self._fallback_apply_state(var_device, var_dtype)
 
+            m = self.learning_rate_multiplier.get(var.name, 1)
             update = (
-                coefficients["lr_t"] * coefficients["wd_t"] * tf.gather(var, indices)
+                -coefficients["lr_t"]
+                / m
+                * coefficients["wd_t"]
+                * tf.gather(var, indices)
             )
             return self._resource_scatter_add(var, indices, update)
         return tf.no_op()
