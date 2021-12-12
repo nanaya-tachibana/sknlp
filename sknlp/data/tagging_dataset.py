@@ -84,7 +84,11 @@ class TaggingDataset(NLPDataset):
             for chunk_start, chunk_end, chunk_label in chunks:
                 chunk_start = start_mapping[chunk_start]
                 chunk_end = end_mapping[chunk_end]
-                if chunk_start == -1 or chunk_end == -1 or chunk_end >= labels.shape[0]:
+                if (
+                    chunk_start == -1
+                    or chunk_end == -1
+                    or chunk_end >= length - 2 * self.add_start_end_tag
+                ):
                     continue
 
                 chunk_start += self.add_start_end_tag
@@ -97,7 +101,11 @@ class TaggingDataset(NLPDataset):
             for chunk_start, chunk_end, chunk_label in chunks:
                 chunk_start = start_mapping[chunk_start]
                 chunk_end = end_mapping[chunk_end]
-                if chunk_start == -1 or chunk_end == -1 or chunk_end >= labels.shape[2]:
+                if (
+                    chunk_start == -1
+                    or chunk_end == -1
+                    or chunk_end >= length - 2 * self.add_start_end_tag
+                ):
                     continue
 
                 chunk_start += self.add_start_end_tag
