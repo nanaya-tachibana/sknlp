@@ -47,9 +47,6 @@ class BertRetriever(DeepRetriever):
         ]
 
     def build_encoding_layer(self, inputs: list[tf.Tensor]) -> list[tf.Tensor]:
-        self.text2vec.update_dropout(
-            self.dropout, attention_dropout=self.attention_dropout
-        )
         token_ids, type_ids = inputs
         mask = tf.math.not_equal(token_ids, 0)
         return [
@@ -75,6 +72,3 @@ class BertRetriever(DeepRetriever):
         )
         super().export(directory, name, version=version)
         self._inference_model = original_model
-
-    def get_config(self) -> dict[str, Any]:
-        return {**super().get_config(), "dropout": self.dropout}
