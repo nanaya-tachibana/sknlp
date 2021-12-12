@@ -25,8 +25,7 @@ class BertClassifier(DeepClassifier):
         num_fc_layers: int = 2,
         fc_hidden_size: int = 256,
         fc_activation: str = "tanh",
-        dropout: float = 0.1,
-        attention_dropout: float = 0.1,
+        cls_dropout: float = 0.1,
         text2vec: Optional[Bert2vec] = None,
         text_normalization: dict[str, str] = {"letter_case": "lowercase"},
         **kwargs
@@ -44,17 +43,13 @@ class BertClassifier(DeepClassifier):
             text_normalization=text_normalization,
             **kwargs
         )
-        self.dropout = dropout
-        self.attention_dropout = attention_dropout
+        self.cls_dropout = cls_dropout
         self.inputs = [
             tf.keras.Input(shape=(None,), dtype=tf.int64, name="token_ids"),
             tf.keras.Input(shape=(None,), dtype=tf.int64, name="type_ids"),
         ]
 
     def build_encoding_layer(self, inputs: list[tf.Tensor]) -> list[tf.Tensor]:
-        self.text2vec.update_dropout(
-            self.dropout, attention_dropout=self.attention_dropout
-        )
         token_ids, type_ids = inputs
         mask = tf.math.not_equal(token_ids, 0)
         return [
@@ -66,8 +61,8 @@ class BertClassifier(DeepClassifier):
 
     def build_intermediate_layer(self, inputs: list[tf.Tensor]) -> list[tf.Tensor]:
         cls = inputs[0]
-        if self.dropout:
-            cls = Dropout(self.dropout, name="cls_dropout")(cls)
+        if self.cls_dropout:
+            cls = Dropout(self.cls_dropout, name="cls_dropout")(cls)
         return cls
 
     def export(self, directory: str, name: str, version: str = "0") -> None:
@@ -88,4 +83,4 @@ class BertClassifier(DeepClassifier):
         self._inference_model = original_model
 
     def get_config(self) -> dict[str, Any]:
-        return {**super().get_config(), "dropout": self.dropout}
+        return {**super().get_config(), "cls_dropout": self.cls_dropout}

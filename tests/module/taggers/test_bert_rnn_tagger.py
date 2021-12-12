@@ -18,7 +18,7 @@ def test_bert_rnn_tagger(
         output_format=output_format,
         crf_learning_rate_multiplier=2000,
         rnn_learning_rate_multiplier=100,
-        dropout=0.0,
+        rnn_dropout=0.0,
         text2vec=bert2vec,
     )
     model_common_test(BertRNNTagger, model, raw_data[1:], file_data, use_raw_data, 5e-5)

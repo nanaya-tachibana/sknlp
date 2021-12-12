@@ -18,8 +18,8 @@ class RNNTagger(DeepTagger):
         crf_learning_rate_multiplier: float = 1.0,
         num_rnn_layers: int = 1,
         rnn_hidden_size: int = 512,
-        rnn_recurrent_dropout: float = 0.0,
-        dropout: float = 0.5,
+        rnn_dropout: float = 0.1,
+        rnn_recurrent_dropout: float = 0.5,
         num_fc_layers: int = 2,
         fc_hidden_size: int = 128,
         fc_activation: str = "tanh",
@@ -40,9 +40,9 @@ class RNNTagger(DeepTagger):
             algorithm="rnn",
             **kwargs
         )
-        self.dropout = dropout
         self.num_rnn_layers = num_rnn_layers
         self.rnn_hidden_size = rnn_hidden_size
+        self.rnn_dropout = rnn_dropout
         self.rnn_recurrent_dropout = rnn_recurrent_dropout
         if self.output_format == "bio":
             self.inputs = [
@@ -67,7 +67,7 @@ class RNNTagger(DeepTagger):
             BiLSTM(
                 self.num_rnn_layers,
                 self.rnn_hidden_size,
-                dropout=self.dropout,
+                dropout=self.rnn_dropout,
                 recurrent_dropout=self.rnn_recurrent_dropout,
                 return_sequences=True,
             )(embeddings, mask),
@@ -79,17 +79,17 @@ class RNNTagger(DeepTagger):
 
     def build_intermediate_layer(self, inputs: list[tf.Tensor]) -> list[tf.Tensor]:
         encodings = inputs[0]
-        if self.dropout:
+        if self.rnn_dropout:
             noise_shape = (None, 1, self.rnn_hidden_size * 2)
             encodings = tf.keras.layers.Dropout(
-                self.dropout,
+                self.rnn_dropout,
                 noise_shape=noise_shape,
                 name="encoding_dropout",
             )(encodings)
         return [encodings, *inputs[1:]]
 
     def get_config(self) -> dict[str, Any]:
-        return {**super().get_config(), "dropout": self.dropout}
+        return {**super().get_config(), "rnn_dropout": self.rnn_dropout}
 
     @classmethod
     def from_config(cls, config: dict[str, Any]) -> "RNNTagger":

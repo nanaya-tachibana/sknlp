@@ -14,6 +14,6 @@ def test_cnn_classifier(
 ):
     labels = raw_data[0]
     model = CNNClassifier(
-        labels, is_multilabel=is_multilabel, dropout=0.2, text2vec=word2vec
+        labels, is_multilabel=is_multilabel, cnn_dropout=0.2, text2vec=word2vec
     )
     model_common_test(CNNClassifier, model, raw_data[1:], file_data, use_raw_data, 5e-3)

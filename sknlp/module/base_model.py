@@ -412,6 +412,7 @@ class BaseNLPModel:
             "sequence_length": self.sequence_length,
             "segmenter": self.segmenter,
             "name": self.name,
+            "text_normalization": self._text_normalization,
             "inference_kwargs": self._inference_kwargs,
             "custom_kwargs": self._custom_kwargs,
             "__version__": sknlp.__version__,

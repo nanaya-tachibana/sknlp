@@ -18,7 +18,7 @@ class CNNClassifier(DeepClassifier):
         cnn_kernel_size: int = 3,
         cnn_max_dilation: int = 16,
         cnn_activation: str = "tanh",
-        dropout: float = 0.5,
+        cnn_dropout: float = 0.5,
         num_fc_layers: int = 2,
         fc_hidden_size: int = 128,
         fc_activation: str = "tanh",
@@ -40,7 +40,7 @@ class CNNClassifier(DeepClassifier):
         self.cnn_kernel_size = cnn_kernel_size
         self.cnn_max_dilation = cnn_max_dilation
         self.cnn_activation = cnn_activation
-        self.dropout = dropout
+        self.cnn_dropout = cnn_dropout
 
     def build_encoding_layer(self, inputs: tf.Tensor) -> tf.Tensor:
         embeddings = self.text2vec(inputs)
@@ -49,7 +49,7 @@ class CNNClassifier(DeepClassifier):
             self.num_cnn_layers,
             kernel_size=self.cnn_kernel_size,
             max_dilation=self.cnn_max_dilation,
-            dropout=self.dropout,
+            dropout=self.cnn_dropout,
             activation=self.cnn_activation,
             return_sequences=False,
         )(embeddings, mask)

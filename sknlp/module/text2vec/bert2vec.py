@@ -258,6 +258,8 @@ class Bert2vec(Text2vec):
         checkpoint_directory: str,
         config_filename: Optional[str] = None,
         sequence_length: Optional[int] = None,
+        dropout_rate: Optional[float] = None,
+        attention_dropout_rate: Optional[float] = None,
         enable_recompute_grad: bool = False,
         name: str = "bert2vec",
     ):
@@ -268,6 +270,10 @@ class Bert2vec(Text2vec):
         )
         config = checkpoint.config
         activation = tf.keras.activations.get(config.hidden_act)
+        dropout_rate = dropout_rate or config.hidden_dropout_prob
+        attention_dropout_rate = (
+            attention_dropout_rate or config.attention_probs_dropout_prob
+        )
         module = cls(
             checkpoint.vocab,
             embedding_size=config.embedding_size,
@@ -276,8 +282,8 @@ class Bert2vec(Text2vec):
             num_attention_heads=config.num_attention_heads,
             intermediate_size=config.intermediate_size,
             activation=activation,
-            dropout_rate=config.hidden_dropout_prob,
-            attention_dropout_rate=config.attention_probs_dropout_prob,
+            dropout_rate=dropout_rate,
+            attention_dropout_rate=attention_dropout_rate,
             sequence_length=sequence_length,
             max_sequence_length=config.max_position_embeddings,
             type_vocab_size=config.type_vocab_size,

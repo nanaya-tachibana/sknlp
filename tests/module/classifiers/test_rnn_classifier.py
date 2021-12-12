@@ -16,7 +16,7 @@ def test_rnn_classifier(
     model = RNNClassifier(
         labels,
         is_multilabel=is_multilabel,
-        dropout=0.0,
+        rnn_dropout=0.0,
         rnn_recurrent_dropout=0.1,
         text2vec=word2vec,
     )

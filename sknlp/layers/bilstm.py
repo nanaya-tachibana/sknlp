@@ -13,6 +13,7 @@ class BiLSTM(tf.keras.layers.Layer):
         dropout: float = 0.0,
         recurrent_dropout: float = 0.0,
         return_sequences: bool = False,
+        first_layer_dropout: float | None = None,
         name: str = "bilstm",
         **kwargs
     ) -> None:
@@ -22,16 +23,20 @@ class BiLSTM(tf.keras.layers.Layer):
         self.dropout = dropout
         self.recurrent_dropout = recurrent_dropout
         self.return_sequences = return_sequences
+        self.first_layer_dropout = first_layer_dropout
 
     def build(self, input_shape: tf.TensorShape) -> None:
         self.rnn_layers: list[Bidirectional] = []
         for i in range(self.num_layers):
             return_sequences = self.return_sequences or i != self.num_layers - 1
+            dropout = self.dropout
+            if i == 0 and self.first_layer_dropout is not None:
+                dropout = self.first_layer_dropout
             self.rnn_layers.append(
                 Bidirectional(
                     LSTM(
                         self.hidden_size,
-                        dropout=self.dropout,
+                        dropout=dropout,
                         recurrent_dropout=self.recurrent_dropout,
                         return_sequences=return_sequences,
                     )
@@ -59,4 +64,5 @@ class BiLSTM(tf.keras.layers.Layer):
             "dropout": self.dropout,
             "recurrent_dropout": self.recurrent_dropout,
             "return_sequences": self.return_sequences,
+            "first_layer_dropout": self.first_layer_dropout,
         }

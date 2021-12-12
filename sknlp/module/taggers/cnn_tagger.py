@@ -20,7 +20,7 @@ class CNNTagger(DeepTagger):
         cnn_kernel_size: int = 3,
         cnn_max_dilation: int = 8,
         cnn_activation: str = "relu",
-        dropout: float = 0.5,
+        cnn_dropout: float = 0.5,
         num_fc_layers: int = 2,
         fc_hidden_size: int = 128,
         fc_activation: str = "tanh",
@@ -41,7 +41,7 @@ class CNNTagger(DeepTagger):
             algorithm="cnn",
             **kwargs
         )
-        self.dropout = dropout
+        self.cnn_dropout = cnn_dropout
         self.num_cnn_layers = num_cnn_layers
         self.cnn_kernel_size = cnn_kernel_size
         self.cnn_max_dilation = cnn_max_dilation
@@ -70,7 +70,7 @@ class CNNTagger(DeepTagger):
                 self.num_cnn_layers,
                 kernel_size=self.cnn_kernel_size,
                 max_dilation=self.cnn_max_dilation,
-                dropout=self.dropout,
+                dropout=self.cnn_dropout,
                 activation=self.cnn_activation,
                 return_sequences=True,
             )(embeddings, mask),
@@ -82,10 +82,10 @@ class CNNTagger(DeepTagger):
 
     def build_intermediate_layer(self, inputs: list[tf.Tensor]) -> list[tf.Tensor]:
         encodings = inputs[0]
-        if self.dropout:
+        if self.cnn_dropout:
             noise_shape = (None, 1, self.text2vec.embedding_size)
             encodings = tf.keras.layers.Dropout(
-                self.dropout,
+                self.cnn_dropout,
                 noise_shape=noise_shape,
                 name="encoding_dropout",
             )(encodings)

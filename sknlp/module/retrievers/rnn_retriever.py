@@ -16,10 +16,10 @@ class RNNRetriever(DeepRetriever):
         projection_size: Optional[int] = None,
         temperature: float = 0.05,
         has_negative: bool = False,
-        dropout: float = 0.5,
         num_rnn_layers: int = 1,
         rnn_hidden_size: int = 512,
-        rnn_recurrent_dropout: float = 0.0,
+        rnn_dropout: float = 0.1,
+        rnn_recurrent_dropout: float = 0.5,
         text2vec: Optional[Text2vec] = None,
         **kwargs
     ):
@@ -33,9 +33,9 @@ class RNNRetriever(DeepRetriever):
             algorithm="rnn",
             **kwargs
         )
-        self.dropout = dropout
         self.num_rnn_layers = num_rnn_layers
         self.rnn_hidden_size = rnn_hidden_size
+        self.rnn_dropout = rnn_dropout
         self.rnn_recurrent_dropout = rnn_recurrent_dropout
 
     def build_encoding_layer(self, inputs: tf.Tensor) -> tf.Tensor:
@@ -45,7 +45,7 @@ class RNNRetriever(DeepRetriever):
             BiLSTM(
                 self.num_rnn_layers,
                 self.rnn_hidden_size,
-                dropout=self.dropout,
+                dropout=self.rnn_dropout,
                 recurrent_dropout=self.rnn_recurrent_dropout,
                 return_sequences=True,
                 name="bilstm",
@@ -55,10 +55,10 @@ class RNNRetriever(DeepRetriever):
 
     def build_intermediate_layer(self, inputs: list[tf.Tensor]) -> tf.Tensor:
         encodings, mask = inputs
-        if self.dropout:
+        if self.rnn_dropout:
             noise_shape = (None, 1, self.rnn_hidden_size * 2)
             encodings = tf.keras.layers.Dropout(
-                self.dropout,
+                self.rnn_dropout,
                 noise_shape=noise_shape,
                 name="encoding_dropout",
             )(encodings)

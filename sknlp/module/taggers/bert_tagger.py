@@ -23,8 +23,6 @@ class BertTagger(DeepTagger):
         num_fc_layers: int = 2,
         fc_hidden_size: int = 256,
         fc_activation: str = "tanh",
-        dropout: float = 0.1,
-        attention_dropout: float = 0.1,
         text2vec: Optional[Bert2vec] = None,
         text_normalization: dict[str, str] = {"letter_case": "lowercase"},
         **kwargs
@@ -44,8 +42,6 @@ class BertTagger(DeepTagger):
             text_normalization=text_normalization,
             **kwargs
         )
-        self.dropout = dropout
-        self.attention_dropout = attention_dropout
         self.inputs = [
             tf.keras.Input(shape=(None,), dtype=tf.int64, name="token_ids"),
             tf.keras.Input(shape=(None,), dtype=tf.int64, name="type_ids"),
@@ -61,11 +57,6 @@ class BertTagger(DeepTagger):
             token_ids, type_ids, tag_ids = inputs
         else:
             token_ids, type_ids = inputs
-
-        self.text2vec.update_dropout(
-            self.dropout, attention_dropout=self.attention_dropout
-        )
-
         mask_layer = tf.keras.layers.Lambda(
             lambda ids: tf.not_equal(ids, 0), name="mask_layer"
         )
@@ -80,17 +71,6 @@ class BertTagger(DeepTagger):
         if self.output_format == "bio":
             outputs.append(tag_ids)
         return outputs
-
-    def build_intermediate_layer(self, inputs: list[tf.Tensor]) -> list[tf.Tensor]:
-        encodings = inputs[0]
-        if self.dropout:
-            noise_shape = (None, 1, self.text2vec.embedding_size)
-            encodings = Dropout(
-                self.dropout,
-                noise_shape=noise_shape,
-                name="encoding_dropout",
-            )(encodings)
-        return [encodings, *inputs[1:]]
 
     def export(self, directory: str, name: str, version: str = "0") -> None:
         inputs = tf.keras.Input(shape=(), dtype=tf.string, name="text_input")
@@ -109,9 +89,6 @@ class BertTagger(DeepTagger):
         )
         super(DeepTagger, self).export(directory, name, version=version)
         self._inference_model = original_model
-
-    def get_config(self) -> dict[str, Any]:
-        return {**super().get_config(), "dropout": self.dropout}
 
     @classmethod
     def from_config(cls, config: dict[str, Any]) -> "BertTagger":

@@ -16,7 +16,7 @@ class RCNNClassifier(RNNClassifier):
             BiLSTM(
                 self.num_rnn_layers,
                 self.rnn_hidden_size,
-                dropout=self.dropout,
+                dropout=self.rnn_dropout,
                 recurrent_dropout=self.rnn_recurrent_dropout,
                 return_sequences=True,
             )(embeddings, mask),
@@ -25,17 +25,17 @@ class RCNNClassifier(RNNClassifier):
 
     def build_intermediate_layer(self, inputs: list[tf.Tensor]) -> tf.Tensor:
         embeddings, encodings, mask = inputs
-        if self.dropout:
+        if self.rnn_dropout:
             noise_shape = (None, 1, self.text2vec.embedding_size)
             embeddings = Dropout(
-                self.dropout,
+                self.rnn_dropout,
                 noise_shape=noise_shape,
                 name="embedding_dropout",
             )(embeddings)
 
             noise_shape = (None, 1, self.rnn_hidden_size * 2)
             encodings = tf.keras.layers.Dropout(
-                self.dropout,
+                self.rnn_dropout,
                 noise_shape=noise_shape,
                 name="encoding_dropout",
             )(encodings)

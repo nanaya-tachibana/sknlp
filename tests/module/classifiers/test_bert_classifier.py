@@ -14,7 +14,7 @@ def test_bert_classifier(
 ):
     labels = raw_data[0]
     model = BertClassifier(
-        labels, is_multilabel=is_multilabel, dropout=0.2, text2vec=bert2vec
+        labels, is_multilabel=is_multilabel, cls_dropout=0.1, text2vec=bert2vec
     )
     model_common_test(
         BertClassifier, model, raw_data[1:], file_data, use_raw_data, 1e-4
@@ -41,7 +41,7 @@ def test_pairwise_bert_classifier(
         labels,
         is_pair_text=True,
         is_multilabel=is_multilabel,
-        dropout=0.2,
+        cls_dropout=0.1,
         text2vec=bert2vec,
     )
     model_common_test(

@@ -19,11 +19,15 @@ def inputs():
 
 
 def test_from_bert_checkpoint():
-    Bert2vec.from_tfv1_checkpoint(BertFamily.BERT, "pretrain/RoBERTa-tiny-clue")
+    Bert2vec.from_tfv1_checkpoint(
+        BertFamily.BERT, "pretrain/RoBERTa-tiny-clue", dropout_rate=0.2
+    )
 
 
 def test_from_albert_checkpoint():
-    Bert2vec.from_tfv1_checkpoint(BertFamily.ALBERT, "pretrain/albert_tiny_zh_google")
+    Bert2vec.from_tfv1_checkpoint(
+        BertFamily.ALBERT, "pretrain/albert_tiny_zh_google", attention_dropout_rate=0.2
+    )
 
 
 def test_from_electra_checkpoint():

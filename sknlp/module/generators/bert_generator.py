@@ -39,8 +39,6 @@ class BertGenerator(DeepGenerator):
         max_sequence_length: Optional[int] = None,
         beam_width: int = 3,
         text2vec: Optional[Text2vec] = None,
-        dropout: float = 0.1,
-        attention_dropout: float = 0.1,
         text_normalization: dict[str, str] = {"letter_case": "lowercase"},
         **kwargs
     ):
@@ -52,17 +50,12 @@ class BertGenerator(DeepGenerator):
             text_normalization=text_normalization,
             **kwargs
         )
-        self.dropout = dropout
-        self.attention_dropout = attention_dropout
         self.inputs = [
             tf.keras.Input(shape=(None,), dtype=tf.int64, name="token_ids"),
             tf.keras.Input(shape=(None,), dtype=tf.int64, name="type_ids"),
         ]
 
     def build_encoding_layer(self, inputs: list[tf.Tensor]) -> list[tf.Tensor]:
-        self.text2vec.update_dropout(
-            self.dropout, attention_dropout=self.attention_dropout
-        )
         token_ids, type_ids = inputs
         mask = tf.math.not_equal(token_ids, 0)
 
@@ -126,6 +119,3 @@ class BertGenerator(DeepGenerator):
         )
         super().export(directory, name, version=version)
         self._inference_model = original_model
-
-    def get_config(self) -> dict[str, Any]:
-        return {**super().get_config(), "dropout": self.dropout}

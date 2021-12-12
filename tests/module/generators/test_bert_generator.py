@@ -10,5 +10,6 @@ from sknlp.module.generators import BertGenerator
     ],
 )
 def test_bert_generator(use_raw_data, model_common_test, raw_data, file_data, bert2vec):
-    model = BertGenerator(dropout=0.0, text2vec=bert2vec)
+    bert2vec.update_dropout(0)
+    model = BertGenerator(text2vec=bert2vec)
     model_common_test(BertGenerator, model, raw_data, file_data, use_raw_data, 5e-5)

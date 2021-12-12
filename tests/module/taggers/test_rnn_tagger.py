@@ -17,7 +17,7 @@ def test_rnn_tagger(
         labels,
         output_format=output_format,
         crf_learning_rate_multiplier=20,
-        dropout=0.1,
+        rnn_dropout=0.1,
         text2vec=word2vec,
     )
     model_common_test(RNNTagger, model, raw_data[1:], file_data, use_raw_data, 5e-3)

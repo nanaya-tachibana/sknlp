@@ -17,7 +17,6 @@ def test_bert_tagger(
         labels,
         output_format=output_format,
         crf_learning_rate_multiplier=200,
-        dropout=0.0,
         text2vec=bert2vec,
     )
     model_common_test(BertTagger, model, raw_data[1:], file_data, use_raw_data, 5e-4)

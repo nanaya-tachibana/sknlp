@@ -14,7 +14,7 @@ def test_rcnn_classifier(
 ):
     labels = raw_data[0]
     model = RCNNClassifier(
-        labels, is_multilabel=is_multilabel, dropout=0.2, text2vec=word2vec
+        labels, is_multilabel=is_multilabel, rnn_dropout=0.2, text2vec=word2vec
     )
     model_common_test(
         RCNNClassifier, model, raw_data[1:], file_data, use_raw_data, 5e-3
