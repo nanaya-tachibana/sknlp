@@ -60,12 +60,15 @@ with tempfile.TemporaryDirectory() as temp_dir:
     )
 
     b2v = Bert2vec.from_tfv1_checkpoint(
-        BERT_TYPE, BERT_CHECKPOINT_PATH, enable_recompute_grad=ENABLE_RECOMPUTE_GRAD
+        BERT_TYPE,
+        BERT_CHECKPOINT_PATH,
+        dropout_rate=0.3,
+        enable_recompute_grad=ENABLE_RECOMPUTE_GRAD,
     )
     model = BertRetriever(
         has_negative=HAS_NEGATIVE and not UNSUPERVISED,
         max_sequence_length=max_length,
-        dropout=0.3,
+        cls_dropout=0.3 if not UNSUPERVISED else 0.0,
         text2vec=b2v,
     )
 
